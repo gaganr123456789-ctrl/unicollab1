@@ -40,18 +40,16 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
 
   const defaultSeedTeammates = [];
 
-  // Dynamically load registered users strictly from backend API
+  // Dynamically load registered users strictly from backend API excluding current user
   const loadRegisteredTeammates = async () => {
     let apiUsers = [];
     try {
-      const res = await apiClient.getTeammates();
+      const myEmail = userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '');
+      const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
+
+      const res = await apiClient.getTeammates('', '', '', myEmail, myId);
       if (res.success && Array.isArray(res.teammates)) {
         apiUsers = res.teammates;
-      } else {
-        const adminRes = await apiClient.getAdminUsers();
-        if (adminRes.success && Array.isArray(adminRes.users)) {
-          apiUsers = adminRes.users;
-        }
       }
     } catch (e) {
       console.warn('API teammates load fallback:', e);
@@ -338,12 +336,14 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
             </div>
           </div>
 
-          {/* 6 Teammate Cards Grid / Empty State */}
+          {/* Teammate Cards Grid / Empty State */}
           {sortedTeammates.length === 0 ? (
             <div className="empty-state-box p-8 text-center" style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--surface-color, #F8FAFC)', borderRadius: '16px', border: '1px dashed #CBD5E1', margin: '24px 0' }}>
               <GraduationCap size={44} style={{ margin: '0 auto 12px', color: '#3B82F6' }} />
-              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>No Teammates Found</h3>
-              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 16px' }}>No registered student profiles match your search criteria or selected filters.</p>
+              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>No other teammates found yet</h3>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 16px' }}>
+                No other teammates found yet — invite your classmates to join!
+              </p>
               <button className="btn-primary" onClick={() => { setSearchKeyword(''); setSelectedMajors([]); setSelectedSkills([]); }}>
                 Reset All Filters
               </button>

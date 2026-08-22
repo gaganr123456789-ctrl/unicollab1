@@ -3,21 +3,51 @@ import { teammatesDB } from '../db/dataStore.js';
 
 const router = express.Router();
 
-// GET /api/teammates - Query all registered student accounts with live search & filters
+// GET /api/teammates - Query all registered student accounts excluding current authenticated user
 router.get('/', async (req, res) => {
   const { search, skill, major } = req.query;
 
+  // Extract current user ID and email from JWT token or query params
+  let currentUserId = req.query.currentUserId || null;
+  let currentUserEmail = (req.query.excludeEmail || '').toLowerCase().trim();
+
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      const { default: jwt } = await import('jsonwebtoken');
+      const JWT_SECRET = process.env.JWT_SECRET || 'unicollab_jwt_secret_key_2026';
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded) {
+        if (decoded.id) currentUserId = decoded.id;
+        if (decoded.email) currentUserEmail = decoded.email.toLowerCase().trim();
+      }
+    } catch (e) {
+      // Non-blocking JWT verify
+    }
+  }
+
   let candidates = [];
 
-  // 1. Fetch from Prisma PostgreSQL Database
+  // 1. Fetch from Prisma PostgreSQL Database excluding current user
   try {
     if (process.env.DATABASE_URL) {
       const { PrismaClient } = await import('@prisma/client');
       const prisma = new PrismaClient();
+
+      const whereClause = {
+        role: { not: 'ADMIN' }
+      };
+
+      if (currentUserId) {
+        whereClause.id = { not: currentUserId };
+      }
+      if (currentUserEmail) {
+        whereClause.email = { not: { equals: currentUserEmail, mode: 'insensitive' } };
+      }
+
       const dbUsers = await prisma.user.findMany({
-        where: {
-          role: { not: 'ADMIN' }
-        },
+        where: whereClause,
         orderBy: { createdAt: 'desc' }
       });
 
@@ -81,6 +111,14 @@ router.get('/', async (req, res) => {
   });
 
   let results = Array.from(mergedMap.values());
+
+  // Strictly filter out the current logged-in user from candidate results
+  if (currentUserEmail) {
+    results = results.filter(t => !t.email || t.email.toLowerCase().trim() !== currentUserEmail);
+  }
+  if (currentUserId) {
+    results = results.filter(t => String(t.id) !== String(currentUserId));
+  }
 
   // Search filter
   if (search) {

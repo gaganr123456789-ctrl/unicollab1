@@ -316,10 +316,22 @@ export const apiClient = {
   },
 
   // Teammates & AI Matchmaker APIs
-  async getTeammates(search = '', skill = '', major = '') {
+  async getTeammates(search = '', skill = '', major = '', excludeEmail = '', currentUserId = '') {
     try {
-      const query = new URLSearchParams({ search, skill, major }).toString();
-      const res = await fetch(`${BASE_URL}/teammates?${query}`);
+      const query = new URLSearchParams();
+      if (search) query.append('search', search);
+      if (skill) query.append('skill', skill);
+      if (major) query.append('major', major);
+      if (excludeEmail) query.append('excludeEmail', excludeEmail);
+      if (currentUserId) query.append('currentUserId', currentUserId);
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('unicollab_token');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`${BASE_URL}/teammates?${query.toString()}`, { headers });
       return await res.json();
     } catch (err) {
       console.error('Teammates API error:', err);
