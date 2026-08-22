@@ -68,7 +68,9 @@ export const signup = async (req, res) => {
       }
 
       const branchFromDegree = degree ? String(degree).replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : '';
-      const userMajor = major || branchFromDegree || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Engineering');
+      const userMajor = major || branchFromDegree || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Computer Science & Engineering (CSE)');
+      const userDegree = userRole === 'MENTOR' ? (degree || 'Mentor Advisor') : (degree || `B.Tech ${userMajor}`);
+      const userRoleTitle = userRole === 'MENTOR' ? (roleTitle || 'Industry Professional') : 'Student';
 
       const hashedPassword = await bcrypt.hash(password, 10);
       const newUser = await prisma.user.create({
@@ -79,12 +81,12 @@ export const signup = async (req, res) => {
           role: userRole,
           university: university || (userRole === 'MENTOR' ? 'University Faculty / Industry' : 'Stanford University'),
           major: userMajor,
-          degree: degree || (userRole === 'STUDENT' ? 'B.Tech' : 'Master / PhD'),
+          degree: userDegree,
           experience: experience || '',
           projectFocus: projectFocus || 'Web Dev',
           currentProject: currentProject || '',
           nextProject: nextProject || '',
-          roleTitle: roleTitle || (userRole === 'MENTOR' ? 'Industry Professional' : 'Student'),
+          roleTitle: userRoleTitle,
           mentorInterests: parsedInterests,
           linkedIn: linkedIn || '',
           avatarBg: userRole === 'MENTOR' ? '#7C3AED' : '#2563EB',
@@ -124,7 +126,9 @@ export const signup = async (req, res) => {
   }
 
   const branchFromDegree = degree ? String(degree).replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : '';
-  const userMajor = major || branchFromDegree || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Engineering');
+  const userMajor = major || branchFromDegree || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Computer Science & Engineering (CSE)');
+  const userDegree = userRole === 'MENTOR' ? (degree || 'Mentor Advisor') : (degree || `B.Tech ${userMajor}`);
+  const userRoleTitle = userRole === 'MENTOR' ? (roleTitle || 'Industry Professional') : 'Student';
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const newUser = {
@@ -135,12 +139,12 @@ export const signup = async (req, res) => {
     role: userRole,
     university: university || (userRole === 'MENTOR' ? 'University Faculty / Industry' : 'Stanford University'),
     major: userMajor,
-    degree: degree || (userRole === 'STUDENT' ? 'B.Tech' : 'Master / PhD'),
+    degree: userDegree,
     experience: experience || '',
     projectFocus: projectFocus || 'Web Dev',
     currentProject: currentProject || '',
     nextProject: nextProject || '',
-    roleTitle: roleTitle || (userRole === 'MENTOR' ? 'Industry Professional' : 'Student'),
+    roleTitle: userRoleTitle,
     mentorInterests: parsedInterests,
     linkedIn: linkedIn || '',
     skills: parsedSkills,

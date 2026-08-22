@@ -896,9 +896,19 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                               )}
                             </div>
                           </td>
-                          <td style={{ padding: '12px', fontWeight: '600' }}>{u.roleTitle || u.degree || 'B.Tech'}</td>
-                          <td style={{ padding: '12px' }}>{u.projectFocus ? `${u.projectFocus} • ${u.major || 'CSE'}` : (u.major || 'Engineering')}</td>
-                          <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#64748B' }}>{u.university || 'Stanford University'}</td>
+                          <td style={{ padding: '12px', fontWeight: '700' }}>
+                            {u.role === 'MENTOR' 
+                              ? (u.roleTitle || 'Industry Professional') 
+                              : (u.degree || (u.major ? `B.Tech ${u.major}` : 'B.Tech Computer Science & Engineering (CSE)'))}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {u.role === 'MENTOR' 
+                              ? (u.major || (Array.isArray(u.mentorInterests) && u.mentorInterests.length > 0 ? u.mentorInterests.join(', ') : 'Mentorship & Research')) 
+                              : (u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : 'Computer Science & Engineering (CSE)'))}
+                          </td>
+                          <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#64748B' }}>
+                            {u.university || 'Stanford University'}
+                          </td>
                           <td style={{ padding: '12px' }}>
                             <span className="phase-badge green" style={{ background: '#D1FAE5', color: '#059669', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', fontSize: '11px' }}>Active Account</span>
                           </td>
