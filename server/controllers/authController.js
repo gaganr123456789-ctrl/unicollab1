@@ -142,10 +142,11 @@ export const signup = async (req, res) => {
     phone: phone || '',
     gender: gender || (userRole === 'MENTOR' ? 'Mentor' : 'Student'),
     avatarBg: userRole === 'MENTOR' ? '#7C3AED' : '#2563EB',
-    created: new Date().toISOString().split('T')[0]
+    createdAt: new Date().toISOString(),
+    created: new Date().toISOString()
   };
 
-  usersDB.push(newUser);
+  usersDB.unshift(newUser);
   const token = generateToken({ id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role });
   const { password: _, ...userPayload } = newUser;
 

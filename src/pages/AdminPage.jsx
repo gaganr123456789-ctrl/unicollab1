@@ -1,6 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon } from 'lucide-react';
+import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock } from 'lucide-react';
 import { apiClient } from '../services/apiClient';
+
+const formatDateTime = (rawTime) => {
+  if (!rawTime) return { date: '20 Aug 2026', time: '10:00:00 AM', relative: '' };
+  try {
+    const d = new Date(rawTime);
+    if (isNaN(d.getTime())) return { date: String(rawTime), time: '', relative: '' };
+    
+    const dateStr = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+    const diffMs = Date.now() - d.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    let relative = '';
+    if (diffMins < 2) relative = '⚡ Just now';
+    else if (diffMins < 60) relative = `${diffMins}m ago`;
+    else if (diffMins < 1440) relative = `${Math.floor(diffMins / 60)}h ago`;
+    else relative = `${Math.floor(diffMins / 1440)}d ago`;
+
+    return { date: dateStr, time: timeStr, relative };
+  } catch (e) {
+    return { date: String(rawTime), time: '', relative: '' };
+  }
+};
 
 export default function AdminPage({ setCurrentPage, theme, setTheme }) {
   const [usersList, setUsersList] = useState([]);
@@ -247,9 +270,9 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
         : [];
       
       const seedUsers = [
-        { id: 1, name: 'Alex Rivera', email: 'alex@stanford.edu', major: 'Computer Science & Engineering (CSE)', university: 'Stanford University', age: 21, phone: '+91 98765 43210', gender: 'Male', created: '2026-08-19' },
-        { id: 2, name: 'Sarah Chen', email: 'sarah@mit.edu', major: 'Artificial Intelligence & Data Science (AI & DS)', university: 'MIT', age: 22, phone: '+1 415 555 0192', gender: 'Female', created: '2026-08-19' },
-        { id: 3, name: 'Marcus Vance', email: 'marcus@berkeley.edu', major: 'Electronics & Communication Engineering (ECE)', university: 'UC Berkeley', age: 20, phone: '+1 415 555 0143', gender: 'Male', created: '2026-08-19' }
+        { id: 1, name: 'Alex Rivera', email: 'alex@stanford.edu', major: 'Computer Science & Engineering (CSE)', university: 'Stanford University', age: 21, phone: '+91 98765 43210', gender: 'Male', createdAt: '2026-08-19T08:00:00.000Z' },
+        { id: 2, name: 'Sarah Chen', email: 'sarah@mit.edu', major: 'Artificial Intelligence & Data Science (AI & DS)', university: 'MIT', age: 22, phone: '+1 415 555 0192', gender: 'Female', createdAt: '2026-08-19T08:30:00.000Z' },
+        { id: 3, name: 'Marcus Vance', email: 'marcus@berkeley.edu', major: 'Electronics & Communication Engineering (ECE)', university: 'UC Berkeley', age: 20, phone: '+1 415 555 0143', gender: 'Male', createdAt: '2026-08-19T09:00:00.000Z' }
       ];
 
       // Combine backend database users, local storage cache, and seed users
@@ -274,6 +297,9 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                 || formattedNameFromEmail 
                 || 'Student User';
 
+              const rawCreated = u.createdAt || u.created_at || u.created || (typeof u.id === 'string' && u.id.startsWith('usr_') ? new Date(parseInt(u.id.replace('usr_', ''))).toISOString() : '2026-08-19T08:00:00.000Z');
+              const parsedTime = new Date(rawCreated).getTime() || 0;
+
               return [
                 rawEmail, 
                 {
@@ -281,14 +307,15 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   name: resolvedName,
                   university: u.university || 'Campus Network',
                   major: u.major || 'Engineering',
-                  createdTimestamp: new Date(u.createdAt || u.created_at || u.created || 0).getTime() || (typeof u.id === 'string' && u.id.startsWith('usr_') ? parseInt(u.id.replace('usr_', '')) : 0)
+                  createdAt: rawCreated,
+                  createdTimestamp: parsedTime
                 }
               ];
             })
         ).values()
       );
 
-      // Sort users chronologically so the latest registrations are on top
+      // Sort strictly in reverse chronological order: newest registrations at the very top
       uniqueUsers.sort((a, b) => (b.createdTimestamp || 0) - (a.createdTimestamp || 0));
 
       setUsersList(uniqueUsers);
@@ -638,6 +665,12 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                       <th style={{ padding: '12px' }}>Role</th>
                       <th style={{ padding: '12px' }}>User Name</th>
                       <th style={{ padding: '12px' }}>Academic Email</th>
+                      <th style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Clock size={14} style={{ color: '#7C3AED' }} />
+                          <span>Registered Date & Time</span>
+                        </div>
+                      </th>
                       <th style={{ padding: '12px' }}>Degree / Title</th>
                       <th style={{ padding: '12px' }}>Branch / Focus</th>
                       <th style={{ padding: '12px' }}>University</th>
@@ -645,54 +678,70 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((u, idx) => (
-                      <tr key={idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ 
-                            background: u.role === 'MENTOR' ? '#F3E8FF' : '#EFF6FF', 
-                            color: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
-                            padding: '4px 10px', 
-                            borderRadius: '9999px', 
-                            fontWeight: '800', 
-                            fontSize: '11px',
-                            border: `1px solid ${u.role === 'MENTOR' ? '#DDD6FE' : '#BFDBFE'}`
-                          }}>
-                            {u.role === 'MENTOR' ? '👨‍🏫 MENTOR' : '🎓 STUDENT'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', fontWeight: '700' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ 
-                              width: '32px', 
-                              height: '32px', 
-                              borderRadius: '50%', 
-                              background: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
-                              color: 'white', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              fontSize: '12px',
-                              fontWeight: '800'
+                    {filteredUsers.map((u, idx) => {
+                      const dt = formatDateTime(u.createdAt || u.created_at || u.created);
+                      return (
+                        <tr key={idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
+                          <td style={{ padding: '12px' }}>
+                            <span style={{ 
+                              background: u.role === 'MENTOR' ? '#F3E8FF' : '#EFF6FF', 
+                              color: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
+                              padding: '4px 10px', 
+                              borderRadius: '9999px', 
+                              fontWeight: '800', 
+                              fontSize: '11px',
+                              border: `1px solid ${u.role === 'MENTOR' ? '#DDD6FE' : '#BFDBFE'}`
                             }}>
-                              {u.initials || u.name?.slice(0, 2).toUpperCase() || 'ST'}
+                              {u.role === 'MENTOR' ? '👨‍🏫 MENTOR' : '🎓 STUDENT'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px', fontWeight: '700' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ 
+                                width: '32px', 
+                                height: '32px', 
+                                borderRadius: '50%', 
+                                background: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
+                                color: 'white', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                fontWeight: '800'
+                              }}>
+                                {u.initials || u.name?.slice(0, 2).toUpperCase() || 'ST'}
+                              </div>
+                              <div>
+                                <div>{u.name}</div>
+                                {u.nextProject && (
+                                  <div style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 600 }}>🎯 Want to do: {u.nextProject.slice(0, 24)}...</div>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <div>{u.name}</div>
-                              {u.nextProject && (
-                                <div style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 600 }}>🎯 Want to do: {u.nextProject.slice(0, 24)}...</div>
+                          </td>
+                          <td style={{ padding: '12px', color: '#60A5FA', fontWeight: '600' }}>{u.email}</td>
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <div style={{ fontWeight: '700', fontSize: '12.5px', color: theme === 'dark' ? '#F3F4F6' : '#1E293B', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span>{dt.date}</span>
+                                <span style={{ color: '#7C3AED', fontWeight: '800' }}>{dt.time}</span>
+                              </div>
+                              {dt.relative && (
+                                <span style={{ fontSize: '11px', color: '#059669', fontWeight: '700' }}>
+                                  {dt.relative}
+                                </span>
                               )}
                             </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px', color: '#60A5FA', fontWeight: '600' }}>{u.email}</td>
-                        <td style={{ padding: '12px', fontWeight: '600' }}>{u.roleTitle || u.degree || 'B.Tech'}</td>
-                        <td style={{ padding: '12px' }}>{u.projectFocus ? `${u.projectFocus} • ${u.major || 'CSE'}` : (u.major || 'Engineering')}</td>
-                        <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#64748B' }}>{u.university || 'Stanford University'}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span className="phase-badge green" style={{ background: '#D1FAE5', color: '#059669', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', fontSize: '11px' }}>Active Account</span>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td style={{ padding: '12px', fontWeight: '600' }}>{u.roleTitle || u.degree || 'B.Tech'}</td>
+                          <td style={{ padding: '12px' }}>{u.projectFocus ? `${u.projectFocus} • ${u.major || 'CSE'}` : (u.major || 'Engineering')}</td>
+                          <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#64748B' }}>{u.university || 'Stanford University'}</td>
+                          <td style={{ padding: '12px' }}>
+                            <span className="phase-badge green" style={{ background: '#D1FAE5', color: '#059669', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', fontSize: '11px' }}>Active Account</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
