@@ -248,31 +248,63 @@ router.post('/authenticate', (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 7. GET /api/admin/users - Protected Admin User Directory
+// 7. GET /api/admin/users - Protected Admin User Directory (Latest First)
 // --------------------------------------------------------------------------
+let prismaAdminInstance = null;
+const getAdminPrisma = async () => {
+  if (!process.env.DATABASE_URL) return null;
+  if (!prismaAdminInstance) {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      prismaAdminInstance = new PrismaClient();
+    } catch (err) {
+      console.warn('Prisma load skipped in adminRoutes.');
+      return null;
+    }
+  }
+  return prismaAdminInstance;
+};
+
 router.get('/users', async (req, res) => {
   try {
-    if (process.env.DATABASE_URL) {
-      const { query } = await import('../db/postgres.js');
-      const dbRes = await query('SELECT id, name, email, major, university, age, phone, gender, created_at FROM users ORDER BY id DESC');
-      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+    const prisma = await getAdminPrisma();
+    if (prisma) {
+      const users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          degree: true,
+          major: true,
+          university: true,
+          projectFocus: true,
+          roleTitle: true,
+          avatarBg: true,
+          createdAt: true
+        }
+      });
+      if (users && users.length > 0) {
         return res.status(200).json({
           success: true,
-          count: dbRes.rows.length,
+          count: users.length,
           source: 'Supabase PostgreSQL Cloud Database',
-          users: dbRes.rows
+          users
         });
       }
     }
   } catch (err) {
-    console.warn('Admin users SQL query info:', err.message);
+    console.warn('Admin users Prisma query info:', err.message);
   }
 
+  // Fallback: return users from dataStore with latest signups on top
+  const sortedStoreUsers = [...usersDB].reverse();
   return res.status(200).json({
     success: true,
-    count: usersDB.length,
+    count: sortedStoreUsers.length,
     source: 'Application State',
-    users: usersDB
+    users: sortedStoreUsers
   });
 });
 

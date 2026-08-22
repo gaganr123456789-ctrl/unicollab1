@@ -280,12 +280,17 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   ...u,
                   name: resolvedName,
                   university: u.university || 'Campus Network',
-                  major: u.major || 'Engineering'
+                  major: u.major || 'Engineering',
+                  createdTimestamp: new Date(u.createdAt || u.created_at || u.created || 0).getTime() || (typeof u.id === 'string' && u.id.startsWith('usr_') ? parseInt(u.id.replace('usr_', '')) : 0)
                 }
               ];
             })
         ).values()
       );
+
+      // Sort users chronologically so the latest registrations are on top
+      uniqueUsers.sort((a, b) => (b.createdTimestamp || 0) - (a.createdTimestamp || 0));
+
       setUsersList(uniqueUsers);
     } catch (err) {
       console.error('Failed to load admin user list', err);
