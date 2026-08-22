@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiClient } from '../services/apiClient.js';
 import { 
   User, 
   Bell, 
@@ -16,10 +17,10 @@ export default function SettingsPage({ userProfile, setUserProfile, setCurrentPa
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Account Settings Form State
-  const [name, setName] = useState(userProfile?.name || 'Alex Rivera');
-  const [email, setEmail] = useState('alex.rivera@stanford.edu');
-  const [phone, setPhone] = useState(userProfile?.phone || '+91 98765 43210');
-  const [gender, setGender] = useState(userProfile?.gender || 'Male');
+  const [name, setName] = useState(userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Student Member'));
+  const [email, setEmail] = useState(userProfile?.email || 'student@university.edu');
+  const [phone, setPhone] = useState(userProfile?.phone || '');
+  const [gender, setGender] = useState(userProfile?.gender || 'Student');
   const [age, setAge] = useState(userProfile?.age || '21');
 
   // Password State
@@ -46,21 +47,49 @@ export default function SettingsPage({ userProfile, setUserProfile, setCurrentPa
   const [showOnlineStatus, setShowOnlineStatus] = useState(true);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
 
-  const handleSaveSettings = (e) => {
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
-    const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AR';
+    const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'ST';
     
+    const updatedUser = {
+      ...userProfile,
+      name: name,
+      age: age,
+      phone: phone,
+      gender: gender,
+      major: major,
+      university: university,
+      skills: skills,
+      degree: userProfile?.degree?.startsWith('B.Tech') ? `B.Tech ${major}` : (userProfile?.degree || `B.Tech ${major}`),
+      initials: initials
+    };
+
+    // 1. Update React app state
     if (setUserProfile) {
-      setUserProfile(prev => ({
-        ...prev,
-        name: name,
-        age: age,
-        phone: phone,
-        gender: gender,
-        major: major,
-        university: university.replace(' University', ''),
-        initials: initials
-      }));
+      setUserProfile(updatedUser);
+    }
+
+    // 2. Persist active user session locally
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('unicollab_user', JSON.stringify(updatedUser));
+
+      // 3. Update registered users database cache
+      const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+      const targetEmail = (userProfile?.email || '').toLowerCase().trim();
+      const updatedCache = cachedUsers.map(u => {
+        if ((targetEmail && u.email?.toLowerCase().trim() === targetEmail) || (userProfile?.id && String(u.id) === String(userProfile.id))) {
+          return { ...u, ...updatedUser };
+        }
+        return u;
+      });
+      localStorage.setItem('unicollab_registered_users', JSON.stringify(updatedCache));
+    }
+
+    // 4. Update Backend API / Cloud Database
+    try {
+      await apiClient.updateProfile(updatedUser);
+    } catch (err) {
+      console.warn('Backend settings sync warning:', err);
     }
 
     setSavedSuccess(true);

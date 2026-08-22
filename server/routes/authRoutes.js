@@ -1,5 +1,5 @@
 import express from 'express';
-import { signup, login, ssoLogin, forgotPassword, verifyOtp, resetPassword, getMe } from '../controllers/authController.js';
+import { signup, login, ssoLogin, forgotPassword, verifyOtp, resetPassword, getMe, updateProfile } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -9,6 +9,9 @@ router.post('/signup', signup);
 router.post('/register', signup); // Alias for compatibility
 router.post('/login', login);
 router.post('/sso', ssoLogin);
+
+// Profile Update Route
+router.put('/profile', updateProfile);
 
 // Forgot Password & Resend OTP Flow Routes
 router.post('/forgot-password', forgotPassword);

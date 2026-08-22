@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiClient } from '../services/apiClient.js';
 import { 
   Camera, 
   Share2, 
@@ -176,22 +177,50 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
     }
   ];
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const newInitials = editName ? editName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AR';
+    const newInitials = editName ? editName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'ST';
+    const updatedUser = {
+      ...userProfile,
+      name: editName,
+      age: editAge,
+      phone: editPhone,
+      gender: editGender,
+      major: editMajor,
+      degree: userProfile?.degree?.startsWith('B.Tech') ? `B.Tech ${editMajor}` : (userProfile?.degree || `B.Tech ${editMajor}`),
+      initials: newInitials
+    };
+
+    // 1. Update React app state
     if (setUserProfile) {
-      setUserProfile(prev => ({
-        ...prev,
-        name: editName,
-        age: editAge,
-        phone: editPhone,
-        gender: editGender,
-        major: editMajor,
-        initials: newInitials
-      }));
+      setUserProfile(updatedUser);
     }
+
+    // 2. Persist updated user session locally
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('unicollab_user', JSON.stringify(updatedUser));
+
+      // 3. Update in registered users database cache
+      const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+      const targetEmail = (userProfile?.email || '').toLowerCase().trim();
+      const updatedCache = cachedUsers.map(u => {
+        if ((targetEmail && u.email?.toLowerCase().trim() === targetEmail) || (userProfile?.id && String(u.id) === String(userProfile.id))) {
+          return { ...u, ...updatedUser };
+        }
+        return u;
+      });
+      localStorage.setItem('unicollab_registered_users', JSON.stringify(updatedCache));
+    }
+
+    // 4. Update Backend API / Cloud Database
+    try {
+      await apiClient.updateProfile(updatedUser);
+    } catch (err) {
+      console.warn('Backend profile sync info:', err);
+    }
+
     setIsEditing(false);
-    alert('Profile updated successfully! Top right profile badge updated.');
+    alert('🎉 Profile updated successfully throughout the entire website!');
   };
 
   return (

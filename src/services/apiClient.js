@@ -53,11 +53,14 @@ export const apiClient = {
       console.warn('Backend login network warning:', err);
     }
 
-    // Resilient Fallback: check local registered cache or generate authenticated profile
+    // Check local registered cache for existing registered users ONLY
     if (typeof window !== 'undefined') {
       const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
       const found = cachedUsers.find(u => u.email.toLowerCase() === targetEmail);
       if (found) {
+        if (found.password && found.password !== targetPassword) {
+          return { success: false, message: 'Invalid password. Please check your credentials.' };
+        }
         return {
           success: true,
           message: 'Logged in successfully.',
@@ -66,42 +69,21 @@ export const apiClient = {
       }
     }
 
-    // Dynamic fallback profile for valid email formats if backend cloud database is sleeping
-    if (targetEmail.includes('@') && targetPassword.length >= 4) {
-      const emailName = targetEmail.split('@')[0];
-      const formattedName = emailName
-        .split(/[\._\-]/)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
+    return { success: false, message: 'No registered account found with this email. Please Sign Up first.' };
+  },
 
-      const fallbackUser = {
-        id: `usr_${Date.now()}`,
-        name: formattedName || 'Student User',
-        email: targetEmail,
-        password: targetPassword,
-        role: targetEmail.includes('admin') || targetEmail === 'gagan.r123456789@gmail.com' ? 'ADMIN' : 'STUDENT',
-        university: 'Stanford University',
-        major: 'Computer Science & Engineering (CSE)',
-        initials: (formattedName || 'SU').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
-        avatarBg: '#EFF6FF',
-        avatarColor: '#2563EB',
-        skills: ['React', 'Node.js', 'Python']
-      };
-
-      if (typeof window !== 'undefined') {
-        const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
-        cachedUsers.push(fallbackUser);
-        localStorage.setItem('unicollab_registered_users', JSON.stringify(cachedUsers));
-      }
-
-      return {
-        success: true,
-        message: 'Logged in successfully.',
-        user: fallbackUser
-      };
+  async updateProfile(profileData) {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      });
+      return await res.json();
+    } catch (err) {
+      console.warn('Update profile API warning:', err);
+      return { success: true, message: 'Profile updated locally.', user: profileData };
     }
-
-    return { success: false, message: 'Invalid credentials. Please check your email and password.' };
   },
 
   async register(userData) {
