@@ -579,48 +579,20 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                 </div>
 
                 {selectedRole === 'STUDENT' ? (
-                  <>
-                    <div className="form-row" style={{ display: 'flex', gap: '12px' }}>
-                      <div className="form-group col-half" style={{ flex: 1 }}>
-                        <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Area of Project Focus</label>
-                        <div className="input-icon-wrapper">
-                          <Layers size={16} className="input-icon" />
-                          <select value={projectFocus} onChange={(e) => setProjectFocus(e.target.value)}>
-                            <option value="Web Dev">Web Development</option>
-                            <option value="ML/AI">Artificial Intelligence & ML</option>
-                            <option value="IoT">Internet of Things (IoT)</option>
-                            <option value="Embedded">Embedded Systems & Hardware</option>
-                            <option value="Mobile">Mobile Apps</option>
-                            <option value="Design">UI/UX & Product Design</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="form-group col-half" style={{ flex: 1 }}>
-                        <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Current Project Doing</label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. Smart Campus IoT Sensor Node"
-                          value={currentProject}
-                          onChange={(e) => setCurrentProject(e.target.value)}
-                          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px' }}
-                        />
-                      </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>Area of Project Focus</label>
+                    <div className="input-icon-wrapper">
+                      <Layers size={16} className="input-icon" />
+                      <select value={projectFocus} onChange={(e) => setProjectFocus(e.target.value)}>
+                        <option value="Web Dev">Web Development</option>
+                        <option value="ML/AI">Artificial Intelligence & ML</option>
+                        <option value="IoT">Internet of Things (IoT)</option>
+                        <option value="Embedded">Embedded Systems & Hardware</option>
+                        <option value="Mobile">Mobile Apps</option>
+                        <option value="Design">UI/UX & Product Design</option>
+                      </select>
                     </div>
-
-                    <div className="form-group">
-                      <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>
-                        🎯 Project You Want to Do Next / Seeking Teammates For
-                      </label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. AI Code Reviewer Agent using Claude API & React"
-                        value={nextProject}
-                        onChange={(e) => setNextProject(e.target.value)}
-                        style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #2563EB', fontSize: '13px', width: '100%' }}
-                      />
-                    </div>
-                  </>
+                  </div>
                 ) : (
                   <>
                     <div className="form-group">
