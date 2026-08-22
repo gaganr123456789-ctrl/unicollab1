@@ -65,7 +65,11 @@ export default function NotificationsPage({ setCurrentPage }) {
 
     // Socket.io listener for real-time notifications
     try {
-      const socketUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000';
+      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+        ? 'http://localhost:5000'
+        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+          ? window.location.origin
+          : 'https://unicollab1.onrender.com';
       const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
       
       socket.on('notification:new', (newNotif) => {

@@ -158,7 +158,11 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
 
   useEffect(() => {
     try {
-      const socketUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000';
+      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+        ? 'http://localhost:5000'
+        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+          ? window.location.origin
+          : 'https://unicollab1.onrender.com';
       const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
 
       socket.on('project:created', (newProj) => {

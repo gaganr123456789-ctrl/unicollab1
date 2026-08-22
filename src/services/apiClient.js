@@ -1,8 +1,11 @@
 // Unified UniCollab REST API Client with environment detection
+const RENDER_BACKEND_URL = 'https://unicollab1.onrender.com';
 
 const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:5000/api'
-  : '/api';
+  : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+    ? '/api'
+    : `${RENDER_BACKEND_URL}/api`;
 
 export const apiClient = {
   // Health Check
