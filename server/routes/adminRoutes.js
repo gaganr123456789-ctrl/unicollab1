@@ -285,14 +285,12 @@ router.get('/users', async (req, res) => {
           createdAt: true
         }
       });
-      if (users && users.length > 0) {
-        return res.status(200).json({
-          success: true,
-          count: users.length,
-          source: 'Supabase PostgreSQL Cloud Database',
-          users
-        });
-      }
+      return res.status(200).json({
+        success: true,
+        count: users ? users.length : 0,
+        source: 'Supabase PostgreSQL Cloud Database',
+        users: users || []
+      });
     }
   } catch (err) {
     console.warn('Admin users Prisma query info:', err.message);
