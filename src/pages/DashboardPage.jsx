@@ -17,7 +17,9 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage({ setCurrentPage, userProfile }) {
-  const firstName = userProfile?.name ? userProfile.name.split(' ')[0] : 'Alex';
+  const firstName = userProfile?.name 
+    ? userProfile.name.split(' ')[0] 
+    : (userProfile?.email ? userProfile.email.split('@')[0] : 'Student');
   const [selectedHackathonTitle, setSelectedHackathonTitle] = useState('');
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);

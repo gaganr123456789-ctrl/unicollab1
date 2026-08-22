@@ -81,9 +81,9 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
     }
   };
 
-  const name = userProfile?.name || 'Alex Rivera';
-  const initials = userProfile?.initials || name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  const major = userProfile?.major || 'Computer Science';
+  const name = userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Student Member');
+  const initials = userProfile?.initials || name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'ST';
+  const major = userProfile?.major || userProfile?.degree || 'Engineering';
   const age = userProfile?.age || '21';
 
   const handleAvatarUpload = (e) => {

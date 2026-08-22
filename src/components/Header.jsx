@@ -27,10 +27,10 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
     'settings': 'Account Settings'
   };
 
-  const name = userProfile?.name || 'Alex Rivera';
-  const initials = userProfile?.initials || name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  const major = userProfile?.major || 'Computer Science';
-  const uni = userProfile?.university || 'Stanford';
+  const name = userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Student Member');
+  const initials = userProfile?.initials || name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'ST';
+  const major = userProfile?.major || userProfile?.degree || 'Engineering';
+  const uni = userProfile?.university || 'Campus Network';
 
   const handleDropdownNavigate = (pageId) => {
     setCurrentPage(pageId);
