@@ -47,8 +47,6 @@ export default function App() {
 
   const [userProfile, setUserProfileState] = useState(() => {
     if (typeof window !== 'undefined') {
-      // Purge old cached test registrations from local storage
-      localStorage.removeItem('unicollab_registered_users');
       const savedUser = localStorage.getItem('unicollab_user');
       if (savedUser) {
         try {

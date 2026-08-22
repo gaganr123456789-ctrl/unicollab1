@@ -267,10 +267,8 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
         console.warn('Backend users fetch error:', e);
       }
 
-      // If server returned response (even empty array []), use server as true source of truth
-      const combined = isServerSuccess
-        ? serverUsers
-        : (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : []);
+      const cached = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
+      const combined = [...serverUsers, ...cached];
       const uniqueUsers = Array.from(
         new Map(
           combined
