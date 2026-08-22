@@ -5,18 +5,15 @@ import SSOAuthModal from '../components/SSOAuthModal';
 import { 
   Layers, 
   ShieldCheck, 
-  Smartphone, 
   Eye, 
   EyeOff,
   User,
-  Phone,
-  Calendar,
-  Users,
   GraduationCap,
   Building2,
   BookOpen,
   Sun,
-  Moon
+  Moon,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function LoginPage({ setCurrentPage, userProfile, setUserProfile, initialTab = 'login', theme, setTheme }) {
@@ -394,7 +391,7 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <CheckCircle size={18} style={{ color: '#059669', flexShrink: 0 }} />
+                  <CheckCircle2 size={18} style={{ color: '#059669', flexShrink: 0 }} />
                   <span>{successMsg}</span>
                 </div>
               )}

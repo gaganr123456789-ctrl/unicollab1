@@ -416,30 +416,6 @@ export const apiClient = {
     }
   },
 
-  // Messages APIs
-  async sendMessage(text, receiverId = 1) {
-    try {
-      const res = await fetch(`${BASE_URL}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, receiverId })
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: false, message: 'Message delivery failed.' };
-    }
-  },
-
-  // Notifications APIs
-  async getNotifications() {
-    try {
-      const res = await fetch(`${BASE_URL}/notifications`);
-      return await res.json();
-    } catch (err) {
-      return { success: false, notifications: [] };
-    }
-  },
-
   async markNotificationsRead(notificationId = null) {
     try {
       const res = await fetch(`${BASE_URL}/notifications/mark-read`, {
@@ -450,29 +426,6 @@ export const apiClient = {
       return await res.json();
     } catch (err) {
       return { success: false };
-    }
-  },
-
-  // Profile APIs
-  async getProfile() {
-    try {
-      const res = await fetch(`${BASE_URL}/profile`);
-      return await res.json();
-    } catch (err) {
-      return { success: false };
-    }
-  },
-
-  async updateProfile(profileData) {
-    try {
-      const res = await fetch(`${BASE_URL}/profile/update`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: false, message: 'Profile update failed.' };
     }
   },
 
