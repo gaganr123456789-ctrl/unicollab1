@@ -67,6 +67,9 @@ export const signup = async (req, res) => {
         return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
       }
 
+      const branchFromDegree = degree ? String(degree).replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : '';
+      const userMajor = major || branchFromDegree || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Engineering');
+
       const hashedPassword = await bcrypt.hash(password, 10);
       const newUser = await prisma.user.create({
         data: {
@@ -75,7 +78,7 @@ export const signup = async (req, res) => {
           password: hashedPassword,
           role: userRole,
           university: university || (userRole === 'MENTOR' ? 'University Faculty / Industry' : 'Stanford University'),
-          major: major || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Computer Science & Engineering (CSE)'),
+          major: userMajor,
           degree: degree || (userRole === 'STUDENT' ? 'B.Tech' : 'Master / PhD'),
           experience: experience || '',
           projectFocus: projectFocus || 'Web Dev',
@@ -120,6 +123,9 @@ export const signup = async (req, res) => {
     return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
   }
 
+  const branchFromDegree = degree ? String(degree).replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : '';
+  const userMajor = major || branchFromDegree || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Engineering');
+
   const hashedPassword = await bcrypt.hash(password, 10);
   const newUser = {
     id: `usr_${Date.now()}`,
@@ -128,7 +134,7 @@ export const signup = async (req, res) => {
     password: hashedPassword,
     role: userRole,
     university: university || (userRole === 'MENTOR' ? 'University Faculty / Industry' : 'Stanford University'),
-    major: major || (userRole === 'MENTOR' ? 'Mentorship & Research' : 'Computer Science & Engineering (CSE)'),
+    major: userMajor,
     degree: degree || (userRole === 'STUDENT' ? 'B.Tech' : 'Master / PhD'),
     experience: experience || '',
     projectFocus: projectFocus || 'Web Dev',

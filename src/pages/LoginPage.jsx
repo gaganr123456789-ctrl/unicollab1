@@ -133,13 +133,18 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
     const parsedSkills = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
     const parsedInterests = mentorInterestsInput.split(',').map(s => s.trim()).filter(Boolean);
 
+    // Extract exact department/major from selected degree
+    const resolvedMajor = selectedRole === 'MENTOR'
+      ? (major || 'Mentorship & Research')
+      : (degree ? degree.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : major);
+
     const payload = {
       name: finalName,
       email: regEmail,
       password: regPassword,
       role: selectedRole,
       university: university.trim() || (selectedRole === 'MENTOR' ? 'University Faculty / Industry' : 'Stanford University'),
-      major,
+      major: resolvedMajor,
       degree,
       skills: parsedSkills,
       experience,
@@ -527,7 +532,15 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                           <option value="Final Year Student Mentor">Final Year Student Mentor</option>
                         </select>
                       ) : (
-                        <select value={degree} onChange={(e) => setDegree(e.target.value)}>
+                        <select 
+                          value={degree} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDegree(val);
+                            const cleanMajor = val.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim();
+                            setMajor(cleanMajor || val);
+                          }}
+                        >
                           <option value="B.Tech Computer Science & Engineering (CSE)">B.Tech Computer Science & Engineering (CSE)</option>
                           <option value="B.Tech Information Technology (IT)">B.Tech Information Technology (IT)</option>
                           <option value="B.Tech Electronics & Communication (ECE)">B.Tech Electronics & Communication (ECE)</option>

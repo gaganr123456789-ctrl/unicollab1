@@ -38,78 +38,7 @@ export default function FindTeammatesPage({ onOpenChat }) {
     'Digital Media & UI/UX Design'
   ];
 
-  const defaultSeedTeammates = [
-    {
-      id: 'default_1',
-      name: 'Sarah Chen',
-      rating: 4.9,
-      major: 'Computer Science & Engineering (CSE)',
-      year: 'Junior',
-      bio: 'Passionate full-stack developer with a focus on React and Node.js. Looking for a team for the upcoming Spring Hackathon.',
-      skills: ['React', 'Node.js', 'TypeScript'],
-      projectsCount: 12,
-      location: 'Building A, Room 302',
-      avatarBg: '#EFF6FF',
-      avatarColor: '#2563EB',
-      initials: 'SC'
-    },
-    {
-      id: 'default_2',
-      name: 'Marcus Johnson',
-      rating: 4.8,
-      major: 'Digital Media & UI/UX Design',
-      year: 'Senior',
-      bio: 'Visual designer specializing in high-fidelity prototyping and user research. I love creating accessible digital experiences.',
-      skills: ['UI Design', 'Figma', 'Prototyping'],
-      projectsCount: 8,
-      location: 'Design Studio',
-      avatarBg: '#F3E8FF',
-      avatarColor: '#7C3AED',
-      initials: 'MJ'
-    },
-    {
-      id: 'default_3',
-      name: 'Arjun Mehta',
-      rating: 4.85,
-      major: 'Information Technology (IT)',
-      year: 'Senior',
-      bio: 'Backend & Cloud System Architect specializing in Express REST APIs and Docker deployments.',
-      skills: ['Node.js', 'Express', 'Docker', 'PostgreSQL'],
-      projectsCount: 14,
-      location: 'IIT Bombay Campus',
-      avatarBg: '#ECFDF5',
-      avatarColor: '#059669',
-      initials: 'AM'
-    },
-    {
-      id: 'default_4',
-      name: 'Rohan Sharma',
-      rating: 4.9,
-      major: 'Electronics & Communication (ECE)',
-      year: 'Senior',
-      bio: 'Embedded Systems & IoT Developer building smart hardware sensors and robotics algorithms.',
-      skills: ['C++', 'Arduino', 'IoT', 'MATLAB'],
-      projectsCount: 10,
-      location: 'Electronics Lab 3',
-      avatarBg: '#FEF3C7',
-      avatarColor: '#D97706',
-      initials: 'RS'
-    },
-    {
-      id: 'default_5',
-      name: 'Sophia Chen',
-      rating: 5.0,
-      major: 'Artificial Intelligence & Data Science (AI & DS)',
-      year: 'Graduate',
-      bio: 'Machine Learning engineer working on Generative AI and predictive data pipelines.',
-      skills: ['Python', 'TensorFlow', 'PyTorch', 'SQL'],
-      projectsCount: 18,
-      location: 'AI Research Lab',
-      avatarBg: '#EFF6FF',
-      avatarColor: '#2563EB',
-      initials: 'SC'
-    }
-  ];
+  const defaultSeedTeammates = [];
 
   // Dynamically load registered users from localStorage & backend API
   useEffect(() => {

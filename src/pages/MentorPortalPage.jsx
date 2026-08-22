@@ -23,64 +23,7 @@ export default function MentorPortalPage({ setCurrentPage, onOpenChat }) {
   const [loading, setLoading] = useState(false);
   const [mentorsList, setMentorsList] = useState([]);
 
-  const defaultMentors = [
-    {
-      id: 1,
-      name: 'Dr. Ananya Sharma',
-      title: 'Senior AI Research Lead',
-      university: 'Stanford University',
-      rating: 4.9,
-      reviews: 124,
-      category: 'Computer Science',
-      nextAvailable: 'Tomorrow, 2:00 PM',
-      bio: 'Pioneer in Transformer architecture and deep learning applications. Guiding students in AI ethics and model deployment.',
-      avatarBg: '#EFF6FF',
-      avatarColor: '#2563EB',
-      initials: 'AS'
-    },
-    {
-      id: 2,
-      name: 'Prof. Rajesh Verma',
-      title: 'UX Design Director',
-      university: 'RISD Alumni',
-      rating: 4.8,
-      reviews: 89,
-      category: 'Design',
-      nextAvailable: 'Friday, 10:00 AM',
-      bio: 'Product designer with 10+ years shaping top consumer apps. Specializing in UI design systems and user research.',
-      avatarBg: '#F3E8FF',
-      avatarColor: '#7C3AED',
-      initials: 'RV'
-    },
-    {
-      id: 3,
-      name: 'Priya Nair',
-      title: 'Full Stack Architect',
-      university: 'MIT',
-      rating: 5.0,
-      reviews: 56,
-      category: 'Engineering',
-      nextAvailable: 'Monday, 9:00 AM',
-      bio: 'Cloud architecture expert and open-source contributor. Mentoring on microservices, GraphQL, and scalable web apps.',
-      avatarBg: '#ECFDF5',
-      avatarColor: '#059669',
-      initials: 'PN'
-    },
-    {
-      id: 4,
-      name: 'Dr. Vikramaditya Kulkarni',
-      title: 'Data Science Consultant',
-      university: 'Oxford University',
-      rating: 4.7,
-      reviews: 210,
-      category: 'Mathematics',
-      nextAvailable: 'Oct 15, 11:30 AM',
-      bio: 'Statistical computing advisor helping university research labs analyze complex datasets and prepare publication papers.',
-      avatarBg: '#FEF3C7',
-      avatarColor: '#D97706',
-      initials: 'VK'
-    }
-  ];
+  const defaultMentors = [];
 
   const fetchLiveMentors = async () => {
     setLoading(true);
