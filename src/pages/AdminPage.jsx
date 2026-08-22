@@ -293,13 +293,42 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
               const rawCreated = u.createdAt || u.created_at || u.created || (typeof u.id === 'string' && u.id.startsWith('usr_') ? new Date(parseInt(u.id.replace('usr_', ''))).toISOString() : new Date().toISOString());
               const parsedTime = new Date(rawCreated).getTime() || 0;
 
+              const isMentor = u.role === 'MENTOR';
+              const rawDegree = u.degree || '';
+              const rawMajor = u.major || '';
+
+              let resolvedDegree = rawDegree;
+              let resolvedMajor = rawMajor;
+              let resolvedRoleTitle = u.roleTitle || '';
+
+              if (isMentor) {
+                resolvedRoleTitle = resolvedRoleTitle && resolvedRoleTitle !== 'Student' && resolvedRoleTitle !== 'B.Tech'
+                  ? resolvedRoleTitle
+                  : 'Industry Professional';
+                resolvedDegree = 'Mentor Advisor';
+                resolvedMajor = resolvedMajor || (Array.isArray(u.mentorInterests) && u.mentorInterests.length > 0 ? u.mentorInterests.join(', ') : 'Mentorship & Research');
+              } else {
+                resolvedRoleTitle = 'Student';
+                // For student, ensure degree has the branch name
+                if (!resolvedDegree || resolvedDegree === 'B.Tech' || resolvedDegree === 'Industry Professional' || resolvedDegree === 'Student') {
+                  resolvedDegree = resolvedMajor && resolvedMajor !== 'Engineering'
+                    ? (resolvedMajor.startsWith('B.Tech') ? resolvedMajor : `B.Tech ${resolvedMajor}`)
+                    : 'B.Tech Computer Science & Engineering (CSE)';
+                }
+                if (!resolvedMajor || resolvedMajor === 'Engineering') {
+                  resolvedMajor = resolvedDegree.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() || 'Computer Science & Engineering (CSE)';
+                }
+              }
+
               return [
                 rawEmail, 
                 {
                   ...u,
                   name: resolvedName,
-                  university: u.university || 'Campus Network',
-                  major: u.major || 'Engineering',
+                  degree: resolvedDegree,
+                  major: resolvedMajor,
+                  roleTitle: resolvedRoleTitle,
+                  university: u.university || 'Stanford University',
                   createdAt: rawCreated,
                   createdTimestamp: parsedTime
                 }

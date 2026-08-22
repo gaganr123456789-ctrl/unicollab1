@@ -54,6 +54,19 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
   // Role Selector State: 'STUDENT' or 'MENTOR'
   const [selectedRole, setSelectedRole] = useState('STUDENT');
 
+  const handleRoleChange = (role) => {
+    setSelectedRole(role);
+    if (role === 'STUDENT') {
+      setDegree('B.Tech Computer Science & Engineering (CSE)');
+      setMajor('Computer Science & Engineering (CSE)');
+      setRoleTitle('');
+    } else {
+      setDegree('Mentor Advisor');
+      setMajor('Mentorship & Research');
+      setRoleTitle('Industry Professional');
+    }
+  };
+
   // Step 2 Student Profile State
   const [fullName, setFullName] = useState('');
   const [university, setUniversity] = useState('');
@@ -330,7 +343,7 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                 <button
                   type="button"
                   className={`role-pill-btn ${selectedRole === 'STUDENT' ? 'active' : ''}`}
-                  onClick={() => setSelectedRole('STUDENT')}
+                  onClick={() => handleRoleChange('STUDENT')}
                   style={{
                     flex: 1,
                     padding: '8px 12px',
@@ -349,7 +362,7 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                 <button
                   type="button"
                   className={`role-pill-btn ${selectedRole === 'MENTOR' ? 'active' : ''}`}
-                  onClick={() => setSelectedRole('MENTOR')}
+                  onClick={() => handleRoleChange('MENTOR')}
                   style={{
                     flex: 1,
                     padding: '8px 12px',
