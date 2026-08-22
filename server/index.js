@@ -207,10 +207,25 @@ app.use((req, res, next) => {
 });
 
 // --------------------------------------------------------------------------
-// 6. Start Unified Node & WebSockets Server
+// 6. Start Unified Node & WebSockets Server & Keep-Alive Self-Ping Engine
 // --------------------------------------------------------------------------
 httpServer.listen(PORT, () => {
   console.log(`🚀 UniCollab Unified Server (API + WebSockets + Static SPA) running on port ${PORT}`);
+
+  // Keep-Alive Self-Ping Engine: Pings health endpoint every 10 mins so Render never spins down or sleeps
+  const RENDER_HEALTH_URL = 'https://unicollab1.onrender.com/api/health';
+  setInterval(async () => {
+    try {
+      const { default: https } = await import('https');
+      https.get(RENDER_HEALTH_URL, (res) => {
+        console.log(`⚡ [KEEP-ALIVE] Self-ping dispatched - Status: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.warn('Keep-alive ping notice:', err.message);
+      });
+    } catch (e) {
+      console.warn('Keep-alive error:', e.message);
+    }
+  }, 10 * 60 * 1000); // 10 minutes interval
 });
 
 export default app;
