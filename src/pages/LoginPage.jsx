@@ -97,11 +97,13 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
       setLoading(false);
       
       if (res.success && res.user) {
+        if (res.token) {
+          localStorage.setItem('unicollab_token', res.token);
+        }
+        localStorage.setItem('unicollab_user', JSON.stringify(res.user));
+
         if (setUserProfile) {
-          setUserProfile(prev => ({
-            ...prev,
-            ...res.user
-          }));
+          setUserProfile(res.user);
         }
         if (res.user.role === 'MENTOR') {
           setCurrentPage('mentor-portal');
@@ -154,20 +156,21 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
     setLoading(false);
 
     if (res.success && res.user) {
-      if (setUserProfile) {
-        setUserProfile(prev => ({
-          ...prev,
-          ...res.user
-        }));
+      if (res.token) {
+        localStorage.setItem('unicollab_token', res.token);
       }
-      alert(`🎉 ${selectedRole === 'MENTOR' ? 'Mentor' : 'Student'} Account created successfully! Welcome to UniCollab, ${res.user.name}.`);
+      localStorage.setItem('unicollab_user', JSON.stringify(res.user));
+
+      if (setUserProfile) {
+        setUserProfile(res.user);
+      }
       if (selectedRole === 'MENTOR') {
         setCurrentPage('mentor-portal');
       } else {
         setCurrentPage('dashboard');
       }
     } else {
-      alert(`⚠️ ${res.message || 'Registration failed. Please check your details.'}`);
+      setError(res.message || 'Registration failed. Please check your details.');
       if (res.message && res.message.toLowerCase().includes('already exists')) {
         setIsSignUp(false);
         setStep(1);
