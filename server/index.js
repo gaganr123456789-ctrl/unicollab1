@@ -27,7 +27,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'unicollab_jwt_secret_key_2026';
 // 1. CORS & Express Body Parser
 // --------------------------------------------------------------------------
 app.use(cors({
-  origin: ['https://unicollab1.onrender.com', 'https://unicollab-33.vercel.app', 'http://localhost:5173', 'http://localhost:5000', 'http://127.0.0.1:5173'],
+  origin: ['https://unicollab1.onrender.com', 'http://localhost:5173', 'http://localhost:5000', 'http://127.0.0.1:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
