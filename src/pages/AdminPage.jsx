@@ -256,21 +256,21 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
     setLoading(true);
     try {
       let serverUsers = [];
+      let isServerSuccess = false;
       try {
         const apiRes = await apiClient.getAdminUsers();
         if (apiRes.success && Array.isArray(apiRes.users)) {
           serverUsers = apiRes.users;
+          isServerSuccess = true;
         }
       } catch (e) {
         console.warn('Backend users fetch error:', e);
       }
 
-      const cached = typeof window !== 'undefined' 
-        ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') 
-        : [];
-      
-      // Combine backend database users and local storage cache (NO FAKE SEED USERS)
-      const combined = [...serverUsers, ...cached];
+      // If server returned response (even empty array []), use server as true source of truth
+      const combined = isServerSuccess
+        ? serverUsers
+        : (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : []);
       const uniqueUsers = Array.from(
         new Map(
           combined
