@@ -55,7 +55,7 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
   // Step 2 Student Profile State
   const [fullName, setFullName] = useState('');
   const [university, setUniversity] = useState('');
-  const [degree, setDegree] = useState('B.Tech CSE');
+  const [degree, setDegree] = useState('B.Tech Computer Science & Engineering (CSE)');
   const [major, setMajor] = useState('Computer Science & Engineering (CSE)');
   const [skillsInput, setSkillsInput] = useState('React, Node.js, Python');
   const [experience, setExperience] = useState('');
@@ -527,19 +527,29 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                           <option value="Final Year Student Mentor">Final Year Student Mentor</option>
                         </select>
                       ) : (
-                        <input 
-                          type="text" 
-                          placeholder="e.g. B.Tech ECE, B.Tech CSE"
-                          value={degree}
-                          onChange={(e) => setDegree(e.target.value)}
-                        />
+                        <select value={degree} onChange={(e) => setDegree(e.target.value)}>
+                          <option value="B.Tech Computer Science & Engineering (CSE)">B.Tech Computer Science & Engineering (CSE)</option>
+                          <option value="B.Tech Information Technology (IT)">B.Tech Information Technology (IT)</option>
+                          <option value="B.Tech Electronics & Communication (ECE)">B.Tech Electronics & Communication (ECE)</option>
+                          <option value="B.Tech Artificial Intelligence & Data Science (AI & DS)">B.Tech Artificial Intelligence & Data Science (AI & DS)</option>
+                          <option value="B.Tech Electrical & Electronics Engineering (EEE)">B.Tech Electrical & Electronics Engineering (EEE)</option>
+                          <option value="B.Tech Mechanical Engineering (ME)">B.Tech Mechanical Engineering (ME)</option>
+                          <option value="B.Tech Civil Engineering (CE)">B.Tech Civil Engineering (CE)</option>
+                          <option value="B.Tech Robotics & Automation">B.Tech Robotics & Automation</option>
+                          <option value="B.Tech Biotechnology">B.Tech Biotechnology</option>
+                          <option value="B.Sc Computer Science / IT">B.Sc Computer Science / IT</option>
+                          <option value="BCA / MCA">BCA / MCA</option>
+                          <option value="M.Tech / M.S. Computer Science">M.Tech / M.S. Computer Science</option>
+                          <option value="MBA / Management Studies">MBA / Management Studies</option>
+                          <option value="Other Degree / Branch">Other Degree / Branch</option>
+                        </select>
                       )}
                     </div>
                   </div>
                 </div>
 
                 <div className="form-row" style={{ display: 'flex', gap: '12px' }}>
-                  <div className="form-group col-half" style={{ flex: 1 }}>
+                  <div className="form-group" style={{ flex: 1 }}>
                     <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>University / Campus</label>
                     <div className="input-icon-wrapper">
                       <Building2 size={16} className="input-icon" />
@@ -553,29 +563,22 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                     </div>
                   </div>
 
-                  <div className="form-group col-half" style={{ flex: 1 }}>
-                    <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>
-                      {selectedRole === 'MENTOR' ? 'Areas of Expertise' : 'Skills (Comma Separated)'}
-                    </label>
-                    <div className="input-icon-wrapper">
-                      <BookOpen size={16} className="input-icon" />
-                      {selectedRole === 'MENTOR' ? (
+                  {selectedRole === 'MENTOR' && (
+                    <div className="form-group col-half" style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px', display: 'block' }}>
+                        Areas of Expertise
+                      </label>
+                      <div className="input-icon-wrapper">
+                        <BookOpen size={16} className="input-icon" />
                         <input 
                           type="text" 
                           placeholder="e.g. AI/ML, Web Dev, IoT, Systems"
                           value={mentorInterestsInput}
                           onChange={(e) => setMentorInterestsInput(e.target.value)}
                         />
-                      ) : (
-                        <input 
-                          type="text" 
-                          placeholder="e.g. React, Node.js, Python, Figma"
-                          value={skillsInput}
-                          onChange={(e) => setSkillsInput(e.target.value)}
-                        />
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {selectedRole === 'STUDENT' ? (
