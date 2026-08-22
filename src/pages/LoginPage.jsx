@@ -30,10 +30,12 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
   // Single Sign-On (SSO) Modal State
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
   const [ssoProvider, setSsoProvider] = useState('google');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     setIsSignUp(initialTab === 'signup');
     setStep(1);
+    setSuccessMsg('');
   }, [initialTab]);
 
   useEffect(() => {
@@ -194,19 +196,12 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
     setLoading(false);
 
     if (res.success && res.user) {
-      if (res.token) {
-        localStorage.setItem('unicollab_token', res.token);
-      }
-      localStorage.setItem('unicollab_user', JSON.stringify(res.user));
-
-      if (setUserProfile) {
-        setUserProfile(res.user);
-      }
-      if (selectedRole === 'MENTOR') {
-        setCurrentPage('mentor-portal');
-      } else {
-        setCurrentPage('dashboard');
-      }
+      // Do NOT log in directly; transition to Sign In screen with success message
+      setStep(1);
+      setIsSignUp(false);
+      setPassword('');
+      setError('');
+      setSuccessMsg('🎉 Account created successfully! Please Sign In with your email and password below.');
     } else {
       setError(res.message || 'Registration failed. Please check your details.');
       if (res.message && res.message.toLowerCase().includes('already exists')) {
@@ -371,6 +366,25 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                   👨‍🏫 {!isSignUp ? 'Mentor Login' : "I'm a Mentor"}
                 </button>
               </div>
+
+              {successMsg && (
+                <div style={{
+                  background: '#ECFDF5',
+                  border: '1px solid #6EE7B7',
+                  color: '#047857',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  marginBottom: '14px',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <CheckCircle size={18} style={{ color: '#059669', flexShrink: 0 }} />
+                  <span>{successMsg}</span>
+                </div>
+              )}
 
               {error && (
                 <div style={{
