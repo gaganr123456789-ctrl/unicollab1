@@ -14,6 +14,7 @@ import {
   Users,
   GraduationCap,
   Building2,
+  BookOpen,
   Sun,
   Moon
 } from 'lucide-react';
@@ -23,6 +24,7 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
   const [isSignUp, setIsSignUp] = useState(initialTab === 'signup');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   // Single Sign-On (SSO) Modal State
@@ -333,6 +335,21 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                   👨‍🏫 {!isSignUp ? 'Mentor Login' : "I'm a Mentor"}
                 </button>
               </div>
+
+              {error && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  color: '#B91C1C',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  marginBottom: '14px',
+                  fontSize: '13px',
+                  fontWeight: 600
+                }}>
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleStep1Submit} className="auth-form">
                 <div className="form-group">
