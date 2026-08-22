@@ -29,6 +29,7 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
   const [usersList, setUsersList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [adminTab, setAdminTab] = useState('ALL'); // 'ALL' | 'STUDENT' | 'MENTOR'
   
   // Admin Security Auth State
   const [adminKeyInput, setAdminKeyInput] = useState('');
@@ -337,25 +338,36 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
     }
   };
 
-  const filteredUsers = usersList.filter(u => 
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.major?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.university?.toLowerCase().includes(searchQuery.toLowerCase())
+  const studentUsers = usersList.filter(u => u.role !== 'MENTOR');
+  const mentorUsers = usersList.filter(u => u.role === 'MENTOR');
+
+  const tabFilteredUsers = usersList.filter(u => {
+    if (adminTab === 'STUDENT') return u.role !== 'MENTOR';
+    if (adminTab === 'MENTOR') return u.role === 'MENTOR';
+    return true;
+  });
+
+  const filteredUsers = tabFilteredUsers.filter(u => 
+    (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (u.major && u.major.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (u.degree && u.degree.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (u.roleTitle && u.roleTitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (u.university && u.university.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleExportCSV = () => {
-    if (!usersList.length) return alert('No user data to export.');
-    const headers = 'ID,Name,Email,University,Major,Phone,Gender\n';
-    const rows = usersList.map(u => 
-      `"${u.id || ''}","${(u.name || '').replace(/"/g, '""')}","${(u.email || '').replace(/"/g, '""')}","${(u.university || '').replace(/"/g, '""')}","${(u.major || '').replace(/"/g, '""')}","${u.phone || ''}","${u.gender || ''}"`
+    if (!filteredUsers.length) return alert('No user data to export.');
+    const headers = 'ID,Role,Name,Email,RegisteredTime,DegreeOrTitle,MajorOrFocus,University,Status\n';
+    const rows = filteredUsers.map(u => 
+      `"${u.id || ''}","${u.role === 'MENTOR' ? 'MENTOR' : 'STUDENT'}","${(u.name || '').replace(/"/g, '""')}","${(u.email || '').replace(/"/g, '""')}","${u.createdAt || ''}","${(u.roleTitle || u.degree || '').replace(/"/g, '""')}","${(u.major || '').replace(/"/g, '""')}","${(u.university || '').replace(/"/g, '""')}","Active"`
     ).join('\n');
 
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'unicollab_registered_users_database.csv';
+    a.download = `unicollab_${adminTab.toLowerCase()}_users_database.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -640,50 +652,164 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
 
             {/* Admin Stats Grid */}
             <div className="grid-3-col mt-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-              <div className="widget-card" style={{ background: theme === 'dark' ? '#111827' : 'white', borderRadius: '18px', padding: '20px', border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` }}>
+              <div 
+                className="widget-card" 
+                onClick={() => setAdminTab('STUDENT')}
+                style={{ 
+                  background: theme === 'dark' ? '#111827' : 'white', 
+                  borderRadius: '18px', 
+                  padding: '20px', 
+                  border: adminTab === 'STUDENT' ? '2px solid #2563EB' : `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: adminTab === 'STUDENT' ? '0 0 16px rgba(37, 99, 235, 0.2)' : 'none'
+                }}
+              >
                 <div className="flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8' }}>Total Registered Accounts</span>
+                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>🎓 Registered Students</span>
                   <Users size={18} className="text-blue" style={{ color: '#2563EB' }} />
                 </div>
-                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>{usersList.length} Students</h3>
-                <span className="text-xs text-green flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-                  <CheckCircle2 size={12} /> Supabase PostgreSQL Synced
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                  {studentUsers.length} Students
+                </h3>
+                <span className="text-xs text-blue flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#2563EB', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
+                  <CheckCircle2 size={12} /> Click to view student directory
                 </span>
               </div>
 
-              <div className="widget-card" style={{ background: theme === 'dark' ? '#111827' : 'white', borderRadius: '18px', padding: '20px', border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` }}>
+              <div 
+                className="widget-card" 
+                onClick={() => setAdminTab('MENTOR')}
+                style={{ 
+                  background: theme === 'dark' ? '#111827' : 'white', 
+                  borderRadius: '18px', 
+                  padding: '20px', 
+                  border: adminTab === 'MENTOR' ? '2px solid #7C3AED' : `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: adminTab === 'MENTOR' ? '0 0 16px rgba(124, 58, 237, 0.2)' : 'none'
+                }}
+              >
                 <div className="flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8' }}>Engineering Disciplines</span>
+                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>👨‍🏫 Registered Mentors</span>
                   <Database size={18} className="text-purple" style={{ color: '#7C3AED' }} />
                 </div>
-                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>12 Branches</h3>
-                <span className="text-xs text-muted mt-1" style={{ fontSize: '12px', color: '#94A3B8', display: 'block', marginTop: '6px' }}>CSE, ECE, AI&DS, IT, EEE, ME, CE</span>
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                  {mentorUsers.length} Mentors
+                </h3>
+                <span className="text-xs text-purple flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#7C3AED', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
+                  <CheckCircle2 size={12} /> Click to view mentor directory
+                </span>
               </div>
 
-              <div className="widget-card" style={{ background: theme === 'dark' ? '#111827' : 'white', borderRadius: '18px', padding: '20px', border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` }}>
+              <div 
+                className="widget-card" 
+                onClick={() => setAdminTab('ALL')}
+                style={{ 
+                  background: theme === 'dark' ? '#111827' : 'white', 
+                  borderRadius: '18px', 
+                  padding: '20px', 
+                  border: adminTab === 'ALL' ? '2px solid #059669' : `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: adminTab === 'ALL' ? '0 0 16px rgba(5, 150, 105, 0.2)' : 'none'
+                }}
+              >
                 <div className="flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8' }}>Admin Security Authorization</span>
+                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>👥 Total Registered Accounts</span>
                   <Key size={18} className="text-emerald" style={{ color: '#059669' }} />
                 </div>
-                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>Authenticated</h3>
-                <span className="text-xs text-blue mt-1" style={{ fontSize: '12px', color: '#2563EB', display: 'block', marginTop: '6px' }}>Role: Super Administrator</span>
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                  {usersList.length} Total
+                </h3>
+                <span className="text-xs text-green flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
+                  <CheckCircle2 size={12} /> Supabase PostgreSQL Synced
+                </span>
               </div>
             </div>
 
             {/* Registered Users Table */}
             <div className="settings-card mt-6" style={{ background: theme === 'dark' ? '#111827' : 'white', borderRadius: '20px', padding: '24px', border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` }}>
-              <div className="flex justify-between align-center mb-4 flex-wrap gap-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>Registered Users Directory ({filteredUsers.length})</h3>
+              <div className="flex justify-between align-center mb-4 flex-wrap gap-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <h3 style={{ fontSize: '19px', fontWeight: '800', margin: 0, color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                    {adminTab === 'STUDENT' && `🎓 Registered Students Directory (${filteredUsers.length})`}
+                    {adminTab === 'MENTOR' && `👨‍🏫 Registered Mentors Directory (${filteredUsers.length})`}
+                    {adminTab === 'ALL' && `👥 Combined Users Directory (${filteredUsers.length})`}
+                  </h3>
+                  <span style={{ fontSize: '12px', color: '#64748B' }}>
+                    {adminTab === 'STUDENT' && 'Listing all registered student accounts with their branches, degrees, and signup dates.'}
+                    {adminTab === 'MENTOR' && 'Listing all registered faculty & industry mentor advisors with their domains and institutions.'}
+                    {adminTab === 'ALL' && 'Listing all registered student and mentor accounts across campuses.'}
+                  </span>
+                </div>
                 
-                <div className="input-with-icon search-sm" style={{ width: '280px', position: 'relative' }}>
-                  <Search size={15} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94A3B8' }} />
-                  <input 
-                    type="text" 
-                    placeholder="Search by name, email, branch..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '9999px', border: `1px solid ${theme === 'dark' ? '#374151' : '#CBD5E1'}`, background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  {/* Tab Selector Pills */}
+                  <div style={{ display: 'flex', background: theme === 'dark' ? '#1F2937' : '#F1F5F9', padding: '4px', borderRadius: '12px', gap: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab('ALL')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        background: adminTab === 'ALL' ? '#059669' : 'transparent',
+                        color: adminTab === 'ALL' ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      👥 All ({usersList.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab('STUDENT')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        background: adminTab === 'STUDENT' ? '#2563EB' : 'transparent',
+                        color: adminTab === 'STUDENT' ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      🎓 Students ({studentUsers.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab('MENTOR')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        background: adminTab === 'MENTOR' ? '#7C3AED' : 'transparent',
+                        color: adminTab === 'MENTOR' ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      👨‍🏫 Mentors ({mentorUsers.length})
+                    </button>
+                  </div>
+
+                  <div className="input-with-icon search-sm" style={{ width: '240px', position: 'relative' }}>
+                    <Search size={15} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94A3B8' }} />
+                    <input 
+                      type="text" 
+                      placeholder="Search name, email, branch..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '9999px', border: `1px solid ${theme === 'dark' ? '#374151' : '#CBD5E1'}`, background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -693,16 +819,24 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                     <tr style={{ borderBottom: `2px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`, textAlign: 'left', background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#E2E8F0' : '#475569' }}>
                       <th style={{ padding: '12px' }}>Role</th>
                       <th style={{ padding: '12px' }}>User Name</th>
-                      <th style={{ padding: '12px' }}>Academic Email</th>
+                      <th style={{ padding: '12px' }}>
+                        {adminTab === 'MENTOR' ? 'Professional Email' : (adminTab === 'STUDENT' ? 'Academic Email' : 'Email Address')}
+                      </th>
                       <th style={{ padding: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <Clock size={14} style={{ color: '#7C3AED' }} />
                           <span>Registered Date & Time</span>
                         </div>
                       </th>
-                      <th style={{ padding: '12px' }}>Degree / Title</th>
-                      <th style={{ padding: '12px' }}>Branch / Focus</th>
-                      <th style={{ padding: '12px' }}>University</th>
+                      <th style={{ padding: '12px' }}>
+                        {adminTab === 'MENTOR' ? 'Designation / Title' : (adminTab === 'STUDENT' ? 'Degree / Program' : 'Degree / Title')}
+                      </th>
+                      <th style={{ padding: '12px' }}>
+                        {adminTab === 'MENTOR' ? 'Expertise Domain' : (adminTab === 'STUDENT' ? 'Branch / Discipline' : 'Branch / Focus')}
+                      </th>
+                      <th style={{ padding: '12px' }}>
+                        {adminTab === 'MENTOR' ? 'Organization / University' : 'University Campus'}
+                      </th>
                       <th style={{ padding: '12px' }}>Status</th>
                     </tr>
                   </thead>
