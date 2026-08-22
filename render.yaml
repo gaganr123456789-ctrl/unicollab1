@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: unicollab-fullstack
+    env: node
+    region: singapore
+    buildCommand: npm run render-build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        value: unicollab_jwt_secret_key_2026

@@ -1,0 +1,255 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String                  @id @default(uuid())
+  name                  String
+  email                 String                  @unique
+  password              String
+  major                 String?                 @default("Computer Science & Engineering (CSE)")
+  university            String?                 @default("Stanford University")
+  skills                String[]
+  avatarBg              String?                 @default("#2563EB")
+  bio                   String?
+  role                  String?                 @default("STUDENT")
+  degree                String?
+  experience            String?
+  projectFocus          String?
+  currentProject        String?
+  nextProject           String?
+  roleTitle             String?
+  mentorInterests       String[]
+  linkedIn              String?
+  otpCode               String?
+  otpExpiresAt          DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  ownedProjects         Project[]               @relation("UserOwnedProjects")
+  teamMemberships       TeamMember[]
+  mentorProfile         Mentor?
+  mentorSessions        MentorSession[]         @relation("StudentSessions")
+  resources             Resource[]
+  hackathonRegistrations HackathonRegistration[]
+  sentMessages          Message[]               @relation("SentMessages")
+  conversations         ConversationUser[]
+  sentInvites           Invite[]                @relation("SentInvites")
+  receivedInvites       Invite[]                @relation("ReceivedInvites")
+  notifications         Notification[]
+
+  @@index([email])
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  category    String
+  status      String   @default("Active")
+  ownerId     String
+  owner       User     @relation("UserOwnedProjects", fields: [ownerId], references: [id], onDelete: Cascade)
+  teamId      String?  @unique
+  team        Team?    @relation(fields: [teamId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([category])
+}
+
+model Team {
+  id        String       @id @default(uuid())
+  name      String
+  project   Project?
+  members   TeamMember[]
+  board     Board?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("Member")
+  joinedAt  DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+model Board {
+  id        String        @id @default(uuid())
+  name      String
+  teamId    String?       @unique
+  team      Team?         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  columns   BoardColumn[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model BoardColumn {
+  id        String   @id @default(uuid())
+  name      String
+  position  Int      @default(0)
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
+}
+
+model Card {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  priority    String      @default("Medium")
+  position    Float       @default(0)
+  columnId    String
+  column      BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([columnId, position])
+}
+
+model Mentor {
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expertise    String[]
+  company      String?
+  title        String?
+  bio          String?
+  rating       Float           @default(5.0)
+  sessions     MentorSession[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model MentorSession {
+  id          String   @id @default(uuid())
+  mentorId    String
+  mentor      Mentor   @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User     @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
+  topic       String
+  scheduledAt DateTime
+  status      String   @default("CONFIRMED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([mentorId])
+  @@index([studentId])
+}
+
+model Resource {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  category    String
+  fileUrl     String?
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([category])
+}
+
+model Hackathon {
+  id            String                  @id @default(uuid())
+  title         String
+  description   String
+  organizer     String
+  prizePool     String
+  startDate     DateTime
+  endDate       DateTime
+  registrations HackathonRegistration[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+}
+
+model HackathonRegistration {
+  id           String    @id @default(uuid())
+  hackathonId  String
+  hackathon    Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  registeredAt DateTime  @default(now())
+
+  @@unique([hackathonId, userId])
+}
+
+model Conversation {
+  id        String             @id @default(uuid())
+  name      String?
+  users     ConversationUser[]
+  messages  Message[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model ConversationUser {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  content        String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Invite {
+  id          String   @id @default(uuid())
+  senderId    String
+  sender      User     @relation("SentInvites", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User     @relation("ReceivedInvites", fields: [recipientId], references: [id], onDelete: Cascade)
+  type        String   @default("TEAM_INVITE")
+  status      String   @default("PENDING")
+  message     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([recipientId])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  message     String
+  type        String   @default("INVITE")
+  inviteId    String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
