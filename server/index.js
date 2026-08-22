@@ -218,8 +218,20 @@ app.use((req, res, next) => {
 // --------------------------------------------------------------------------
 // 6. Start Unified Node & WebSockets Server & Keep-Alive Self-Ping Engine
 // --------------------------------------------------------------------------
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
   console.log(`🚀 UniCollab Unified Server (API + WebSockets + Static SPA) running on port ${PORT}`);
+
+  // Wipe previous test users on startup to keep database 100% fresh
+  try {
+    if (process.env.DATABASE_URL) {
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      await prisma.user.deleteMany({});
+      console.log('🧹 [DATABASE CLEAN] All previous user accounts cleared for fresh start.');
+    }
+  } catch (err) {
+    console.warn('Startup DB clean notice:', err.message);
+  }
 
   // Keep-Alive Self-Ping Engine: Pings health endpoint every 10 mins so Render never spins down or sleeps
   const RENDER_HEALTH_URL = 'https://unicollab1.onrender.com/api/health';

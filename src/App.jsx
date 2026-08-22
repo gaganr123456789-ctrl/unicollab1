@@ -50,19 +50,14 @@ export default function App() {
       const savedUser = localStorage.getItem('unicollab_user');
       if (savedUser) {
         try {
-          return JSON.parse(savedUser);
+          const parsed = JSON.parse(savedUser);
+          if (parsed && parsed.name && parsed.email) {
+            return parsed;
+          }
         } catch (e) {}
       }
     }
-    return {
-      name: 'Alex Rivera',
-      age: '21',
-      phone: '+91 98765 43210',
-      gender: 'Male',
-      major: 'Computer Science',
-      university: 'Stanford',
-      initials: 'AR'
-    };
+    return null;
   });
 
   const setUserProfile = (newProfile) => {
