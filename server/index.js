@@ -190,8 +190,14 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..');
 const distPath = path.join(projectRoot, 'dist');
 
-// Serve compiled static SPA frontend files
-app.use(express.static(distPath));
+// Serve compiled static SPA frontend files with no-cache headers for instant updates
+app.use(express.static(distPath, {
+  setHeaders: (res, path) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 // SPA Catch-All Middleware: Any non-API GET request serves index.html for client-side routing
 app.use((req, res, next) => {
@@ -199,6 +205,9 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
     return next();
   }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(distPath, 'index.html'), (err) => {
     if (err) {
       res.status(200).send(`<!DOCTYPE html><html><head><title>UniCollab</title></head><body><div id="root"></div></body></html>`);
