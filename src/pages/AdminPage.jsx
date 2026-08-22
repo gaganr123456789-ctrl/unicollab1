@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock } from 'lucide-react';
+import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock, Trash2 } from 'lucide-react';
 import { apiClient } from '../services/apiClient';
 
 const formatDateTime = (rawTime) => {
@@ -269,14 +269,8 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
         ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') 
         : [];
       
-      const seedUsers = [
-        { id: 1, name: 'Alex Rivera', email: 'alex@stanford.edu', major: 'Computer Science & Engineering (CSE)', university: 'Stanford University', age: 21, phone: '+91 98765 43210', gender: 'Male', createdAt: '2026-08-19T08:00:00.000Z' },
-        { id: 2, name: 'Sarah Chen', email: 'sarah@mit.edu', major: 'Artificial Intelligence & Data Science (AI & DS)', university: 'MIT', age: 22, phone: '+1 415 555 0192', gender: 'Female', createdAt: '2026-08-19T08:30:00.000Z' },
-        { id: 3, name: 'Marcus Vance', email: 'marcus@berkeley.edu', major: 'Electronics & Communication Engineering (ECE)', university: 'UC Berkeley', age: 20, phone: '+1 415 555 0143', gender: 'Male', createdAt: '2026-08-19T09:00:00.000Z' }
-      ];
-
-      // Combine backend database users, local storage cache, and seed users
-      const combined = [...serverUsers, ...cached, ...seedUsers];
+      // Combine backend database users and local storage cache (NO FAKE SEED USERS)
+      const combined = [...serverUsers, ...cached];
       const uniqueUsers = Array.from(
         new Map(
           combined
@@ -297,7 +291,7 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                 || formattedNameFromEmail 
                 || 'Student User';
 
-              const rawCreated = u.createdAt || u.created_at || u.created || (typeof u.id === 'string' && u.id.startsWith('usr_') ? new Date(parseInt(u.id.replace('usr_', ''))).toISOString() : '2026-08-19T08:00:00.000Z');
+              const rawCreated = u.createdAt || u.created_at || u.created || (typeof u.id === 'string' && u.id.startsWith('usr_') ? new Date(parseInt(u.id.replace('usr_', ''))).toISOString() : new Date().toISOString());
               const parsedTime = new Date(rawCreated).getTime() || 0;
 
               return [
@@ -321,6 +315,25 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
       setUsersList(uniqueUsers);
     } catch (err) {
       console.error('Failed to load admin user list', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearAllUsers = async () => {
+    if (!confirm('⚠️ Are you sure you want to delete and reset ALL registered users data from the database and portal? This cannot be undone.')) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await apiClient.clearAdminUsers();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('unicollab_registered_users');
+      }
+      setUsersList([]);
+      alert('🗑️ All users data deleted successfully! Database is now empty and fresh.');
+    } catch (err) {
+      setUsersList([]);
     } finally {
       setLoading(false);
     }
@@ -585,7 +598,7 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   </div>
                 </div>
 
-                <div className="ws-actions flex gap-2" style={{ display: 'flex', gap: '10px' }}>
+                <div className="ws-actions flex gap-2" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button className="btn-secondary" onClick={handleLockAdmin} title="Lock Admin Portal">
                     <Lock size={15} /> Lock Session
                   </button>
@@ -604,6 +617,24 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   </button>
                   <button className="btn-primary" onClick={handleExportCSV}>
                     <Download size={15} /> Export Users CSV
+                  </button>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={handleClearAllUsers}
+                    disabled={loading}
+                    title="Delete all registered user data"
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      background: '#FEF2F2', 
+                      color: '#DC2626', 
+                      borderColor: '#FCA5A5', 
+                      fontWeight: 700 
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    <span>Clear All Users</span>
                   </button>
                 </div>
               </div>

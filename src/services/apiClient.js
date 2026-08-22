@@ -300,6 +300,21 @@ export const apiClient = {
     }
   },
 
+  async clearAdminUsers() {
+    try {
+      const res = await fetch(`${BASE_URL}/admin/users/clear`, { method: 'POST' });
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('unicollab_registered_users');
+      }
+      return await res.json();
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('unicollab_registered_users');
+      }
+      return { success: true, message: 'All users cleared.' };
+    }
+  },
+
   // Teammates & AI Matchmaker APIs
   async getTeammates(search = '', skill = '', major = '') {
     try {

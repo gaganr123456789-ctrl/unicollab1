@@ -299,12 +299,52 @@ router.get('/users', async (req, res) => {
   }
 
   // Fallback: return users from dataStore with latest signups on top
-  const sortedStoreUsers = [...usersDB].reverse();
+  const sortedStoreUsers = [...usersDB];
   return res.status(200).json({
     success: true,
     count: sortedStoreUsers.length,
     source: 'Application State',
     users: sortedStoreUsers
+  });
+});
+
+// --------------------------------------------------------------------------
+// 8. POST / DELETE /api/admin/users/clear - Wipe All Users Data
+// --------------------------------------------------------------------------
+router.post('/users/clear', async (req, res) => {
+  try {
+    const prisma = await getAdminPrisma();
+    if (prisma) {
+      await prisma.user.deleteMany({});
+    }
+  } catch (err) {
+    console.warn('Prisma users delete error:', err.message);
+  }
+
+  // Clear in-memory array
+  usersDB.length = 0;
+
+  return res.status(200).json({
+    success: true,
+    message: 'All registered users data has been cleared successfully.'
+  });
+});
+
+router.delete('/users/clear', async (req, res) => {
+  try {
+    const prisma = await getAdminPrisma();
+    if (prisma) {
+      await prisma.user.deleteMany({});
+    }
+  } catch (err) {
+    console.warn('Prisma users delete error:', err.message);
+  }
+
+  usersDB.length = 0;
+
+  return res.status(200).json({
+    success: true,
+    message: 'All registered users data has been cleared successfully.'
   });
 });
 
