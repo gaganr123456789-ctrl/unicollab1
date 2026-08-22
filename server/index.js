@@ -218,33 +218,8 @@ app.use((req, res, next) => {
 // --------------------------------------------------------------------------
 // 6. Start Unified Node & WebSockets Server & Keep-Alive Self-Ping Engine
 // --------------------------------------------------------------------------
-httpServer.listen(PORT, async () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 UniCollab Unified Server (API + WebSockets + Static SPA) running on port ${PORT}`);
-
-  // Wipe all previous test data on startup to guarantee 100% clean slate
-  try {
-    if (process.env.DATABASE_URL) {
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient();
-      try { await prisma.teamMember?.deleteMany({}); } catch (e) {}
-      try { await prisma.mentorSession?.deleteMany({}); } catch (e) {}
-      try { await prisma.mentor?.deleteMany({}); } catch (e) {}
-      try { await prisma.invite?.deleteMany({}); } catch (e) {}
-      try { await prisma.message?.deleteMany({}); } catch (e) {}
-      try { await prisma.conversation?.deleteMany({}); } catch (e) {}
-      try { await prisma.user?.deleteMany({}); } catch (e) {}
-      console.log('🧹 [DATABASE CLEAN] All database tables cleared for fresh start.');
-
-      // Also clean raw PostgreSQL tables if they exist
-      try {
-        const { query } = await import('./db/postgres.js');
-        await query('DELETE FROM teammates WHERE 1=1');
-        await query('DELETE FROM users WHERE 1=1');
-      } catch (e) {}
-    }
-  } catch (err) {
-    console.warn('Startup DB clean notice:', err.message);
-  }
 
   // Keep-Alive Self-Ping Engine: Pings health endpoint every 10 mins so Render never spins down or sleeps
   const RENDER_HEALTH_URL = 'https://unicollab1.onrender.com/api/health';

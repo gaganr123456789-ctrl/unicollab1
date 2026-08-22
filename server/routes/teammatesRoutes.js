@@ -3,74 +3,113 @@ import { teammatesDB } from '../db/dataStore.js';
 
 const router = express.Router();
 
-// GET /api/teammates - Query teammates with SQL DB fallback
+// GET /api/teammates - Query all registered student accounts with live search & filters
 router.get('/', async (req, res) => {
-  const { search, skill, major, department } = req.query;
+  const { search, skill, major } = req.query;
 
+  let candidates = [];
+
+  // 1. Fetch from Prisma PostgreSQL Database
   try {
     if (process.env.DATABASE_URL) {
-      const { query } = await import('../db/postgres.js');
-      const dbRes = await query('SELECT * FROM teammates ORDER BY id ASC');
-      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
-        let results = dbRes.rows.map(t => ({
-          id: t.id,
-          name: t.name,
-          role: t.title,
-          major: t.department,
-          university: 'Stanford University',
-          skills: t.skills || ['React', 'Engineering'],
-          avatarBg: t.avatar_bg || '#2563EB',
-          bio: t.bio || '',
-          availability: t.availability || 'Available Now',
-          rating: Number(t.rating || 4.9),
-          verified: t.verified,
-          initials: t.initials
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      const dbUsers = await prisma.user.findMany({
+        where: {
+          role: { not: 'ADMIN' }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (dbUsers && dbUsers.length > 0) {
+        candidates = dbUsers.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role === 'MENTOR' ? (u.roleTitle || 'Mentor Advisor') : (u.roleTitle || u.degree || 'Student Developer'),
+          major: u.major || 'Engineering',
+          degree: u.degree || 'B.Tech',
+          university: u.university || 'Campus Network',
+          skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
+          avatarBg: u.avatarBg || '#EFF6FF',
+          avatarColor: '#2563EB',
+          bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
+          rating: 5.0,
+          projectsCount: u.projectsCompleted || 5,
+          availability: 'Available Now',
+          verified: true,
+          initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',
+          createdAt: u.createdAt
         }));
-
-        if (search) {
-          const q = search.toLowerCase().trim();
-          results = results.filter(t => 
-            t.name.toLowerCase().includes(q) || 
-            t.role.toLowerCase().includes(q) ||
-            t.major.toLowerCase().includes(q) ||
-            t.skills.some(s => s.toLowerCase().includes(q))
-          );
-        }
-
-        return res.status(200).json({
-          success: true,
-          total: results.length,
-          source: 'Supabase PostgreSQL Cloud Database',
-          teammates: results
-        });
       }
     }
   } catch (err) {
-    console.warn('Teammates SQL query fallback:', err.message);
+    console.warn('Teammates Prisma query info:', err.message);
   }
 
-  // Fallback to DataStore
-  let results = [...teammatesDB];
+  // 2. In-Memory Store Fallback / Merge
+  const { usersDB } = await import('../db/dataStore.js');
+  const storeStudents = usersDB
+    .filter(u => u.role !== 'ADMIN')
+    .map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role === 'MENTOR' ? (u.roleTitle || 'Mentor Advisor') : (u.roleTitle || u.degree || 'Student Developer'),
+      major: u.major || 'Engineering',
+      degree: u.degree || 'B.Tech',
+      university: u.university || 'Campus Network',
+      skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
+      avatarBg: u.avatarBg || '#EFF6FF',
+      avatarColor: '#2563EB',
+      bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
+      rating: 5.0,
+      projectsCount: u.projectsCompleted || 5,
+      availability: 'Available Now',
+      verified: true,
+      initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',
+      createdAt: u.createdAt
+    }));
 
+  // Merge unique by email
+  const mergedMap = new Map();
+  candidates.forEach(c => { if (c.email) mergedMap.set(c.email.toLowerCase(), c); });
+  storeStudents.forEach(c => {
+    if (c.email && !mergedMap.has(c.email.toLowerCase())) {
+      mergedMap.set(c.email.toLowerCase(), c);
+    }
+  });
+
+  let results = Array.from(mergedMap.values());
+
+  // Search filter
   if (search) {
     const q = search.toLowerCase().trim();
     results = results.filter(t => 
       t.name.toLowerCase().includes(q) || 
       t.role.toLowerCase().includes(q) ||
       t.major.toLowerCase().includes(q) ||
-      t.skills.some(s => s.toLowerCase().includes(q))
+      t.university.toLowerCase().includes(q) ||
+      (Array.isArray(t.skills) && t.skills.some(s => s.toLowerCase().includes(q)))
     );
   }
 
+  // Major filter
+  if (major && major !== 'All') {
+    const mQuery = major.toLowerCase();
+    results = results.filter(t => t.major.toLowerCase().includes(mQuery) || mQuery.includes(t.major.toLowerCase()));
+  }
+
+  // Skill filter
   if (skill && skill !== 'All Skills' && skill !== 'All') {
     const sQuery = skill.toLowerCase();
-    results = results.filter(t => t.skills.some(s => s.toLowerCase().includes(sQuery)));
+    results = results.filter(t => Array.isArray(t.skills) && t.skills.some(s => s.toLowerCase().includes(sQuery)));
   }
 
   return res.status(200).json({
     success: true,
     total: results.length,
-    source: 'Application State',
+    source: candidates.length > 0 ? 'Supabase PostgreSQL Cloud Database' : 'Application State',
     teammates: results
   });
 });
