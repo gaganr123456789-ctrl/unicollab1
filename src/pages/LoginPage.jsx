@@ -86,7 +86,7 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
         return;
       }
 
-      // Check if email already exists in local registered cache
+      // 1. Check local registered cache
       if (typeof window !== 'undefined') {
         const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
         const exists = cachedUsers.some(u => u.email?.toLowerCase() === targetEmail);
@@ -96,6 +96,22 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
           return;
         }
       }
+
+      // 2. Check live backend database to verify uniqueness
+      setLoading(true);
+      try {
+        const checkRes = await apiClient.getAdminUsers();
+        if (checkRes.success && Array.isArray(checkRes.users)) {
+          const emailExists = checkRes.users.some(u => u.email?.toLowerCase() === targetEmail);
+          if (emailExists) {
+            setLoading(false);
+            setError('⚠️ An account with this email already exists. Please Sign In below.');
+            setIsSignUp(false);
+            return;
+          }
+        }
+      } catch (err) {}
+      setLoading(false);
 
       setFullName('');
       setUniversity('');
@@ -516,6 +532,21 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
                   </p>
                 </div>
               </div>
+
+              {error && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  color: '#B91C1C',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  marginBottom: '14px',
+                  fontSize: '13px',
+                  fontWeight: 600
+                }}>
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleStep2Submit} className="auth-form" autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="form-row" style={{ display: 'flex', gap: '12px' }}>
