@@ -13,7 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 
-export default function FindTeammatesPage({ onOpenChat }) {
+export default function FindTeammatesPage({ onOpenChat, userProfile }) {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedMajors, setSelectedMajors] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
@@ -69,6 +69,7 @@ export default function FindTeammatesPage({ onOpenChat }) {
         return {
           id: u.id || `reg_user_${i}`,
           name: userName,
+          email: u.email || '',
           rating: u.rating || (4.8 + (i % 3) * 0.1).toFixed(1),
           major: userMajor,
           year: u.year || 'Senior',
@@ -125,7 +126,19 @@ export default function FindTeammatesPage({ onOpenChat }) {
     }
   };
 
-  const teammates = allTeammatesList.length > 0 ? allTeammatesList : defaultSeedTeammates;
+  // Exclude current logged-in user so they only find and see OTHER registered students
+  const myEmail = (userProfile?.email || '').toLowerCase().trim();
+  const myName = (userProfile?.name || '').toLowerCase().trim();
+  const myId = userProfile?.id;
+
+  const otherTeammates = allTeammatesList.filter(t => {
+    if (myEmail && t.email && t.email.toLowerCase() === myEmail) return false;
+    if (myId && t.id && String(t.id) === String(myId)) return false;
+    if (myName && t.name && t.name.toLowerCase() === myName) return false;
+    return true;
+  });
+
+  const teammates = otherTeammates;
 
   // Dynamic Filtering by Search Keyword, Selected Majors, and Selected Skills
   const filteredTeammates = teammates.filter(t => {
@@ -136,7 +149,7 @@ export default function FindTeammatesPage({ onOpenChat }) {
         t.name.toLowerCase().includes(q) ||
         t.major.toLowerCase().includes(q) ||
         t.bio.toLowerCase().includes(q) ||
-        t.skills.some(s => s.toLowerCase().includes(q));
+        (Array.isArray(t.skills) && t.skills.some(s => s.toLowerCase().includes(q)));
       
       if (!matchesKeyword) return false;
     }

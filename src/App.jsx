@@ -208,7 +208,12 @@ export default function App() {
               userProfile={userProfile}
             />
           )}
-          {currentPage === 'find-teammates' && <FindTeammatesPage onOpenChat={handleOpenChat} />}
+          {currentPage === 'find-teammates' && (
+            <FindTeammatesPage 
+              onOpenChat={handleOpenChat} 
+              userProfile={userProfile} 
+            />
+          )}
           {currentPage === 'projects' && <ProjectsPage setCurrentPage={setCurrentPage} userProfile={userProfile} />}
           {currentPage === 'mentor-portal' && <MentorPortalPage setCurrentPage={setCurrentPage} onOpenChat={handleOpenChat} />}
           {currentPage === 'workspace' && <WorkspacePage />}
