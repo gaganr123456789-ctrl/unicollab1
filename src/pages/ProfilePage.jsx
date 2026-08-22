@@ -306,12 +306,26 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
 
               <div className="form-group">
                 <label>Department / Major</label>
-                <input 
-                  type="text" 
-                  required 
+                <select 
+                  className="select-input-auth"
                   value={editMajor}
                   onChange={(e) => setEditMajor(e.target.value)}
-                />
+                >
+                  <option value="B.Tech Computer Science & Engineering (CSE)">B.Tech Computer Science & Engineering (CSE)</option>
+                  <option value="B.Tech Information Technology (IT)">B.Tech Information Technology (IT)</option>
+                  <option value="B.Tech Electronics & Communication (ECE)">B.Tech Electronics & Communication (ECE)</option>
+                  <option value="B.Tech Artificial Intelligence & Data Science (AI & DS)">B.Tech Artificial Intelligence & Data Science (AI & DS)</option>
+                  <option value="B.Tech Electrical & Electronics Engineering (EEE)">B.Tech Electrical & Electronics Engineering (EEE)</option>
+                  <option value="B.Tech Mechanical Engineering (ME)">B.Tech Mechanical Engineering (ME)</option>
+                  <option value="B.Tech Civil Engineering (CE)">B.Tech Civil Engineering (CE)</option>
+                  <option value="B.Tech Robotics & Automation">B.Tech Robotics & Automation</option>
+                  <option value="B.Tech Biotechnology">B.Tech Biotechnology</option>
+                  <option value="B.Sc Computer Science / IT">B.Sc Computer Science / IT</option>
+                  <option value="BCA / MCA">BCA / MCA</option>
+                  <option value="M.Tech / M.S. Computer Science">M.Tech / M.S. Computer Science</option>
+                  <option value="MBA / Management Studies">MBA / Management Studies</option>
+                  <option value="Other Degree / Branch">Other Degree / Branch</option>
+                </select>
               </div>
 
               <div className="modal-actions mt-4 flex gap-3">
