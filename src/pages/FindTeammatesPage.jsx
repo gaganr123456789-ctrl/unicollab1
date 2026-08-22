@@ -40,62 +40,53 @@ export default function FindTeammatesPage({ onOpenChat }) {
 
   const defaultSeedTeammates = [];
 
-  // Dynamically load registered users from localStorage & backend API
-  useEffect(() => {
-    const loadRegisteredTeammates = async () => {
-      let apiUsers = [];
-      try {
-        const res = await apiClient.getAdminUsers();
-        if (res.success && Array.isArray(res.users)) {
-          apiUsers = res.users;
+  // Dynamically load registered users strictly from backend API
+  const loadRegisteredTeammates = async () => {
+    let apiUsers = [];
+    try {
+      const res = await apiClient.getTeammates();
+      if (res.success && Array.isArray(res.teammates)) {
+        apiUsers = res.teammates;
+      } else {
+        const adminRes = await apiClient.getAdminUsers();
+        if (adminRes.success && Array.isArray(adminRes.users)) {
+          apiUsers = adminRes.users;
         }
-      } catch (e) {
-        console.warn('API teammates load fallback:', e);
       }
+    } catch (e) {
+      console.warn('API teammates load fallback:', e);
+    }
 
-      const cached = typeof window !== 'undefined' 
-        ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') 
-        : [];
+    // Transform live signed-up students into Teammate profile cards
+    const formattedSignedUp = apiUsers
+      .filter(u => u && (u.name || u.fullName || u.email))
+      .map((u, i) => {
+        const userName = u.name || u.fullName || (u.email ? u.email.split('@')[0] : 'Student');
+        const userMajor = u.major || 'Engineering';
+        const userUni = u.university || 'Campus Network';
+        const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
-      const combinedRaw = [...apiUsers, ...cached];
-      
-      // Transform signed-up users into Teammate profile cards
-      const formattedSignedUp = combinedRaw
-        .filter(u => u && (u.name || u.fullName || u.email))
-        .map((u, i) => {
-          const userName = u.name || u.fullName || u.email.split('@')[0];
-          const userMajor = u.major || 'Computer Science & Engineering (CSE)';
-          const userUni = u.university || 'Campus Network';
-          const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        return {
+          id: u.id || `reg_user_${i}`,
+          name: userName,
+          rating: u.rating || (4.8 + (i % 3) * 0.1).toFixed(1),
+          major: userMajor,
+          year: u.year || 'Senior',
+          bio: u.bio || `Passionate student specializing in ${userMajor} at ${userUni}. Open to project collaborations and hackathon teams.`,
+          skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
+          projectsCount: u.projectsCount || 6 + (i % 5),
+          location: userUni,
+          avatarBg: u.avatarBg || '#EFF6FF',
+          avatarColor: u.avatarColor || '#2563EB',
+          initials: userInitials,
+          isNewUser: true
+        };
+      });
 
-          return {
-            id: `reg_user_${u.id || i}`,
-            name: userName,
-            rating: u.rating || (4.8 + (i % 3) * 0.1).toFixed(1),
-            major: userMajor,
-            year: u.year || 'Senior',
-            bio: u.bio || `Passionate student specializing in ${userMajor} at ${userUni}. Open to project collaborations and hackathon teams.`,
-            skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
-            projectsCount: u.projectsCount || 6 + (i % 5),
-            location: userUni,
-            avatarBg: u.avatarBg || '#EFF6FF',
-            avatarColor: u.avatarColor || '#2563EB',
-            initials: userInitials,
-            isNewUser: true
-          };
-        });
+    setAllTeammatesList(formattedSignedUp);
+  };
 
-      // Combine signed up users at top, followed by default seed teammates
-      const mergedAll = [...formattedSignedUp, ...defaultSeedTeammates];
-      
-      // Deduplicate by name/email
-      const uniqueTeammates = Array.from(
-        new Map(mergedAll.map(t => [t.name.toLowerCase(), t])).values()
-      );
-
-      setAllTeammatesList(uniqueTeammates);
-    };
-
+  useEffect(() => {
     loadRegisteredTeammates();
 
     // Fetch sent pending invites
@@ -308,8 +299,11 @@ export default function FindTeammatesPage({ onOpenChat }) {
             <div className="sort-dropdown flex align-center gap-2">
               <button 
                 className="btn-secondary btn-header-action" 
-                onClick={() => {
-                  if (typeof window !== 'undefined') window.location.reload();
+                onClick={async () => {
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('unicollab_registered_users');
+                  }
+                  await loadRegisteredTeammates();
                 }}
                 style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Re-fetch teammates list from database"

@@ -221,13 +221,26 @@ app.use((req, res, next) => {
 httpServer.listen(PORT, async () => {
   console.log(`🚀 UniCollab Unified Server (API + WebSockets + Static SPA) running on port ${PORT}`);
 
-  // Wipe previous test users on startup to keep database 100% fresh
+  // Wipe all previous test data on startup to guarantee 100% clean slate
   try {
     if (process.env.DATABASE_URL) {
       const { PrismaClient } = await import('@prisma/client');
       const prisma = new PrismaClient();
-      await prisma.user.deleteMany({});
-      console.log('🧹 [DATABASE CLEAN] All previous user accounts cleared for fresh start.');
+      try { await prisma.teamMember?.deleteMany({}); } catch (e) {}
+      try { await prisma.mentorSession?.deleteMany({}); } catch (e) {}
+      try { await prisma.mentor?.deleteMany({}); } catch (e) {}
+      try { await prisma.invite?.deleteMany({}); } catch (e) {}
+      try { await prisma.message?.deleteMany({}); } catch (e) {}
+      try { await prisma.conversation?.deleteMany({}); } catch (e) {}
+      try { await prisma.user?.deleteMany({}); } catch (e) {}
+      console.log('🧹 [DATABASE CLEAN] All database tables cleared for fresh start.');
+
+      // Also clean raw PostgreSQL tables if they exist
+      try {
+        const { query } = await import('./db/postgres.js');
+        await query('DELETE FROM teammates WHERE 1=1');
+        await query('DELETE FROM users WHERE 1=1');
+      } catch (e) {}
     }
   } catch (err) {
     console.warn('Startup DB clean notice:', err.message);
