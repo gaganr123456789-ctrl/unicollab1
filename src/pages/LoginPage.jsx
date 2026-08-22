@@ -73,15 +73,30 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
 
   const handleStep1Submit = async (e) => {
     e.preventDefault();
+    setError('');
+    const targetEmail = email.trim().toLowerCase();
+
     if (isSignUp) {
-      if (!email.trim() || !password.trim()) {
-        alert('Please enter your email and password to create an account.');
+      if (!targetEmail || !password.trim()) {
+        setError('Please enter your email and password to create an account.');
         return;
       }
       if (password.length < 6) {
-        alert('Password must be at least 6 characters long.');
+        setError('Password must be at least 6 characters long.');
         return;
       }
+
+      // Check if email already exists in local registered cache
+      if (typeof window !== 'undefined') {
+        const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+        const exists = cachedUsers.some(u => u.email?.toLowerCase() === targetEmail);
+        if (exists) {
+          setError('⚠️ An account with this email already exists. Please Sign In below.');
+          setIsSignUp(false);
+          return;
+        }
+      }
+
       setFullName('');
       setUniversity('');
       setExperience('');
@@ -89,13 +104,13 @@ export default function LoginPage({ setCurrentPage, userProfile, setUserProfile,
       setNextProject('');
       setStep(2);
     } else {
-      if (!email.trim() || !password.trim()) {
-        alert('Please enter your email address and password.');
+      if (!targetEmail || !password.trim()) {
+        setError('Please enter your email address and password.');
         return;
       }
 
       setLoading(true);
-      const res = await apiClient.login(email.trim(), password.trim());
+      const res = await apiClient.login(targetEmail, password.trim());
       setLoading(false);
       
       if (res.success && res.user) {

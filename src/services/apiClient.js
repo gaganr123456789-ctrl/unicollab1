@@ -105,6 +105,20 @@ export const apiClient = {
   },
 
   async register(userData) {
+    const targetEmail = (userData.email || '').trim().toLowerCase();
+
+    // Check local storage duplicate first
+    if (typeof window !== 'undefined') {
+      const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+      const existsLocally = cachedUsers.some(u => u.email?.toLowerCase() === targetEmail);
+      if (existsLocally) {
+        return {
+          success: false,
+          message: 'An account with this email already exists. Please Sign In.'
+        };
+      }
+    }
+
     try {
       const res = await fetch(`${BASE_URL}/auth/register`, {
         method: 'POST',
@@ -113,12 +127,19 @@ export const apiClient = {
       });
       const data = await res.json();
 
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          message: data.message || 'An account with this email already exists. Please Sign In.'
+        };
+      }
+
       if (data.success && data.user) {
         // Cache user locally to guarantee instant seamless logins
         if (typeof window !== 'undefined') {
           const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
           const userWithPass = { ...data.user, password: userData.password };
-          const filtered = cachedUsers.filter(u => u.email.toLowerCase() !== data.user.email.toLowerCase());
+          const filtered = cachedUsers.filter(u => u.email.toLowerCase() !== targetEmail);
           filtered.push(userWithPass);
           localStorage.setItem('unicollab_registered_users', JSON.stringify(filtered));
         }
@@ -130,7 +151,7 @@ export const apiClient = {
       const newUser = {
         id: `usr_${Date.now()}`,
         ...userData,
-        email: userData.email.toLowerCase()
+        email: targetEmail
       };
       if (typeof window !== 'undefined') {
         const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
