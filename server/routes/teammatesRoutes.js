@@ -1,7 +1,22 @@
 import express from 'express';
-import { teammatesDB } from '../db/dataStore.js';
+import { usersDB, teammatesDB } from '../db/dataStore.js';
 
 const router = express.Router();
+
+let prismaTeammatesInstance = null;
+const getTeammatesPrisma = async () => {
+  if (!process.env.DATABASE_URL) return null;
+  if (!prismaTeammatesInstance) {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      prismaTeammatesInstance = new PrismaClient();
+    } catch (err) {
+      console.warn('Prisma load skipped in teammatesRoutes.');
+      return null;
+    }
+  }
+  return prismaTeammatesInstance;
+};
 
 // GET /api/teammates - Query all registered student accounts excluding current authenticated user
 router.get('/', async (req, res) => {
@@ -29,48 +44,49 @@ router.get('/', async (req, res) => {
 
   let candidates = [];
 
-  // 1. Fetch from Prisma PostgreSQL Database excluding current user
+  // 1. Fetch all registered users from Prisma PostgreSQL Database
   try {
-    if (process.env.DATABASE_URL) {
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient();
-
-      const whereClause = {
-        role: { not: 'ADMIN' }
-      };
-
-      if (currentUserId) {
-        whereClause.id = { not: currentUserId };
-      }
-      if (currentUserEmail) {
-        whereClause.email = { not: { equals: currentUserEmail, mode: 'insensitive' } };
-      }
-
+    const prisma = await getTeammatesPrisma();
+    if (prisma) {
       const dbUsers = await prisma.user.findMany({
-        where: whereClause,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          major: true,
+          degree: true,
+          university: true,
+          skills: true,
+          bio: true,
+          avatarBg: true,
+          createdAt: true
+        }
       });
 
       if (dbUsers && dbUsers.length > 0) {
-        candidates = dbUsers.map(u => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role === 'MENTOR' ? (u.roleTitle || 'Mentor Advisor') : (u.roleTitle || u.degree || 'Student Developer'),
-          major: u.major || 'Engineering',
-          degree: u.degree || 'B.Tech',
-          university: u.university || 'Campus Network',
-          skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
-          avatarBg: u.avatarBg || '#EFF6FF',
-          avatarColor: '#2563EB',
-          bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
-          rating: 5.0,
-          projectsCount: u.projectsCompleted || 5,
-          availability: 'Available Now',
-          verified: true,
-          initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',
-          createdAt: u.createdAt
-        }));
+        candidates = dbUsers
+          .filter(u => u.role !== 'ADMIN' && u.role !== 'MENTOR')
+          .map(u => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.degree || `B.Tech ${u.major || 'Computer Science & Engineering (CSE)'}`,
+            major: u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+/i, '') : 'Computer Science & Engineering (CSE)'),
+            degree: u.degree || 'B.Tech',
+            university: u.university || 'Stanford University',
+            skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
+            avatarBg: u.avatarBg || '#EFF6FF',
+            avatarColor: '#2563EB',
+            bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
+            rating: 5.0,
+            projectsCount: 5,
+            availability: 'Available Now',
+            verified: true,
+            initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',
+            createdAt: u.createdAt
+          }));
       }
     }
   } catch (err) {
@@ -78,23 +94,22 @@ router.get('/', async (req, res) => {
   }
 
   // 2. In-Memory Store Fallback / Merge
-  const { usersDB } = await import('../db/dataStore.js');
   const storeStudents = usersDB
-    .filter(u => u.role !== 'ADMIN')
+    .filter(u => u.role !== 'ADMIN' && u.role !== 'MENTOR')
     .map(u => ({
       id: u.id,
       name: u.name,
       email: u.email,
-      role: u.role === 'MENTOR' ? (u.roleTitle || 'Mentor Advisor') : (u.roleTitle || u.degree || 'Student Developer'),
-      major: u.major || 'Engineering',
+      role: u.degree || `B.Tech ${u.major || 'Computer Science & Engineering (CSE)'}`,
+      major: u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+/i, '') : 'Computer Science & Engineering (CSE)'),
       degree: u.degree || 'B.Tech',
-      university: u.university || 'Campus Network',
+      university: u.university || 'Stanford University',
       skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
       avatarBg: u.avatarBg || '#EFF6FF',
       avatarColor: '#2563EB',
       bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
       rating: 5.0,
-      projectsCount: u.projectsCompleted || 5,
+      projectsCount: 5,
       availability: 'Available Now',
       verified: true,
       initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',

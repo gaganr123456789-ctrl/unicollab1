@@ -40,103 +40,127 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
 
   const defaultSeedTeammates = [];
 
-  // Dynamically load registered users strictly from backend API excluding current user
+  // Dynamically load all registered students across API, Database, and Local storage, strictly excluding the logged in student
   const loadRegisteredTeammates = async () => {
     let apiUsers = [];
-    try {
-      const myEmail = userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '');
-      const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+    const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
+    const myName = (userProfile?.name || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').name : '') || '').toLowerCase().trim();
 
+    // 1. Fetch from Teammates API
+    try {
       const res = await apiClient.getTeammates('', '', '', myEmail, myId);
       if (res.success && Array.isArray(res.teammates)) {
-        apiUsers = res.teammates;
+        apiUsers = [...apiUsers, ...res.teammates];
       }
     } catch (e) {
-      console.warn('API teammates load fallback:', e);
+      console.warn('API teammates fetch notice:', e);
     }
 
-    // Transform live signed-up students into Teammate profile cards
-    const formattedSignedUp = apiUsers
-      .filter(u => u && (u.name || u.fullName || u.email))
-      .map((u, i) => {
-        const userName = u.name || u.fullName || (u.email ? u.email.split('@')[0] : 'Student');
-        const userMajor = u.major || 'Engineering';
-        const userUni = u.university || 'Campus Network';
-        const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-
-        return {
-          id: u.id || `reg_user_${i}`,
-          name: userName,
-          email: u.email || '',
-          rating: u.rating || (4.8 + (i % 3) * 0.1).toFixed(1),
-          major: userMajor,
-          year: u.year || 'Senior',
-          bio: u.bio || `Passionate student specializing in ${userMajor} at ${userUni}. Open to project collaborations and hackathon teams.`,
-          skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
-          projectsCount: u.projectsCount || 6 + (i % 5),
-          location: userUni,
-          avatarBg: u.avatarBg || '#EFF6FF',
-          avatarColor: u.avatarColor || '#2563EB',
-          initials: userInitials,
-          isNewUser: true
-        };
-      });
-
-    setAllTeammatesList(formattedSignedUp);
-  };
-
-  useEffect(() => {
-    loadRegisteredTeammates();
-
-    // Fetch sent pending invites
-    const fetchSentInvites = async () => {
-      try {
-        const res = await apiClient.getSentInvites();
-        if (res.success && Array.isArray(res.pendingRecipients)) {
-          setPendingInvites(res.pendingRecipients);
-        }
-      } catch (e) {
-        console.warn('Failed to load sent invites', e);
+    // 2. Fetch from Admin Users API (persisted registered database records)
+    try {
+      const adminRes = await apiClient.getAdminUsers();
+      if (adminRes.success && Array.isArray(adminRes.users)) {
+        apiUsers = [...apiUsers, ...adminRes.users];
       }
-    };
-    fetchSentInvites();
-  }, []);
+    } catch (e) {
+      console.warn('Admin users fetch notice:', e);
+    }
 
-  const handleSendInvite = async (candidate) => {
-    const candidateId = candidate.id || candidate.name;
-    setInvitingId(candidateId);
+    // 3. Merge with local storage registered users
+    const cachedUsers = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
+    const allCombined = [...apiUsers, ...cachedUsers];
 
-    const res = await apiClient.sendInvite({
-      recipientId: candidateId,
-      recipientName: candidate.name,
-      type: 'TEAM_INVITE',
-      message: `Hi ${candidate.name}, I would love to collaborate with you on a capstone project!`
+    // Deduplicate by email
+    const uniqueMap = new Map();
+    allCombined.forEach(u => {
+      if (u && (u.email || u.name)) {
+        const emailKey = (u.email || u.name).toLowerCase().trim();
+        if (!uniqueMap.has(emailKey)) {
+          uniqueMap.set(emailKey, u);
+        }
+      }
     });
 
-    setInvitingId(null);
+    const uniqueRawUsers = Array.from(uniqueMap.values());
 
-    if (res.success) {
-      setPendingInvites(prev => Array.from(new Set([...prev, candidateId])));
-    } else {
-      if (res.message && res.message.includes('already pending')) {
-        setPendingInvites(prev => Array.from(new Set([...prev, candidateId])));
+    // Filter out: Current User, Mentors, Admins
+    const studentPeers = uniqueRawUsers.filter(u => {
+      const uEmail = (u.email || '').toLowerCase().trim();
+      const uName = (u.name || u.fullName || '').toLowerCase().trim();
+      const uId = u.id;
+      const uRole = (u.role || '').toUpperCase();
+
+      // Exclude logged in user
+      if (myEmail && uEmail && uEmail === myEmail) return false;
+      if (myId && uId && String(uId) === String(myId)) return false;
+      if (myName && uName && uName === myName) return false;
+
+      // Exclude Admin & Mentor accounts from teammates (Mentors belong in Mentor Portal)
+      if (uRole === 'ADMIN' || uRole === 'MENTOR') return false;
+
+      return true;
+    });
+
+    // Transform student peers into Teammate profile cards
+    const formattedCards = studentPeers.map((u, i) => {
+      const rawEmail = (u.email || '').toLowerCase().trim();
+      const emailPrefix = rawEmail.split('@')[0] || 'student';
+      const formattedNameFromEmail = emailPrefix
+        .replace(/[\._\d]+/g, ' ')
+        .trim()
+        .split(' ')
+        .filter(Boolean)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+
+      const userName = (u.name && u.name.trim()) || (u.fullName && u.fullName.trim()) || formattedNameFromEmail || 'Student Developer';
+      const rawDegree = u.degree || '';
+      const rawMajor = u.major || '';
+      
+      let userMajor = rawMajor;
+      if (!userMajor || userMajor === 'Engineering') {
+        userMajor = rawDegree ? rawDegree.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : 'Computer Science & Engineering (CSE)';
       }
-    }
+      if (!userMajor) userMajor = 'Computer Science & Engineering (CSE)';
+
+      const userUni = u.university || 'Stanford University';
+      const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'ST';
+      const userDegree = rawDegree && rawDegree !== 'B.Tech' && rawDegree !== 'Industry Professional'
+        ? rawDegree
+        : `B.Tech ${userMajor}`;
+
+      const skillsList = Array.isArray(u.skills) && u.skills.length > 0
+        ? u.skills
+        : (userMajor.includes('ECE') || userMajor.includes('Electronics')
+            ? ['Embedded Systems', 'VLSI Design', 'IoT', 'MATLAB', 'C++']
+            : (userMajor.includes('AI') || userMajor.includes('Data')
+                ? ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'Data Science']
+                : ['React', 'Node.js', 'Python', 'TypeScript', 'TailwindCSS']));
+
+      return {
+        id: u.id || `reg_user_${i}`,
+        name: userName,
+        email: u.email || '',
+        rating: (4.8 + (i % 3) * 0.1).toFixed(1),
+        major: userMajor,
+        degree: userDegree,
+        year: u.year || 'Senior',
+        bio: u.bio || `Passionate student specializing in ${userMajor} at ${userUni}. Open to project collaborations and hackathon teams.`,
+        skills: skillsList,
+        projectsCount: u.projectsCount || 5 + (i % 4),
+        location: userUni,
+        avatarBg: u.avatarBg || '#EFF6FF',
+        avatarColor: u.avatarColor || '#2563EB',
+        initials: userInitials,
+        isNewUser: true
+      };
+    });
+
+    setAllTeammatesList(formattedCards);
   };
 
-  // Exclude current logged-in user so they only find and see OTHER registered students
-  const myEmail = (userProfile?.email || '').toLowerCase().trim();
-  const myName = (userProfile?.name || '').toLowerCase().trim();
-  const myId = userProfile?.id;
-
-  const otherTeammates = allTeammatesList.filter(t => {
-    if (myEmail && t.email && t.email.toLowerCase() === myEmail) return false;
-    if (myId && t.id && String(t.id) === String(myId)) return false;
-    if (myName && t.name && t.name.toLowerCase() === myName) return false;
-    return true;
-  });
-
-  const teammates = otherTeammates;
+  const teammates = allTeammatesList;
 
   // Dynamic Filtering by Search Keyword, Selected Majors, and Selected Skills
   const filteredTeammates = teammates.filter(t => {
