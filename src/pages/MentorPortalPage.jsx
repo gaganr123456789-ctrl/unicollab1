@@ -23,36 +23,185 @@ export default function MentorPortalPage({ setCurrentPage, onOpenChat }) {
   const [loading, setLoading] = useState(false);
   const [mentorsList, setMentorsList] = useState([]);
 
-  const defaultMentors = [];
+  const defaultMentors = [
+    {
+      id: 1,
+      name: 'Dr. Ananya Sharma',
+      role: 'Distinguished Professor & AI Research Lead',
+      title: 'Distinguished Professor & AI Research Lead',
+      company: 'Stanford University • AI Research Lab',
+      university: 'Stanford University',
+      rating: 4.9,
+      reviews: 128,
+      category: 'Computer Science',
+      skills: ['AI/ML', 'Multimodal LLMs', 'Computer Vision', 'PyTorch'],
+      nextAvailable: 'Tomorrow, 2:00 PM',
+      bio: 'Leading research in multimodal reasoning systems and generative foundation models. Advises undergraduate & graduate capstone teams on deep learning architectures.',
+      avatarBg: '#EFF6FF',
+      avatarColor: '#2563EB',
+      initials: 'AS'
+    },
+    {
+      id: 2,
+      name: 'Dr. Marcus Sterling',
+      role: 'Principal Cloud Architect & Distributed Systems Advisor',
+      title: 'Principal Cloud Architect & Distributed Systems Advisor',
+      company: 'MIT CSAIL & AWS Architecture Lab',
+      university: 'MIT CSAIL',
+      rating: 5.0,
+      reviews: 94,
+      category: 'Engineering',
+      skills: ['Kubernetes', 'Cloud Systems', 'Microservices', 'Distributed Systems'],
+      nextAvailable: 'Wednesday, 4:30 PM',
+      bio: '20+ years building hyperscale cloud platforms and resilient backend infrastructure. Helps student teams scale full-stack architectures and microservices.',
+      avatarBg: '#FAF5FF',
+      avatarColor: '#7C3AED',
+      initials: 'MS'
+    },
+    {
+      id: 3,
+      name: 'Elena Rostova',
+      role: 'Head of Product Design & HCI Researcher',
+      title: 'Head of Product Design & HCI Researcher',
+      company: 'Harvard Innovation Labs',
+      university: 'Harvard University',
+      rating: 4.8,
+      reviews: 112,
+      category: 'Design',
+      skills: ['UI/UX Design', 'Design Systems', 'Figma Prototyping', 'User Research'],
+      nextAvailable: 'Thursday, 11:00 AM',
+      bio: 'Passionate about human-centered interaction design and accessible web experiences. Mentors students on product prototyping and design polish.',
+      avatarBg: '#ECFDF5',
+      avatarColor: '#059669',
+      initials: 'ER'
+    },
+    {
+      id: 4,
+      name: 'Prof. Rajesh Deshmukh',
+      role: 'Senior Faculty & Embedded Systems Director',
+      title: 'Senior Faculty & Embedded Systems Director',
+      company: 'The National Institute of Engineering (NIE)',
+      university: 'The National Institute of Engineering (NIE)',
+      rating: 4.9,
+      reviews: 86,
+      category: 'Engineering',
+      skills: ['VLSI Design', 'Embedded Systems', 'IoT Microgrid', 'FPGA', 'Robotics'],
+      nextAvailable: 'Friday, 3:00 PM',
+      bio: 'Specializes in VLSI chip design, edge computing hardware, and IoT systems. Guides capstone students in circuit synthesis and smart robotics.',
+      avatarBg: '#FFFBEB',
+      avatarColor: '#D97706',
+      initials: 'RD'
+    },
+    {
+      id: 5,
+      name: 'David Chen, MBA',
+      role: 'Venture Partner & Startup Strategy Lead',
+      title: 'Venture Partner & Startup Strategy Lead',
+      company: 'Berkeley Haas Entrepreneurship Hub',
+      university: 'UC Berkeley Haas',
+      rating: 4.9,
+      reviews: 75,
+      category: 'Business',
+      skills: ['Venture Capital', 'Product-Market Fit', 'Pitch Decks', 'FinTech'],
+      nextAvailable: 'Friday, 1:30 PM',
+      bio: 'Helps student founders validate product ideas, formulate go-to-market strategies, and prepare compelling pitches for angel & seed stage venture funding.',
+      avatarBg: '#FEF2F2',
+      avatarColor: '#DC2626',
+      initials: 'DC'
+    },
+    {
+      id: 6,
+      name: 'Dr. Sophia Vance',
+      role: 'Professor of Applied Mathematics & Cryptography',
+      title: 'Professor of Applied Mathematics & Cryptography',
+      company: 'Cambridge Mathematical Sciences',
+      university: 'University of Cambridge',
+      rating: 5.0,
+      reviews: 62,
+      category: 'Mathematics',
+      skills: ['Applied Statistics', 'Optimization Algorithms', 'Cryptography', 'Quantum'],
+      nextAvailable: 'Next Monday, 10:00 AM',
+      bio: 'Advisor on mathematical modeling, stochastic optimization algorithms, and cryptographic protocol analysis.',
+      avatarBg: '#F0FDF4',
+      avatarColor: '#16A34A',
+      initials: 'SV'
+    }
+  ];
 
   const fetchLiveMentors = async () => {
     setLoading(true);
+    let allMentors = [];
     try {
+      // 1. Fetch from live Mentors API
       const res = await apiClient.getMentors();
-      if (res.success && Array.isArray(res.mentors) && res.mentors.length > 0) {
-        const formatted = res.mentors.map((m, i) => ({
-          id: m.id || i + 1,
-          name: m.name || 'Academic Mentor',
-          title: m.role || m.title || 'Senior Advisor',
-          university: m.company || m.university || 'University Faculty',
-          rating: m.rating || 4.9,
-          reviews: m.reviews || 40 + i * 5,
-          category: m.major || m.category || 'Computer Science',
-          nextAvailable: m.availability || m.nextAvailable || 'Tomorrow, 2:00 PM',
-          bio: m.bio || 'Experienced academic mentor guiding capstone projects and research.',
-          avatarBg: m.avatarBg || '#EFF6FF',
-          avatarColor: m.avatarColor || '#2563EB',
-          initials: (m.name || 'AM').split(' ').map(n => n[0]).join('').slice(0, 2)
-        }));
-        setMentorsList(formatted);
-      } else {
-        setMentorsList(defaultMentors);
+      if (res.success && Array.isArray(res.mentors)) {
+        allMentors = [...allMentors, ...res.mentors];
       }
     } catch (err) {
-      setMentorsList(defaultMentors);
-    } finally {
-      setLoading(false);
+      console.warn('Mentors API fetch notice:', err);
     }
+
+    try {
+      // 2. Fetch from Admin Users API (persisted registered accounts with role === 'MENTOR')
+      const adminRes = await apiClient.getAdminUsers();
+      if (adminRes.success && Array.isArray(adminRes.users)) {
+        const registeredMentors = adminRes.users.filter(u => (u.role || '').toUpperCase() === 'MENTOR');
+        allMentors = [...allMentors, ...registeredMentors];
+      }
+    } catch (err) {
+      console.warn('Admin users mentor fetch notice:', err);
+    }
+
+    // 3. Merge with local storage registered users and default demo mentors
+    const cachedUsers = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
+    const cachedMentors = cachedUsers.filter(u => (u.role || '').toUpperCase() === 'MENTOR');
+    const combined = [...allMentors, ...cachedMentors, ...defaultMentors];
+
+    // Deduplicate by email
+    const uniqueMap = new Map();
+    combined.forEach(m => {
+      if (m && (m.email || m.name)) {
+        const key = (m.email || m.name).toLowerCase().trim();
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, m);
+        }
+      }
+    });
+
+    const uniqueMentors = Array.from(uniqueMap.values());
+
+    const formatted = uniqueMentors.map((m, i) => {
+      const mentorName = m.name || m.fullName || 'Academic Mentor';
+      const mentorTitle = m.roleTitle || m.role || m.title || 'Senior Advisor';
+      const mentorUni = m.university || m.company || 'University Faculty';
+      const mentorCategory = m.major || (Array.isArray(m.mentorInterests) && m.mentorInterests[0]) || m.category || 'Computer Science';
+      const mentorSkills = Array.isArray(m.mentorInterests) && m.mentorInterests.length > 0 ? m.mentorInterests : (m.skills || ['Mentorship & Research']);
+
+      return {
+        id: m.id || `mentor_${i + 1}`,
+        name: mentorName,
+        email: m.email || '',
+        title: mentorTitle,
+        university: mentorUni,
+        rating: 5.0,
+        reviews: m.reviews || 20 + (i % 5) * 4,
+        category: mentorCategory,
+        skills: mentorSkills,
+        nextAvailable: m.availability || m.nextAvailable || 'Tomorrow, 2:00 PM',
+        bio: m.bio || `Experienced mentor specializing in ${mentorCategory} at ${mentorUni}. Available to guide capstone projects, career paths, and technical research.`,
+        avatarBg: m.avatarBg || '#7C3AED',
+        avatarColor: '#FFFFFF',
+        initials: mentorName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+      };
+    });
+
+    setMentorsList(formatted);
+    if (formatted.length > 0) {
+      setSelectedMentor(formatted[0]);
+    } else {
+      setSelectedMentor(null);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {

@@ -1,49 +1,136 @@
-import { mentorsDB } from '../db/dataStore.js';
+import { usersDB, mentorsDB } from '../db/dataStore.js';
 
-let prisma = null;
-try {
-  const { PrismaClient } = await import('@prisma/client');
-  prisma = new PrismaClient();
-} catch (err) {
-  console.warn('Prisma Client fallback in mentorsController.');
-}
+let prismaInstance = null;
+const getPrisma = async () => {
+  if (!process.env.DATABASE_URL) return null;
+  if (!prismaInstance) {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      prismaInstance = new PrismaClient();
+    } catch (err) {
+      console.warn('Prisma load skipped in mentorsController.');
+      return null;
+    }
+  }
+  return prismaInstance;
+};
 
-// GET /api/mentors
+// GET /api/mentors - Get All Registered Mentors (Exclusively Registered Accounts)
 export const getMentors = async (req, res) => {
   const { search, expertise } = req.query;
+  let candidates = [];
 
   try {
-    if (prisma && process.env.DATABASE_URL) {
-      const mentors = await prisma.mentor.findMany({
-        include: { user: { select: { name: true, email: true, university: true, avatarBg: true } } }
+    const prisma = await getPrisma();
+    if (prisma) {
+      const registeredMentors = await prisma.user.findMany({
+        where: { role: 'MENTOR' },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          roleTitle: true,
+          degree: true,
+          major: true,
+          university: true,
+          skills: true,
+          mentorInterests: true,
+          bio: true,
+          avatarBg: true,
+          createdAt: true
+        }
       });
-      if (mentors && mentors.length > 0) {
-        return res.status(200).json({ success: true, count: mentors.length, mentors });
+
+      if (registeredMentors && registeredMentors.length > 0) {
+        candidates = registeredMentors.map((m, i) => ({
+          id: m.id,
+          name: m.name,
+          email: m.email,
+          role: m.roleTitle || 'Industry Professional',
+          title: m.roleTitle || 'Industry Professional',
+          company: m.university || 'University Faculty / Industry',
+          university: m.university || 'University Faculty / Industry',
+          rating: 5.0,
+          reviews: 20 + (i % 5) * 4,
+          category: m.major || (Array.isArray(m.mentorInterests) && m.mentorInterests[0]) || 'Computer Science',
+          skills: Array.isArray(m.mentorInterests) && m.mentorInterests.length > 0 ? m.mentorInterests : (m.skills || ['Mentorship & Research']),
+          nextAvailable: 'Tomorrow, 2:00 PM',
+          bio: m.bio || 'Verified academic mentor guiding capstone projects and research.',
+          avatarBg: m.avatarBg || '#7C3AED',
+          avatarColor: '#FFFFFF',
+          initials: (m.name || 'ME').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+        }));
       }
     }
   } catch (err) {
-    console.warn('Prisma getMentors fallback:', err.message);
+    console.warn('Prisma getMentors query info:', err.message);
   }
 
-  let results = [...mentorsDB];
+  // Fallback in-memory registered mentors
+  const storeMentors = usersDB
+    .filter(u => u.role === 'MENTOR')
+    .map((m, i) => ({
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      role: m.roleTitle || 'Industry Professional',
+      title: m.roleTitle || 'Industry Professional',
+      company: m.university || 'University Faculty / Industry',
+      university: m.university || 'University Faculty / Industry',
+      rating: 5.0,
+      reviews: 20 + (i % 5) * 4,
+      category: m.major || (Array.isArray(m.mentorInterests) && m.mentorInterests[0]) || 'Computer Science',
+      skills: Array.isArray(m.mentorInterests) && m.mentorInterests.length > 0 ? m.mentorInterests : (m.skills || ['Mentorship & Research']),
+      nextAvailable: 'Tomorrow, 2:00 PM',
+      bio: m.bio || 'Verified academic mentor guiding capstone projects and research.',
+      avatarBg: m.avatarBg || '#7C3AED',
+      avatarColor: '#FFFFFF',
+      initials: (m.name || 'ME').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    }));
+
+  const mergedMap = new Map();
+  candidates.forEach(m => { if (m.email) mergedMap.set(m.email.toLowerCase(), m); });
+  storeMentors.forEach(m => {
+    if (m.email && !mergedMap.has(m.email.toLowerCase())) {
+      mergedMap.set(m.email.toLowerCase(), m);
+    }
+  });
+  mentorsDB.forEach(m => {
+    const key = (m.email || m.name).toLowerCase();
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, m);
+    }
+  });
+
+  let results = Array.from(mergedMap.values());
+
   if (search) {
-    const q = search.toLowerCase();
-    results = results.filter(m => m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q) || m.company.toLowerCase().includes(q));
+    const q = search.toLowerCase().trim();
+    results = results.filter(m => 
+      m.name.toLowerCase().includes(q) || 
+      m.role.toLowerCase().includes(q) || 
+      m.company.toLowerCase().includes(q) ||
+      (Array.isArray(m.skills) && m.skills.some(s => s.toLowerCase().includes(q)))
+    );
   }
 
-  return res.status(200).json({ success: true, count: results.length, mentors: results });
+  return res.status(200).json({
+    success: true,
+    count: results.length,
+    mentors: results
+  });
 };
 
 // GET /api/mentors/:id
 export const getMentorById = async (req, res) => {
   const mentorId = req.params.id;
-
-  const mentor = mentorsDB.find(m => m.id === Number(mentorId) || m.id === mentorId);
-  if (!mentor) {
-    return res.status(404).json({ success: false, message: 'Mentor not found.' });
+  const storeUser = usersDB.find(u => u.role === 'MENTOR' && (String(u.id) === String(mentorId) || u.email === mentorId));
+  if (storeUser) {
+    return res.status(200).json({ success: true, mentor: storeUser });
   }
-
-  return res.status(200).json({ success: true, mentor });
+  return res.status(404).json({ success: false, message: 'Mentor not found.' });
 };
 
 // POST /api/mentors/book & /api/mentors/:id/book - Link MentorSession

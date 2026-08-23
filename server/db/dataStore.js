@@ -43,7 +43,110 @@ export const tasksDB = [
   }
 ];
 
-export const mentorsDB = [];
+export const mentorsDB = [
+  {
+    id: 1,
+    name: 'Dr. Ananya Sharma',
+    role: 'Distinguished Professor & AI Research Lead',
+    title: 'Distinguished Professor & AI Research Lead',
+    company: 'Stanford University • AI Research Lab',
+    university: 'Stanford University',
+    rating: 4.9,
+    reviews: 128,
+    category: 'Computer Science',
+    skills: ['AI/ML', 'Multimodal LLMs', 'Computer Vision', 'PyTorch'],
+    nextAvailable: 'Tomorrow, 2:00 PM',
+    bio: 'Leading research in multimodal reasoning systems and generative foundation models. Advises undergraduate & graduate capstone teams on deep learning architectures.',
+    avatarBg: '#EFF6FF',
+    avatarColor: '#2563EB',
+    initials: 'AS'
+  },
+  {
+    id: 2,
+    name: 'Dr. Marcus Sterling',
+    role: 'Principal Cloud Architect & Distributed Systems Advisor',
+    title: 'Principal Cloud Architect & Distributed Systems Advisor',
+    company: 'MIT CSAIL & AWS Architecture Lab',
+    university: 'MIT CSAIL',
+    rating: 5.0,
+    reviews: 94,
+    category: 'Engineering',
+    skills: ['Kubernetes', 'Cloud Systems', 'Microservices', 'Distributed Systems'],
+    nextAvailable: 'Wednesday, 4:30 PM',
+    bio: '20+ years building hyperscale cloud platforms and resilient backend infrastructure. Helps student teams scale full-stack architectures and microservices.',
+    avatarBg: '#FAF5FF',
+    avatarColor: '#7C3AED',
+    initials: 'MS'
+  },
+  {
+    id: 3,
+    name: 'Elena Rostova',
+    role: 'Head of Product Design & HCI Researcher',
+    title: 'Head of Product Design & HCI Researcher',
+    company: 'Harvard Innovation Labs',
+    university: 'Harvard University',
+    rating: 4.8,
+    reviews: 112,
+    category: 'Design',
+    skills: ['UI/UX Design', 'Design Systems', 'Figma Prototyping', 'User Research'],
+    nextAvailable: 'Thursday, 11:00 AM',
+    bio: 'Passionate about human-centered interaction design and accessible web experiences. Mentors students on product prototyping and design polish.',
+    avatarBg: '#ECFDF5',
+    avatarColor: '#059669',
+    initials: 'ER'
+  },
+  {
+    id: 4,
+    name: 'Prof. Rajesh Deshmukh',
+    role: 'Senior Faculty & Embedded Systems Director',
+    title: 'Senior Faculty & Embedded Systems Director',
+    company: 'The National Institute of Engineering (NIE)',
+    university: 'The National Institute of Engineering (NIE)',
+    rating: 4.9,
+    reviews: 86,
+    category: 'Engineering',
+    skills: ['VLSI Design', 'Embedded Systems', 'IoT Microgrid', 'FPGA', 'Robotics'],
+    nextAvailable: 'Friday, 3:00 PM',
+    bio: 'Specializes in VLSI chip design, edge computing hardware, and IoT systems. Guides capstone students in circuit synthesis and smart robotics.',
+    avatarBg: '#FFFBEB',
+    avatarColor: '#D97706',
+    initials: 'RD'
+  },
+  {
+    id: 5,
+    name: 'David Chen, MBA',
+    role: 'Venture Partner & Startup Strategy Lead',
+    title: 'Venture Partner & Startup Strategy Lead',
+    company: 'Berkeley Haas Entrepreneurship Hub',
+    university: 'UC Berkeley Haas',
+    rating: 4.9,
+    reviews: 75,
+    category: 'Business',
+    skills: ['Venture Capital', 'Product-Market Fit', 'Pitch Decks', 'FinTech'],
+    nextAvailable: 'Friday, 1:30 PM',
+    bio: 'Helps student founders validate product ideas, formulate go-to-market strategies, and prepare compelling pitches for angel & seed stage venture funding.',
+    avatarBg: '#FEF2F2',
+    avatarColor: '#DC2626',
+    initials: 'DC'
+  },
+  {
+    id: 6,
+    name: 'Dr. Sophia Vance',
+    role: 'Professor of Applied Mathematics & Cryptography',
+    title: 'Professor of Applied Mathematics & Cryptography',
+    company: 'Cambridge Mathematical Sciences',
+    university: 'University of Cambridge',
+    rating: 5.0,
+    reviews: 62,
+    category: 'Mathematics',
+    skills: ['Applied Statistics', 'Optimization Algorithms', 'Cryptography', 'Quantum'],
+    nextAvailable: 'Next Monday, 10:00 AM',
+    bio: 'Advisor on mathematical modeling, stochastic optimization algorithms, and cryptographic protocol analysis.',
+    avatarBg: '#F0FDF4',
+    avatarColor: '#16A34A',
+    initials: 'SV'
+  }
+];
 
 export const hackathonsDB = [
   {
