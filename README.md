@@ -85,8 +85,8 @@ Follow this curated sequence for an impactful live demonstration:
    - Showcase mentor booking scheduling with instant session confirmation.
 7. **AI Assistant (`/#ai-assistant`):**
    - Demonstrate AI teammate matching queries and code optimization tips.
-8. **Master Admin Portal (`/#admin` — Passkey: `admin123`):**
-   - Demonstrate the separate **🎓 Students** and **👨‍🏫 Mentors** tabs.
+8. **Master Admin Portal (`/#admin` — Passkey Protected):**
+   - Demonstrate the separate **🎓 Students**, **👨‍🏫 Mentors**, and **🏆 Hackathons** tabs.
    - Highlight real-time registration timestamps and CSV data export.
 
 ---

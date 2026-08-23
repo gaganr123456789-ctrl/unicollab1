@@ -27,8 +27,8 @@ const hashString = (val) => crypto.createHash('sha256').update(val).digest('hex'
 const adminOtpStore = new Map(); // email -> { hashedOtp, expiresAt, attempts, resetToken, verified }
 const rateLimitStore = new Map(); // email -> [timestamps]
 
-// Default Admin Passkey Hash (SHA-256 of process.env.ADMIN_DEFAULT_KEY or 'admin123')
-let currentAdminPasskeyHash = hashString(process.env.ADMIN_DEFAULT_KEY || 'admin123');
+// Default Admin Passkey Hash (SHA-256 of process.env.ADMIN_DEFAULT_KEY or 'unicollab0704')
+let currentAdminPasskeyHash = hashString(process.env.ADMIN_DEFAULT_KEY || 'unicollab0704');
 
 // --------------------------------------------------------------------------
 // 2. Security Log Audit Helper (Never logs plain OTP or raw credentials)
@@ -339,6 +339,8 @@ router.delete('/users/clear', async (req, res) => {
   }
 
   usersDB.length = 0;
+  return res.status(200).json({ success: true, message: 'All users deleted.' });
+});
 
 // --------------------------------------------------------------------------
 // 9. GET /api/admin/hackathon-registrations - Protected Hackathon Registrations

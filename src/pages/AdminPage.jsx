@@ -53,9 +53,9 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
   // Get active Admin Key from localStorage or default
   const getActiveAdminKey = () => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('unicollab_custom_admin_key') || 'admin123';
+      return localStorage.getItem('unicollab_custom_admin_key') || 'unicollab0704';
     }
-    return 'admin123';
+    return 'unicollab0704';
   };
 
   const fetchHackathonRegistrations = async () => {
