@@ -38,7 +38,93 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     'Digital Media & UI/UX Design'
   ];
 
-  const defaultSeedTeammates = [];
+  const defaultSeedTeammates = [
+    {
+      id: 'usr_sarah_chen',
+      name: 'Sarah Chen',
+      email: 'sarah.chen@stanford.edu',
+      role: 'B.Tech Computer Science & Engineering (CSE)',
+      degree: 'B.Tech Computer Science & Engineering (CSE)',
+      major: 'Computer Science & Engineering (CSE)',
+      university: 'Stanford University',
+      skills: ['React', 'TypeScript', 'Node.js', 'TailwindCSS', 'GraphQL'],
+      bio: 'Full-stack developer building real-time collaboration platforms and open-source dev tools. Looking for AI and backend teammates.',
+      avatarBg: '#EFF6FF',
+      avatarColor: '#2563EB',
+      rating: '4.9',
+      projectsCount: 8,
+      location: 'Stanford University',
+      initials: 'SC'
+    },
+    {
+      id: 'usr_rohan_deshmukh',
+      name: 'Rohan Deshmukh',
+      email: 'rohan.d@nie.ac.in',
+      role: 'B.Tech Electronics & Communication (ECE)',
+      degree: 'B.Tech Electronics & Communication (ECE)',
+      major: 'Electronics & Communication (ECE)',
+      university: 'The National Institute of Engineering (NIE)',
+      skills: ['Embedded Systems', 'VLSI Design', 'IoT', 'C++', 'MATLAB', 'FPGA'],
+      bio: 'ECE final year student passionate about robotics, hardware-software co-design, and smart edge computing systems.',
+      avatarBg: '#ECFDF5',
+      avatarColor: '#059669',
+      rating: '4.8',
+      projectsCount: 6,
+      location: 'The National Institute of Engineering (NIE)',
+      initials: 'RD'
+    },
+    {
+      id: 'usr_ananya_sharma',
+      name: 'Ananya Sharma',
+      email: 'ananya.ai@mit.edu',
+      role: 'B.Tech Artificial Intelligence & Data Science (AI & DS)',
+      degree: 'B.Tech Artificial Intelligence & Data Science (AI & DS)',
+      major: 'Artificial Intelligence & Data Science (AI & DS)',
+      university: 'MIT AI Lab',
+      skills: ['Python', 'PyTorch', 'TensorFlow', 'Computer Vision', 'LLMs', 'FastAPI'],
+      bio: 'AI researcher focused on multimodal foundation models, NLP pipelines, and autonomous agent orchestration.',
+      avatarBg: '#FAF5FF',
+      avatarColor: '#7C3AED',
+      rating: '5.0',
+      projectsCount: 9,
+      location: 'MIT AI Lab',
+      initials: 'AS'
+    },
+    {
+      id: 'usr_marcus_vance',
+      name: 'Marcus Vance',
+      email: 'marcus.v@berkeley.edu',
+      role: 'B.Tech Information Technology (IT)',
+      degree: 'B.Tech Information Technology (IT)',
+      major: 'Information Technology (IT)',
+      university: 'UC Berkeley',
+      skills: ['Cloud Architecture', 'AWS', 'Docker', 'Kubernetes', 'Go', 'Cybersecurity'],
+      bio: 'Cloud and DevOps enthusiast specializing in scalable distributed microservices, CI/CD automation, and zero-trust security.',
+      avatarBg: '#FFFBEB',
+      avatarColor: '#D97706',
+      rating: '4.7',
+      projectsCount: 7,
+      location: 'UC Berkeley',
+      initials: 'MV'
+    },
+    {
+      id: 'usr_priya_nair',
+      name: 'Priya Nair',
+      email: 'priya.nair@iitd.ac.in',
+      role: 'B.Tech Mechanical Engineering (ME)',
+      degree: 'B.Tech Mechanical Engineering (ME)',
+      major: 'Mechanical Engineering (ME)',
+      university: 'IIT Delhi',
+      skills: ['CAD/CAM', 'SolidWorks', 'Robotics Automation', 'ANSYS', 'Mechatronics'],
+      bio: 'Mechanical engineering student creating autonomous drone swarms and sustainable mechatronics systems for smart mobility.',
+      avatarBg: '#FEF2F2',
+      avatarColor: '#DC2626',
+      rating: '4.9',
+      projectsCount: 5,
+      location: 'IIT Delhi',
+      initials: 'PN'
+    }
+  ];
 
   // Dynamically load all registered students across API, Database, and Local storage, strictly excluding the logged in student
   const loadRegisteredTeammates = async () => {
@@ -67,9 +153,9 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
       console.warn('Admin users fetch notice:', e);
     }
 
-    // 3. Merge with local storage registered users
+    // 3. Merge with local storage registered users and default cohort
     const cachedUsers = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
-    const allCombined = [...apiUsers, ...cachedUsers];
+    const allCombined = [...apiUsers, ...cachedUsers, ...defaultSeedTeammates];
 
     // Deduplicate by email
     const uniqueMap = new Map();
