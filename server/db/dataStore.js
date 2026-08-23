@@ -4,7 +4,25 @@ export const usersDB = [];
 
 export const teammatesDB = [];
 
-export const hackathonRegistrationsDB = [];
+export const hackathonRegistrationsDB = [
+  {
+    id: 'HACK-984210',
+    registrationId: 'HACK-984210',
+    hackathonId: '301',
+    hackathonTitle: 'Global Student AI Hackathon 2026',
+    teamName: 'Team Code Morphicx',
+    teamDetails: '4 Members • AI/ML & Full-Stack Platform',
+    membersCount: 4,
+    studentName: 'Gagan R',
+    email: 'gagan.r123456789@gmail.com',
+    mobileNumber: '+91 98765 43210',
+    collegeName: 'The National Institute of Engineering (NIE)',
+    usn: '4NI21CS042',
+    status: 'CONFIRMED',
+    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString()
+  }
+];
 
 export const tasksDB = [
   {
