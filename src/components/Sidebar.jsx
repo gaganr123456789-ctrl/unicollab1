@@ -23,7 +23,7 @@ export default function Sidebar({ currentPage, setCurrentPage, isMobileNavOpen, 
     { id: 'mentor-portal', label: 'Mentor Portal', icon: GraduationCap },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Bot },
     { id: 'resource-library', label: 'Resource Library', icon: BookOpen },
-    { id: 'hackathons', label: '🏆 Hackathon Hub', icon: Trophy },
+    { id: 'hackathons', label: 'Hackathon Hub', icon: Trophy },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
   ];
 

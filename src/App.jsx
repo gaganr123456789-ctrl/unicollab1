@@ -273,34 +273,13 @@ export default function App() {
             </div>
           </a>
 
-          <div className="nav-actions flex align-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="nav-actions">
             <button 
               className="icon-btn theme-toggle-btn"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {theme === 'dark' ? <Sun size={18} className="theme-icon sun" /> : <Moon size={18} className="theme-icon moon" />}
-            </button>
-            <button 
-              className="btn-browse" 
-              style={{ padding: '8px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', background: '#FEF3C7', color: '#D97706', borderColor: '#FDE68A', fontWeight: 800 }} 
-              onClick={() => setCurrentPage('hackathons')}
-            >
-              🏆 Hackathons
-            </button>
-            <button 
-              className="btn-browse" 
-              style={{ padding: '8px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }} 
-              onClick={() => setCurrentPage('find-teammates')}
-            >
-              <Users size={14} /> Find Teammates
-            </button>
-            <button 
-              className="btn-browse" 
-              style={{ padding: '8px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }} 
-              onClick={() => setCurrentPage('mentor-portal')}
-            >
-              <GraduationCap size={14} /> Mentors
             </button>
             <button className="btn-login" onClick={() => { setAuthMode('login'); setCurrentPage('login'); }}>
               Log in
