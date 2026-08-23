@@ -22,6 +22,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
   const [allTeammatesList, setAllTeammatesList] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [invitingId, setInvitingId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const engineeringBranches = [
     'Computer Science & Engineering (CSE)',
@@ -38,103 +39,16 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     'Digital Media & UI/UX Design'
   ];
 
-  const defaultSeedTeammates = [
-    {
-      id: 'usr_sarah_chen',
-      name: 'Sarah Chen',
-      email: 'sarah.chen@stanford.edu',
-      role: 'B.Tech Computer Science & Engineering (CSE)',
-      degree: 'B.Tech Computer Science & Engineering (CSE)',
-      major: 'Computer Science & Engineering (CSE)',
-      university: 'Stanford University',
-      skills: ['React', 'TypeScript', 'Node.js', 'TailwindCSS', 'GraphQL'],
-      bio: 'Full-stack developer building real-time collaboration platforms and open-source dev tools. Looking for AI and backend teammates.',
-      avatarBg: '#EFF6FF',
-      avatarColor: '#2563EB',
-      rating: '4.9',
-      projectsCount: 8,
-      location: 'Stanford University',
-      initials: 'SC'
-    },
-    {
-      id: 'usr_rohan_deshmukh',
-      name: 'Rohan Deshmukh',
-      email: 'rohan.d@nie.ac.in',
-      role: 'B.Tech Electronics & Communication (ECE)',
-      degree: 'B.Tech Electronics & Communication (ECE)',
-      major: 'Electronics & Communication (ECE)',
-      university: 'The National Institute of Engineering (NIE)',
-      skills: ['Embedded Systems', 'VLSI Design', 'IoT', 'C++', 'MATLAB', 'FPGA'],
-      bio: 'ECE final year student passionate about robotics, hardware-software co-design, and smart edge computing systems.',
-      avatarBg: '#ECFDF5',
-      avatarColor: '#059669',
-      rating: '4.8',
-      projectsCount: 6,
-      location: 'The National Institute of Engineering (NIE)',
-      initials: 'RD'
-    },
-    {
-      id: 'usr_ananya_sharma',
-      name: 'Ananya Sharma',
-      email: 'ananya.ai@mit.edu',
-      role: 'B.Tech Artificial Intelligence & Data Science (AI & DS)',
-      degree: 'B.Tech Artificial Intelligence & Data Science (AI & DS)',
-      major: 'Artificial Intelligence & Data Science (AI & DS)',
-      university: 'MIT AI Lab',
-      skills: ['Python', 'PyTorch', 'TensorFlow', 'Computer Vision', 'LLMs', 'FastAPI'],
-      bio: 'AI researcher focused on multimodal foundation models, NLP pipelines, and autonomous agent orchestration.',
-      avatarBg: '#FAF5FF',
-      avatarColor: '#7C3AED',
-      rating: '5.0',
-      projectsCount: 9,
-      location: 'MIT AI Lab',
-      initials: 'AS'
-    },
-    {
-      id: 'usr_marcus_vance',
-      name: 'Marcus Vance',
-      email: 'marcus.v@berkeley.edu',
-      role: 'B.Tech Information Technology (IT)',
-      degree: 'B.Tech Information Technology (IT)',
-      major: 'Information Technology (IT)',
-      university: 'UC Berkeley',
-      skills: ['Cloud Architecture', 'AWS', 'Docker', 'Kubernetes', 'Go', 'Cybersecurity'],
-      bio: 'Cloud and DevOps enthusiast specializing in scalable distributed microservices, CI/CD automation, and zero-trust security.',
-      avatarBg: '#FFFBEB',
-      avatarColor: '#D97706',
-      rating: '4.7',
-      projectsCount: 7,
-      location: 'UC Berkeley',
-      initials: 'MV'
-    },
-    {
-      id: 'usr_priya_nair',
-      name: 'Priya Nair',
-      email: 'priya.nair@iitd.ac.in',
-      role: 'B.Tech Mechanical Engineering (ME)',
-      degree: 'B.Tech Mechanical Engineering (ME)',
-      major: 'Mechanical Engineering (ME)',
-      university: 'IIT Delhi',
-      skills: ['CAD/CAM', 'SolidWorks', 'Robotics Automation', 'ANSYS', 'Mechatronics'],
-      bio: 'Mechanical engineering student creating autonomous drone swarms and sustainable mechatronics systems for smart mobility.',
-      avatarBg: '#FEF2F2',
-      avatarColor: '#DC2626',
-      rating: '4.9',
-      projectsCount: 5,
-      location: 'IIT Delhi',
-      initials: 'PN'
-    }
-  ];
-
   // Dynamically load all registered students across API, Database, and Local storage, strictly excluding the logged in student
   const loadRegisteredTeammates = async () => {
+    setLoading(true);
     let apiUsers = [];
     const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
     const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
     const myName = (userProfile?.name || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').name : '') || '').toLowerCase().trim();
 
-    // 1. Fetch from Teammates API
     try {
+      // 1. Fetch from Teammates API (Server-side excluded database records)
       const res = await apiClient.getTeammates('', '', '', myEmail, myId);
       if (res.success && Array.isArray(res.teammates)) {
         apiUsers = [...apiUsers, ...res.teammates];
@@ -143,8 +57,8 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
       console.warn('API teammates fetch notice:', e);
     }
 
-    // 2. Fetch from Admin Users API (persisted registered database records)
     try {
+      // 2. Fetch from Admin Users API (persisted registered database records)
       const adminRes = await apiClient.getAdminUsers();
       if (adminRes.success && Array.isArray(adminRes.users)) {
         apiUsers = [...apiUsers, ...adminRes.users];
@@ -153,9 +67,9 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
       console.warn('Admin users fetch notice:', e);
     }
 
-    // 3. Merge with local storage registered users and default cohort
+    // 3. Merge with local storage registered users
     const cachedUsers = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
-    const allCombined = [...apiUsers, ...cachedUsers, ...defaultSeedTeammates];
+    const allCombined = [...apiUsers, ...cachedUsers];
 
     // Deduplicate by email
     const uniqueMap = new Map();
@@ -210,7 +124,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
       }
       if (!userMajor) userMajor = 'Computer Science & Engineering (CSE)';
 
-      const userUni = u.university || 'Stanford University';
+      const userUni = u.university || 'Campus Network';
       const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'ST';
       const userDegree = rawDegree && rawDegree !== 'B.Tech' && rawDegree !== 'Industry Professional'
         ? rawDegree
@@ -244,6 +158,46 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     });
 
     setAllTeammatesList(formattedCards);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadRegisteredTeammates();
+
+    // Fetch sent pending invites
+    const fetchSentInvites = async () => {
+      try {
+        const res = await apiClient.getSentInvites();
+        if (res.success && Array.isArray(res.pendingRecipients)) {
+          setPendingInvites(res.pendingRecipients);
+        }
+      } catch (e) {
+        console.warn('Failed to load sent invites', e);
+      }
+    };
+    fetchSentInvites();
+  }, []);
+
+  const handleSendInvite = async (candidate) => {
+    const candidateId = candidate.id || candidate.name;
+    setInvitingId(candidateId);
+
+    const res = await apiClient.sendInvite({
+      recipientId: candidateId,
+      recipientName: candidate.name,
+      type: 'TEAM_INVITE',
+      message: `Hi ${candidate.name}, I would love to collaborate with you on a capstone project!`
+    });
+
+    setInvitingId(null);
+
+    if (res.success) {
+      setPendingInvites(prev => Array.from(new Set([...prev, candidateId])));
+    } else {
+      if (res.message && res.message.includes('already pending')) {
+        setPendingInvites(prev => Array.from(new Set([...prev, candidateId])));
+      }
+    }
   };
 
   const teammates = allTeammatesList;
@@ -446,8 +400,13 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
             </div>
           </div>
 
-          {/* Teammate Cards Grid / Empty State */}
-          {sortedTeammates.length === 0 ? (
+          {/* Teammate Cards Grid / Loading / Empty State */}
+          {loading ? (
+            <div className="empty-state-box p-8 text-center" style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--surface-color, #F8FAFC)', borderRadius: '16px', border: '1px dashed #CBD5E1', margin: '24px 0' }}>
+              <div className="spinner" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: '3px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#64748B' }}>Loading registered student teammates...</h3>
+            </div>
+          ) : sortedTeammates.length === 0 ? (
             <div className="empty-state-box p-8 text-center" style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--surface-color, #F8FAFC)', borderRadius: '16px', border: '1px dashed #CBD5E1', margin: '24px 0' }}>
               <GraduationCap size={44} style={{ margin: '0 auto 12px', color: '#3B82F6' }} />
               <h3 style={{ fontSize: '18px', fontWeight: 800 }}>No other teammates found yet</h3>

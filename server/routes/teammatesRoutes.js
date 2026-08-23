@@ -22,9 +22,9 @@ const getTeammatesPrisma = async () => {
 router.get('/', async (req, res) => {
   const { search, skill, major } = req.query;
 
-  // Extract current user ID and email from JWT token or query params
-  let currentUserId = req.query.currentUserId || null;
-  let currentUserEmail = (req.query.excludeEmail || '').toLowerCase().trim();
+  // 1. Extract authenticated user details from JWT token or request
+  let currentUserId = req.user?.id || req.query.currentUserId || null;
+  let currentUserEmail = (req.user?.email || req.query.excludeEmail || '').toLowerCase().trim();
 
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -44,11 +44,30 @@ router.get('/', async (req, res) => {
 
   let candidates = [];
 
-  // 1. Fetch all registered users from Prisma PostgreSQL Database
+  // 2. Fetch all registered students from Prisma PostgreSQL Database excluding current user
   try {
     const prisma = await getTeammatesPrisma();
     if (prisma) {
+      const whereConditions = [
+        { role: { notIn: ['ADMIN', 'MENTOR'] } }
+      ];
+
+      // Exclude logged in user server-side in Prisma query
+      if (currentUserEmail) {
+        whereConditions.push({
+          email: { not: { equals: currentUserEmail, mode: 'insensitive' } }
+        });
+      }
+      if (currentUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUserId)) {
+        whereConditions.push({
+          id: { not: currentUserId }
+        });
+      }
+
       const dbUsers = await prisma.user.findMany({
+        where: {
+          AND: whereConditions
+        },
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -66,36 +85,39 @@ router.get('/', async (req, res) => {
       });
 
       if (dbUsers && dbUsers.length > 0) {
-        candidates = dbUsers
-          .filter(u => u.role !== 'ADMIN' && u.role !== 'MENTOR')
-          .map(u => ({
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            role: u.degree || `B.Tech ${u.major || 'Computer Science & Engineering (CSE)'}`,
-            major: u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+/i, '') : 'Computer Science & Engineering (CSE)'),
-            degree: u.degree || 'B.Tech',
-            university: u.university || 'Stanford University',
-            skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
-            avatarBg: u.avatarBg || '#EFF6FF',
-            avatarColor: '#2563EB',
-            bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
-            rating: 5.0,
-            projectsCount: 5,
-            availability: 'Available Now',
-            verified: true,
-            initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',
-            createdAt: u.createdAt
-          }));
+        candidates = dbUsers.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.degree || `B.Tech ${u.major || 'Computer Science & Engineering (CSE)'}`,
+          major: u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+/i, '') : 'Computer Science & Engineering (CSE)'),
+          degree: u.degree || 'B.Tech',
+          university: u.university || 'Stanford University',
+          skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js', 'Engineering'],
+          avatarBg: u.avatarBg || '#EFF6FF',
+          avatarColor: '#2563EB',
+          bio: u.bio || `Student specializing in ${u.major || 'Engineering'} at ${u.university || 'Campus Network'}. Open to collaborations.`,
+          rating: 5.0,
+          projectsCount: 5,
+          availability: 'Available Now',
+          verified: true,
+          initials: u.name ? u.name.slice(0, 2).toUpperCase() : 'ST',
+          createdAt: u.createdAt
+        }));
       }
     }
   } catch (err) {
     console.warn('Teammates Prisma query info:', err.message);
   }
 
-  // 2. In-Memory Store Fallback / Merge
+  // 3. Fallback / Memory Store merge
   const storeStudents = usersDB
-    .filter(u => u.role !== 'ADMIN' && u.role !== 'MENTOR')
+    .filter(u => {
+      if (u.role === 'ADMIN' || u.role === 'MENTOR') return false;
+      if (currentUserEmail && u.email && u.email.toLowerCase().trim() === currentUserEmail) return false;
+      if (currentUserId && String(u.id) === String(currentUserId)) return false;
+      return true;
+    })
     .map(u => ({
       id: u.id,
       name: u.name,
@@ -162,7 +184,6 @@ router.get('/', async (req, res) => {
   return res.status(200).json({
     success: true,
     total: results.length,
-    source: candidates.length > 0 ? 'Supabase PostgreSQL Cloud Database' : 'Application State',
     teammates: results
   });
 });
