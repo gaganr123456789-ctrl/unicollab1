@@ -1,6 +1,6 @@
 import express from 'express';
 import crypto from 'crypto';
-import { usersDB } from '../db/dataStore.js';
+import { usersDB, hackathonRegistrationsDB } from '../db/dataStore.js';
 
 const router = express.Router();
 
@@ -340,9 +340,14 @@ router.delete('/users/clear', async (req, res) => {
 
   usersDB.length = 0;
 
+// --------------------------------------------------------------------------
+// 9. GET /api/admin/hackathon-registrations - Protected Hackathon Registrations
+// --------------------------------------------------------------------------
+router.get('/hackathon-registrations', async (req, res) => {
   return res.status(200).json({
     success: true,
-    message: 'All registered users data has been cleared successfully.'
+    count: hackathonRegistrationsDB.length,
+    registrations: hackathonRegistrationsDB
   });
 });
 

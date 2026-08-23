@@ -1,19 +1,27 @@
-import { hackathonsDB } from '../db/dataStore.js';
+import { hackathonsDB, hackathonRegistrationsDB } from '../db/dataStore.js';
 
-let prisma = null;
-try {
-  const { PrismaClient } = await import('@prisma/client');
-  prisma = new PrismaClient();
-} catch (err) {
-  console.warn('Prisma Client fallback in hackathonsController.');
-}
+let prismaInstance = null;
+const getPrisma = async () => {
+  if (!process.env.DATABASE_URL) return null;
+  if (!prismaInstance) {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      prismaInstance = new PrismaClient();
+    } catch (err) {
+      console.warn('Prisma load skipped in hackathonsController.');
+      return null;
+    }
+  }
+  return prismaInstance;
+};
 
 // GET /api/hackathons
 export const getHackathons = async (req, res) => {
   const { search } = req.query;
 
   try {
-    if (prisma && process.env.DATABASE_URL) {
+    const prisma = await getPrisma();
+    if (prisma) {
       const hackathons = await prisma.hackathon.findMany({
         orderBy: { startDate: 'asc' }
       });
@@ -32,33 +40,86 @@ export const getHackathons = async (req, res) => {
   return res.status(200).json({ success: true, count: results.length, hackathons: results });
 };
 
-// POST /api/hackathons/:id/register - Register student for hackathon
+// POST /api/hackathons/register & /api/hackathons/:id/register
 export const registerForHackathon = async (req, res) => {
-  const hackathonId = req.params.id;
-  const userId = req.user?.id || 'usr_demo';
+  const hackathonId = req.params.id || req.body.hackathonId || 301;
+  const {
+    hackathonTitle,
+    teamName,
+    teamDetails,
+    mobileNumber,
+    email,
+    collegeName,
+    usn,
+    studentName,
+    membersCount
+  } = req.body;
 
+  const resolvedHackathonTitle = hackathonTitle || (hackathonsDB.find(h => String(h.id) === String(hackathonId))?.title) || 'Global Innovation Hackathon 2026';
+  const resolvedStudentName = studentName || req.user?.name || (email ? email.split('@')[0] : 'Student Lead');
+  const resolvedEmail = email || req.user?.email || 'student@university.edu';
+  const registrationId = `HACK-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  const newRegistration = {
+    id: registrationId,
+    registrationId,
+    hackathonId: String(hackathonId),
+    hackathonTitle: resolvedHackathonTitle,
+    teamName: teamName || 'Team Code Morphicx',
+    teamDetails: teamDetails || '4 members',
+    membersCount: Number(membersCount) || 4,
+    studentName: resolvedStudentName,
+    email: resolvedEmail,
+    mobileNumber: mobileNumber || '+91 98765 43210',
+    collegeName: collegeName || 'The National Institute of Engineering (NIE)',
+    usn: usn || '4NI21CS042',
+    status: 'CONFIRMED',
+    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString()
+  };
+
+  // 1. Save to in-memory store
+  hackathonRegistrationsDB.unshift(newRegistration);
+
+  // 2. Broadcast to Admin Portal in real time via Socket.io
   try {
-    if (prisma && process.env.DATABASE_URL) {
-      const registration = await prisma.hackathonRegistration.create({
+    const io = req.app?.get('io') || global.io;
+    if (io) {
+      io.to('admin_room').emit('admin:newHackathonRegistration', newRegistration);
+      io.emit('admin:newHackathonRegistration', newRegistration);
+    }
+  } catch (e) {
+    console.warn('Hackathon socket broadcast warning:', e);
+  }
+
+  // 3. Attempt database persistence if available
+  try {
+    const prisma = await getPrisma();
+    if (prisma && req.user?.id) {
+      await prisma.hackathonRegistration.create({
         data: {
-          hackathonId,
-          userId
+          hackathonId: String(hackathonId),
+          userId: req.user.id
         }
       });
-      return res.status(201).json({ success: true, message: 'Successfully registered for Hackathon!', registration });
     }
   } catch (err) {
-    console.warn('Prisma registerForHackathon fallback:', err.message);
+    console.warn('Prisma hackathon registration notice:', err.message);
   }
 
   return res.status(201).json({
     success: true,
-    message: 'Successfully registered for Hackathon!',
-    registration: {
-      id: `reg_${Date.now()}`,
-      hackathonId,
-      userId,
-      registeredAt: new Date().toISOString()
-    }
+    message: `Successfully registered team "${newRegistration.teamName}" for ${resolvedHackathonTitle}!`,
+    registrationId,
+    registration: newRegistration
+  });
+};
+
+// GET /api/hackathons/registrations - Retrieve all Hackathon Registrations for Admin & Dashboard
+export const getHackathonRegistrations = async (req, res) => {
+  return res.status(200).json({
+    success: true,
+    count: hackathonRegistrationsDB.length,
+    registrations: hackathonRegistrationsDB
   });
 };

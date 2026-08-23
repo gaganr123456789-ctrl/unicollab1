@@ -1,11 +1,11 @@
 import express from 'express';
-import { getHackathons, registerForHackathon } from '../controllers/hackathonsController.js';
-import { authenticateToken } from '../middleware/authMiddleware.js';
+import { getHackathons, registerForHackathon, getHackathonRegistrations } from '../controllers/hackathonsController.js';
 
 const router = express.Router();
 
 router.get('/', getHackathons);
-router.post('/', authenticateToken, registerForHackathon);
-router.post('/:id/register', authenticateToken, registerForHackathon);
+router.get('/registrations', getHackathonRegistrations);
+router.post('/register', registerForHackathon);
+router.post('/:id/register', registerForHackathon);
 
 export default router;

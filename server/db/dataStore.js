@@ -4,6 +4,8 @@ export const usersDB = [];
 
 export const teammatesDB = [];
 
+export const hackathonRegistrationsDB = [];
+
 export const tasksDB = [
   {
     id: 1,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock, Trash2 } from 'lucide-react';
+import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock, Trash2, Trophy, Phone, Building2, IdCard, FileText } from 'lucide-react';
 import { apiClient } from '../services/apiClient';
 
 const formatDateTime = (rawTime) => {
@@ -27,9 +27,10 @@ const formatDateTime = (rawTime) => {
 
 export default function AdminPage({ setCurrentPage, theme, setTheme }) {
   const [usersList, setUsersList] = useState([]);
+  const [hackathonRegistrations, setHackathonRegistrations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [adminTab, setAdminTab] = useState('ALL'); // 'ALL' | 'STUDENT' | 'MENTOR'
+  const [adminTab, setAdminTab] = useState('ALL'); // 'ALL' | 'STUDENT' | 'MENTOR' | 'HACKATHON'
   
   // Admin Security Auth State
   const [adminKeyInput, setAdminKeyInput] = useState('');
@@ -57,11 +58,34 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
     return 'admin123';
   };
 
+  const fetchHackathonRegistrations = async () => {
+    try {
+      const res = await apiClient.getHackathonRegistrations();
+      let serverRegs = (res && res.success && Array.isArray(res.registrations)) ? res.registrations : [];
+      const cached = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_hackathon_registrations') || '[]') : [];
+      const combined = [...serverRegs, ...cached];
+      
+      const uniqueMap = new Map();
+      combined.forEach(r => {
+        if (r && (r.id || r.registrationId || (r.email && r.hackathonTitle))) {
+          const key = r.id || r.registrationId || `${r.email}_${r.hackathonTitle}`;
+          if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, r);
+          }
+        }
+      });
+      setHackathonRegistrations(Array.from(uniqueMap.values()));
+    } catch (e) {
+      console.warn('Failed to load hackathon registrations', e);
+    }
+  };
+
   useEffect(() => {
     if (isAdminAuthenticated) {
       fetchRegisteredUsers();
+      fetchHackathonRegistrations();
 
-      // Connect to Socket.io for real-time live admin user registration updates
+      // Connect to Socket.io for real-time live admin user registration & hackathon updates
       let socketInstance = null;
       try {
         if (typeof window !== 'undefined') {
@@ -89,6 +113,11 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                 return [formatted, ...prev];
               });
             });
+
+            socketInstance.on('admin:newHackathonRegistration', (newReg) => {
+              if (!newReg) return;
+              setHackathonRegistrations(prev => [newReg, ...prev]);
+            });
           }
         }
       } catch (err) {
@@ -98,6 +127,7 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
       return () => {
         if (socketInstance) {
           socketInstance.off('admin:newUser');
+          socketInstance.off('admin:newHackathonRegistration');
           socketInstance.disconnect();
         }
       };
@@ -680,7 +710,7 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
             </div>
 
             {/* Admin Stats Grid */}
-            <div className="grid-3-col mt-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            <div className="grid-4-col mt-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
               <div 
                 className="widget-card" 
                 onClick={() => setAdminTab('STUDENT')}
@@ -698,11 +728,11 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>🎓 Registered Students</span>
                   <Users size={18} className="text-blue" style={{ color: '#2563EB' }} />
                 </div>
-                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
                   {studentUsers.length} Students
                 </h3>
                 <span className="text-xs text-blue flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#2563EB', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
-                  <CheckCircle2 size={12} /> Click to view student directory
+                  <CheckCircle2 size={12} /> View student directory
                 </span>
               </div>
 
@@ -723,11 +753,36 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>👨‍🏫 Registered Mentors</span>
                   <Database size={18} className="text-purple" style={{ color: '#7C3AED' }} />
                 </div>
-                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
                   {mentorUsers.length} Mentors
                 </h3>
                 <span className="text-xs text-purple flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#7C3AED', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
-                  <CheckCircle2 size={12} /> Click to view mentor directory
+                  <CheckCircle2 size={12} /> View mentor directory
+                </span>
+              </div>
+
+              <div 
+                className="widget-card" 
+                onClick={() => setAdminTab('HACKATHON')}
+                style={{ 
+                  background: theme === 'dark' ? '#111827' : 'white', 
+                  borderRadius: '18px', 
+                  padding: '20px', 
+                  border: adminTab === 'HACKATHON' ? '2px solid #F59E0B' : `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: adminTab === 'HACKATHON' ? '0 0 16px rgba(245, 158, 11, 0.2)' : 'none'
+                }}
+              >
+                <div className="flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>🏆 Hackathon Registrations</span>
+                  <Trophy size={18} style={{ color: '#F59E0B' }} />
+                </div>
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                  {hackathonRegistrations.length} Teams
+                </h3>
+                <span className="text-xs flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
+                  <CheckCircle2 size={12} /> View hackathon teams
                 </span>
               </div>
 
@@ -745,30 +800,32 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                 }}
               >
                 <div className="flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>👥 Total Registered Accounts</span>
+                  <span className="text-sm text-muted" style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 700 }}>👥 Total Registered</span>
                   <Key size={18} className="text-emerald" style={{ color: '#059669' }} />
                 </div>
-                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '26px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
-                  {usersList.length} Total
+                <h3 className="text-2xl font-bold mt-2" style={{ fontSize: '24px', fontWeight: '800', margin: '8px 0 0', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                  {usersList.length} Accounts
                 </h3>
                 <span className="text-xs text-green flex align-center gap-1 mt-1" style={{ fontSize: '12px', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontWeight: 600 }}>
-                  <CheckCircle2 size={12} /> Supabase PostgreSQL Synced
+                  <CheckCircle2 size={12} /> PostgreSQL Synced
                 </span>
               </div>
             </div>
 
-            {/* Registered Users Table */}
+            {/* Registered Users & Hackathon Table */}
             <div className="settings-card mt-6" style={{ background: theme === 'dark' ? '#111827' : 'white', borderRadius: '20px', padding: '24px', border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` }}>
               <div className="flex justify-between align-center mb-4 flex-wrap gap-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <h3 style={{ fontSize: '19px', fontWeight: '800', margin: 0, color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
                     {adminTab === 'STUDENT' && `🎓 Registered Students Directory (${filteredUsers.length})`}
                     {adminTab === 'MENTOR' && `👨‍🏫 Registered Mentors Directory (${filteredUsers.length})`}
+                    {adminTab === 'HACKATHON' && `🏆 Hackathon Team Registrations (${hackathonRegistrations.length})`}
                     {adminTab === 'ALL' && `👥 Combined Users Directory (${filteredUsers.length})`}
                   </h3>
                   <span style={{ fontSize: '12px', color: '#64748B' }}>
                     {adminTab === 'STUDENT' && 'Listing all registered student accounts with their branches, degrees, and signup dates.'}
                     {adminTab === 'MENTOR' && 'Listing all registered faculty & industry mentor advisors with their domains and institutions.'}
+                    {adminTab === 'HACKATHON' && 'Listing all student teams registered for hackathons with their USN, college, mobile, and members.'}
                     {adminTab === 'ALL' && 'Listing all registered student and mentor accounts across campuses.'}
                   </span>
                 </div>
@@ -827,13 +884,30 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                     >
                       👨‍🏫 Mentors ({mentorUsers.length})
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab('HACKATHON')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        background: adminTab === 'HACKATHON' ? '#F59E0B' : 'transparent',
+                        color: adminTab === 'HACKATHON' ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      🏆 Hackathons ({hackathonRegistrations.length})
+                    </button>
                   </div>
 
                   <div className="input-with-icon search-sm" style={{ width: '240px', position: 'relative' }}>
                     <Search size={15} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94A3B8' }} />
                     <input 
                       type="text" 
-                      placeholder="Search name, email, branch..." 
+                      placeholder="Search name, team, email, branch..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '9999px', border: `1px solid ${theme === 'dark' ? '#374151' : '#CBD5E1'}`, background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
@@ -842,111 +916,213 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                 </div>
               </div>
 
-              <div className="table-responsive" style={{ overflowX: 'auto' }}>
-                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: `2px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`, textAlign: 'left', background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#E2E8F0' : '#475569' }}>
-                      <th style={{ padding: '12px' }}>Role</th>
-                      <th style={{ padding: '12px' }}>User Name</th>
-                      <th style={{ padding: '12px' }}>
-                        {adminTab === 'MENTOR' ? 'Professional Email' : (adminTab === 'STUDENT' ? 'Academic Email' : 'Email Address')}
-                      </th>
-                      <th style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Clock size={14} style={{ color: '#7C3AED' }} />
-                          <span>Registered Date & Time</span>
-                        </div>
-                      </th>
-                      <th style={{ padding: '12px' }}>
-                        {adminTab === 'MENTOR' ? 'Designation / Title' : (adminTab === 'STUDENT' ? 'Degree / Program' : 'Degree / Title')}
-                      </th>
-                      <th style={{ padding: '12px' }}>
-                        {adminTab === 'MENTOR' ? 'Expertise Domain' : (adminTab === 'STUDENT' ? 'Branch / Discipline' : 'Branch / Focus')}
-                      </th>
-                      <th style={{ padding: '12px' }}>
-                        {adminTab === 'MENTOR' ? 'Organization / University' : 'University Campus'}
-                      </th>
-                      <th style={{ padding: '12px' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((u, idx) => {
-                      const dt = formatDateTime(u.createdAt || u.created_at || u.created);
-                      return (
-                        <tr key={idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
-                          <td style={{ padding: '12px' }}>
-                            <span style={{ 
-                              background: u.role === 'MENTOR' ? '#F3E8FF' : '#EFF6FF', 
-                              color: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
-                              padding: '4px 10px', 
-                              borderRadius: '9999px', 
-                              fontWeight: '800', 
-                              fontSize: '11px',
-                              border: `1px solid ${u.role === 'MENTOR' ? '#DDD6FE' : '#BFDBFE'}`
-                            }}>
-                              {u.role === 'MENTOR' ? '👨‍🏫 MENTOR' : '🎓 STUDENT'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px', fontWeight: '700' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div style={{ 
-                                width: '32px', 
-                                height: '32px', 
-                                borderRadius: '50%', 
-                                background: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
-                                color: 'white', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                fontSize: '12px',
-                                fontWeight: '800'
+              {adminTab === 'HACKATHON' ? (
+                /* Hackathon Registrations Table View */
+                <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                  {hackathonRegistrations.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B' }}>
+                      <Trophy size={40} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
+                      <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>No Hackathon Registrations Yet</h4>
+                      <p style={{ fontSize: '13px', margin: '4px 0 0' }}>When students register for hackathons on the Hackathon Hub, their full team details appear here in real-time.</p>
+                    </div>
+                  ) : (
+                    <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: `2px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`, textAlign: 'left', background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#E2E8F0' : '#475569' }}>
+                          <th style={{ padding: '12px' }}>Reg ID</th>
+                          <th style={{ padding: '12px' }}>Hackathon Event</th>
+                          <th style={{ padding: '12px' }}>Team Name & Details</th>
+                          <th style={{ padding: '12px' }}>Team Lead / Student</th>
+                          <th style={{ padding: '12px' }}>College / University</th>
+                          <th style={{ padding: '12px' }}>USN / Student ID</th>
+                          <th style={{ padding: '12px' }}>Mobile Contact</th>
+                          <th style={{ padding: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <Clock size={14} style={{ color: '#F59E0B' }} />
+                              <span>Registered Time</span>
+                            </div>
+                          </th>
+                          <th style={{ padding: '12px' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {hackathonRegistrations
+                          .filter(r => {
+                            if (!searchQuery.trim()) return true;
+                            const q = searchQuery.toLowerCase().trim();
+                            return (
+                              (r.hackathonTitle && r.hackathonTitle.toLowerCase().includes(q)) ||
+                              (r.teamName && r.teamName.toLowerCase().includes(q)) ||
+                              (r.studentName && r.studentName.toLowerCase().includes(q)) ||
+                              (r.email && r.email.toLowerCase().includes(q)) ||
+                              (r.collegeName && r.collegeName.toLowerCase().includes(q)) ||
+                              (r.usn && r.usn.toLowerCase().includes(q))
+                            );
+                          })
+                          .map((r, idx) => {
+                            const dt = formatDateTime(r.registeredAt || r.createdAt);
+                            return (
+                              <tr key={r.id || idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
+                                <td style={{ padding: '12px', fontWeight: 800, color: '#F59E0B' }}>
+                                  {r.registrationId || r.id || `#HACK-${idx + 1}`}
+                                </td>
+                                <td style={{ padding: '12px', fontWeight: 700 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Trophy size={14} />
+                                    </div>
+                                    <span>{r.hackathonTitle || 'Global Innovation Hackathon'}</span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  <div style={{ fontWeight: 800, color: theme === 'dark' ? '#F3F4F6' : '#1E293B' }}>{r.teamName || 'Code Morphicx'}</div>
+                                  <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>{r.teamDetails || '4 members'}</div>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  <div style={{ fontWeight: 700 }}>{r.studentName || 'Student Lead'}</div>
+                                  <div style={{ fontSize: '11.5px', color: '#60A5FA' }}>{r.email}</div>
+                                </td>
+                                <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569' }}>
+                                  {r.collegeName || 'The National Institute of Engineering (NIE)'}
+                                </td>
+                                <td style={{ padding: '12px', fontWeight: 700, color: '#7C3AED' }}>
+                                  {r.usn || '4NI21CS042'}
+                                </td>
+                                <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569' }}>
+                                  {r.mobileNumber || '+91 98765 43210'}
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <div style={{ fontWeight: '700', fontSize: '12px', color: theme === 'dark' ? '#F3F4F6' : '#1E293B' }}>
+                                      <span>{dt.date}</span> <span style={{ color: '#F59E0B' }}>{dt.time}</span>
+                                    </div>
+                                    {dt.relative && (
+                                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: '700' }}>
+                                        {dt.relative}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                  <span style={{ background: '#DEF7EC', color: '#03543F', padding: '4px 8px', borderRadius: '6px', fontWeight: 800, fontSize: '11px', border: '1px solid #BCF0DA' }}>
+                                    ✓ Confirmed
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ) : (
+                /* Users Directory Table View */
+                <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                  <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: `2px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`, textAlign: 'left', background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#E2E8F0' : '#475569' }}>
+                        <th style={{ padding: '12px' }}>Role</th>
+                        <th style={{ padding: '12px' }}>User Name</th>
+                        <th style={{ padding: '12px' }}>
+                          {adminTab === 'MENTOR' ? 'Professional Email' : (adminTab === 'STUDENT' ? 'Academic Email' : 'Email Address')}
+                        </th>
+                        <th style={{ padding: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Clock size={14} style={{ color: '#7C3AED' }} />
+                            <span>Registered Date & Time</span>
+                          </div>
+                        </th>
+                        <th style={{ padding: '12px' }}>
+                          {adminTab === 'MENTOR' ? 'Designation / Title' : (adminTab === 'STUDENT' ? 'Degree / Program' : 'Degree / Title')}
+                        </th>
+                        <th style={{ padding: '12px' }}>
+                          {adminTab === 'MENTOR' ? 'Expertise Domain' : (adminTab === 'STUDENT' ? 'Branch / Discipline' : 'Branch / Focus')}
+                        </th>
+                        <th style={{ padding: '12px' }}>
+                          {adminTab === 'MENTOR' ? 'Organization / University' : 'University Campus'}
+                        </th>
+                        <th style={{ padding: '12px' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((u, idx) => {
+                        const dt = formatDateTime(u.createdAt || u.created_at || u.created);
+                        return (
+                          <tr key={idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ 
+                                background: u.role === 'MENTOR' ? '#F3E8FF' : '#EFF6FF', 
+                                color: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
+                                padding: '4px 10px', 
+                                borderRadius: '9999px', 
+                                fontWeight: '800', 
+                                fontSize: '11px',
+                                border: `1px solid ${u.role === 'MENTOR' ? '#DDD6FE' : '#BFDBFE'}`
                               }}>
-                                {u.initials || u.name?.slice(0, 2).toUpperCase() || 'ST'}
+                                {u.role === 'MENTOR' ? '👨‍🏫 MENTOR' : '🎓 STUDENT'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: '700' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ 
+                                  width: '32px', 
+                                  height: '32px', 
+                                  borderRadius: '50%', 
+                                  background: u.role === 'MENTOR' ? '#7C3AED' : '#2563EB', 
+                                  color: 'white', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  fontSize: '12px', 
+                                  fontWeight: '800' 
+                                }}>
+                                  {u.initials || u.name?.slice(0, 2).toUpperCase() || 'ST'}
+                                </div>
+                                <div>
+                                  <div>{u.name}</div>
+                                  {u.nextProject && (
+                                    <div style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 600 }}>🎯 Want to do: {u.nextProject.slice(0, 24)}...</div>
+                                  )}
+                                </div>
                               </div>
-                              <div>
-                                <div>{u.name}</div>
-                                {u.nextProject && (
-                                  <div style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 600 }}>🎯 Want to do: {u.nextProject.slice(0, 24)}...</div>
+                            </td>
+                            <td style={{ padding: '12px', color: '#60A5FA', fontWeight: '600' }}>{u.email}</td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <div style={{ fontWeight: '700', fontSize: '12.5px', color: theme === 'dark' ? '#F3F4F6' : '#1E293B', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <span>{dt.date}</span>
+                                  <span style={{ color: '#7C3AED', fontWeight: '800' }}>{dt.time}</span>
+                                </div>
+                                {dt.relative && (
+                                  <span style={{ fontSize: '11px', color: '#059669', fontWeight: '700' }}>
+                                    {dt.relative}
+                                  </span>
                                 )}
                               </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '12px', color: '#60A5FA', fontWeight: '600' }}>{u.email}</td>
-                          <td style={{ padding: '12px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <div style={{ fontWeight: '700', fontSize: '12.5px', color: theme === 'dark' ? '#F3F4F6' : '#1E293B', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <span>{dt.date}</span>
-                                <span style={{ color: '#7C3AED', fontWeight: '800' }}>{dt.time}</span>
-                              </div>
-                              {dt.relative && (
-                                <span style={{ fontSize: '11px', color: '#059669', fontWeight: '700' }}>
-                                  {dt.relative}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ padding: '12px', fontWeight: '700' }}>
-                            {u.role === 'MENTOR' 
-                              ? (u.roleTitle || 'Industry Professional') 
-                              : (u.degree || (u.major ? `B.Tech ${u.major}` : 'B.Tech Computer Science & Engineering (CSE)'))}
-                          </td>
-                          <td style={{ padding: '12px' }}>
-                            {u.role === 'MENTOR' 
-                              ? (u.major || (Array.isArray(u.mentorInterests) && u.mentorInterests.length > 0 ? u.mentorInterests.join(', ') : 'Mentorship & Research')) 
-                              : (u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : 'Computer Science & Engineering (CSE)'))}
-                          </td>
-                          <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#64748B' }}>
-                            {u.university || 'Stanford University'}
-                          </td>
-                          <td style={{ padding: '12px' }}>
-                            <span className="phase-badge green" style={{ background: '#D1FAE5', color: '#059669', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', fontSize: '11px' }}>Active Account</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: '700' }}>
+                              {u.role === 'MENTOR' 
+                                ? (u.roleTitle || 'Industry Professional') 
+                                : (u.degree || (u.major ? `B.Tech ${u.major}` : 'B.Tech Computer Science & Engineering (CSE)'))}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              {u.role === 'MENTOR' 
+                                ? (u.major || (Array.isArray(u.mentorInterests) && u.mentorInterests.length > 0 ? u.mentorInterests.join(', ') : 'Mentorship & Research')) 
+                                : (u.major || (u.degree ? u.degree.replace(/^B\.Tech\s+|^B\.Sc\s+|^M\.Tech\s+\/\s+M\.S\.\s+/i, '').trim() : 'Computer Science & Engineering (CSE)'))}
+                            </td>
+                            <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#64748B' }}>
+                              {u.university || 'Stanford University'}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span className="phase-badge green" style={{ background: '#D1FAE5', color: '#059669', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', fontSize: '11px' }}>Active Account</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

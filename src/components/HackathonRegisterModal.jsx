@@ -68,9 +68,15 @@ export default function HackathonRegisterModal({
     }
 
     setLoading(true);
-    const res = await apiClient.register({
-      hackathonId: 301,
+    const res = await apiClient.registerHackathon({
+      hackathonTitle,
       teamName: formData.teamName,
+      teamDetails: formData.teamDetails,
+      mobileNumber: formData.mobileNumber,
+      email: formData.email,
+      collegeName: formData.collegeName,
+      usn: formData.usn,
+      studentName: userProfile?.name || formData.teamName,
       membersCount: 4
     });
     setLoading(false);
