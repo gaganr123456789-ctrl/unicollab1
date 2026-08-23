@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
 import { 
   Share2, 
@@ -8,85 +8,167 @@ import {
   CheckCircle2, 
   Clock, 
   MessageSquare, 
-  Layers
+  Layers,
+  Edit2,
+  Trash2,
+  Plus
 } from 'lucide-react';
+
+const INITIAL_KANBAN_TASKS = [
+  {
+    id: 1,
+    column: 'todo',
+    title: 'Setup CI/CD Pipeline',
+    desc: 'Configure GitHub Actions for automated deployment.',
+    priority: 'HIGH',
+    comments: 3,
+    date: 'Oct 24'
+  },
+  {
+    id: 2,
+    column: 'todo',
+    title: 'User Research Synthesis',
+    desc: 'Analyze interview transcripts from first testing round.',
+    priority: 'MEDIUM',
+    comments: 4,
+    date: 'Oct 28'
+  },
+  {
+    id: 3,
+    column: 'in_progress',
+    title: 'Mobile Navigation Polish',
+    desc: 'Fixing spacing issues on the hamburger menu.',
+    priority: 'MEDIUM',
+    comments: 2,
+    date: 'Oct 22'
+  },
+  {
+    id: 4,
+    column: 'in_progress',
+    title: 'REST API Authentication System',
+    desc: 'Backend Node.js & Express REST endpoints.',
+    priority: 'HIGH',
+    comments: 5,
+    date: 'Oct 26'
+  },
+  {
+    id: 5,
+    column: 'review',
+    title: 'Database Schema Finalization',
+    desc: 'Final check of the ER diagram before migration.',
+    priority: 'HIGH',
+    comments: 5,
+    date: 'Oct 19'
+  },
+  {
+    id: 6,
+    column: 'completed',
+    title: 'Project Kickoff Meeting',
+    desc: 'Internal wiki page setup and initial roadmap.',
+    priority: 'LOW',
+    comments: 8,
+    date: 'Oct 10'
+  }
+];
 
 export default function WorkspacePage() {
   const [activeTab, setActiveTab] = useState('Kanban Board');
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      column: 'todo',
-      title: 'Setup CI/CD Pipeline',
-      desc: 'Configure GitHub Actions for automated deployment.',
-      priority: 'HIGH',
-      comments: 3,
-      date: 'Oct 24'
-    },
-    {
-      id: 2,
-      column: 'todo',
-      title: 'User Research Synthesis',
-      desc: 'Analyze interview transcripts from first testing round.',
-      priority: 'MEDIUM',
-      comments: 4,
-      date: 'Oct 28'
-    },
-    {
-      id: 3,
-      column: 'in_progress',
-      title: 'Mobile Navigation Polish',
-      desc: 'Fixing spacing issues on the hamburger menu.',
-      priority: 'MEDIUM',
-      comments: 2,
-      date: 'Oct 22'
-    },
-    {
-      id: 4,
-      column: 'in_progress',
-      title: 'REST API Authentication System',
-      desc: 'Backend Node.js & Express REST endpoints.',
-      priority: 'HIGH',
-      comments: 5,
-      date: 'Oct 26'
-    },
-    {
-      id: 5,
-      column: 'review',
-      title: 'Database Schema Finalization',
-      desc: 'Final check of the ER diagram before migration.',
-      priority: 'HIGH',
-      comments: 5,
-      date: 'Oct 19'
-    },
-    {
-      id: 6,
-      column: 'completed',
-      title: 'Project Kickoff Meeting',
-      desc: 'Internal wiki page setup and initial roadmap.',
-      priority: 'LOW',
-      comments: 8,
-      date: 'Oct 10'
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Persistent Tasks State from LocalStorage with Server Sync
+  const [tasks, setTasks] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('unicollab_kanban_tasks');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+      }
     }
-  ]);
+    return INITIAL_KANBAN_TASKS;
+  });
+
+  // Save to LocalStorage whenever tasks update
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('unicollab_kanban_tasks', JSON.stringify(tasks));
+    }
+  }, [tasks]);
+
+  // Load from Backend API on mount
+  useEffect(() => {
+    const fetchServerTasks = async () => {
+      try {
+        const res = await apiClient.getTasks();
+        if (res.success && Array.isArray(res.tasks) && res.tasks.length > 0) {
+          setTasks(prev => {
+            const serverTasks = res.tasks.map(t => ({
+              id: t.id,
+              column: t.column || 'todo',
+              title: t.title,
+              desc: t.desc || t.description || 'Task deliverable.',
+              priority: (t.priority || 'Medium').toUpperCase(),
+              comments: t.comments || 0,
+              date: t.date || 'Today'
+            }));
+            const map = new Map();
+            [...serverTasks, ...prev].forEach(task => map.set(task.id, task));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.warn('Task load notice:', err);
+      }
+    };
+    fetchServerTasks();
+  }, []);
 
   const moveTask = (taskId, newCol) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, column: newCol } : t));
   };
 
-  const addTask = (col) => {
+  const addTask = async (col) => {
     const title = prompt('Enter task title:');
-    if (!title) return;
+    if (!title || !title.trim()) return;
+    const desc = prompt('Enter task description (optional):') || 'Task deliverable item.';
+    const priority = prompt('Enter priority (HIGH / MEDIUM / LOW):', 'MEDIUM')?.toUpperCase() || 'MEDIUM';
+
     const newTask = {
       id: Date.now(),
       column: col,
-      title,
-      desc: 'Newly created task item.',
-      priority: 'MEDIUM',
+      title: title.trim(),
+      desc: desc.trim(),
+      priority: ['HIGH', 'MEDIUM', 'LOW'].includes(priority) ? priority : 'MEDIUM',
       comments: 0,
       date: 'Today'
     };
+
     setTasks(prev => [...prev, newTask]);
+
+    try {
+      await apiClient.createTask(newTask);
+    } catch (e) {}
+  };
+
+  const editTask = (task) => {
+    const newTitle = prompt('Edit task title:', task.title);
+    if (!newTitle || !newTitle.trim()) return;
+    const newDesc = prompt('Edit description:', task.desc) || task.desc;
+    const newPriority = prompt('Edit priority (HIGH / MEDIUM / LOW):', task.priority)?.toUpperCase() || task.priority;
+
+    setTasks(prev => prev.map(t => t.id === task.id ? {
+      ...t,
+      title: newTitle.trim(),
+      desc: newDesc.trim(),
+      priority: ['HIGH', 'MEDIUM', 'LOW'].includes(newPriority) ? newPriority : t.priority
+    } : t));
+  };
+
+  const deleteTask = (taskId) => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+    }
   };
 
   const columns = [
@@ -107,6 +189,12 @@ export default function WorkspacePage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const filteredTasks = tasks.filter(t => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.priority.toLowerCase().includes(q);
+  });
 
   return (
     <div className="page-container animate-fade-in">
@@ -168,20 +256,24 @@ export default function WorkspacePage() {
           <div className="kanban-toolbar">
             <div className="input-with-icon search-sm">
               <Search size={15} />
-              <input type="text" placeholder="Search tasks..." />
+              <input 
+                type="text" 
+                placeholder="Search tasks..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
 
             <div className="toolbar-actions">
-              <button className="btn-sm-outline"><Filter size={14} /> Filter</button>
-              <span className="text-sm text-muted">Group by: <strong>Priority</strong></span>
-              <span className="text-sm text-muted">Displaying {tasks.length} tasks</span>
+              <button className="btn-sm-outline" onClick={() => setSearchQuery('')}><Filter size={14} /> Clear Filter</button>
+              <span className="text-sm text-muted">Displaying <strong>{filteredTasks.length}</strong> tasks (Auto-saved)</span>
             </div>
           </div>
 
           {/* Columns Grid */}
           <div className="kanban-columns-grid mt-4">
             {columns.map((col) => {
-              const colTasks = tasks.filter(t => t.column === col.id);
+              const colTasks = filteredTasks.filter(t => t.column === col.id);
               return (
                 <div key={col.id} className="kanban-col">
                   <div className="col-header">
@@ -190,14 +282,22 @@ export default function WorkspacePage() {
                       <h4>{col.title}</h4>
                       <span className="task-count">{colTasks.length}</span>
                     </div>
-                    <button className="add-task-icon-btn" onClick={() => addTask(col.id)}>+</button>
+                    <button className="add-task-icon-btn" onClick={() => addTask(col.id)} title="Add Task">+</button>
                   </div>
 
                   <div className="task-cards-stack">
                     {colTasks.map((t) => (
                       <div key={t.id} className="task-card">
-                        <div className="task-card-top">
+                        <div className="task-card-top flex justify-between align-center">
                           <span className={`priority-badge ${t.priority.toLowerCase()}`}>{t.priority}</span>
+                          <div className="flex gap-1">
+                            <button onClick={() => editTask(t)} className="icon-btn-micro" title="Edit task">
+                              <Edit2 size={12} />
+                            </button>
+                            <button onClick={() => deleteTask(t.id)} className="icon-btn-micro text-danger" title="Delete task">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
                         <h4 className="task-title">{t.title}</h4>
                         <p className="task-desc">{t.desc}</p>
@@ -209,7 +309,7 @@ export default function WorkspacePage() {
 
                         {/* Move Task Quick Select */}
                         <div className="move-task-row">
-                          <span className="move-task-label">Move to:</span>
+                          <span className="move-task-label">Move:</span>
                           {columns.filter(c => c.id !== col.id).map(c => (
                             <button 
                               key={c.id} 

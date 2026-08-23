@@ -1,8 +1,12 @@
 // Resend Email Dispatch Utility with Automatic Test Account Routing
 import { Resend } from 'resend';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const resendApiKey = process.env.RESEND_API_KEY || '';
-const resend = new Resend(resendApiKey);
+const getResendClient = () => {
+  const apiKey = process.env.RESEND_API_KEY || 're_placeholder_key';
+  return new Resend(apiKey);
+};
 
 // Resend Free Tier Account Owner Email (Only verified recipient in Resend test mode without custom domain)
 const RESEND_TEST_OWNER_EMAIL = 'gagan.r123456789@gmail.com';
@@ -16,6 +20,7 @@ export async function sendEmail({ to, subject, html }) {
   let targetRecipient = originalRecipient;
 
   try {
+    const resend = getResendClient();
     // 1. Attempt sending to target recipient
     let response = await resend.emails.send({
       from: 'UniCollab <onboarding@resend.dev>',

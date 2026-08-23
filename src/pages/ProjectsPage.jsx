@@ -154,9 +154,34 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
     }
   ];
 
-  const [projectsList, setProjectsList] = useState(defaultProjects);
+  const [projectsList, setProjectsList] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('unicollab_user_projects');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return [...parsed, ...defaultProjects];
+        } catch (e) {}
+      }
+    }
+    return defaultProjects;
+  });
 
   useEffect(() => {
+    const fetchServerProjects = async () => {
+      try {
+        const res = await apiClient.getProjects();
+        if (res.success && Array.isArray(res.projects) && res.projects.length > 0) {
+          setProjectsList(prev => {
+            const map = new Map();
+            [...res.projects, ...prev].forEach(p => map.set(p.title || p.id, p));
+            return Array.from(map.values());
+          });
+        }
+      } catch (e) {}
+    };
+    fetchServerProjects();
+
     try {
       const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
         ? 'http://localhost:5000'
@@ -177,7 +202,14 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
   }, []);
 
   const handleProjectCreated = (newProj) => {
-    setProjectsList(prev => [newProj, ...prev]);
+    setProjectsList(prev => {
+      const updated = [newProj, ...prev];
+      if (typeof window !== 'undefined') {
+        const existingUser = JSON.parse(localStorage.getItem('unicollab_user_projects') || '[]');
+        localStorage.setItem('unicollab_user_projects', JSON.stringify([newProj, ...existingUser]));
+      }
+      return updated;
+    });
   };
 
   const categories = ['All Projects', 'Data & Research', 'Robotics'];
