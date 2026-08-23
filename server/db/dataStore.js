@@ -4,6 +4,12 @@ export const usersDB = [];
 
 export const teammatesDB = [];
 
+export const connectionsDB = [];
+
+export const conversationsDB = [];
+
+export const messagesDB = [];
+
 export const hackathonRegistrationsDB = [
   {
     id: 'HACK-984210',
@@ -191,17 +197,6 @@ export const hackathonsDB = [
   }
 ];
 
-export const messagesDB = [
-  {
-    id: 1,
-    senderId: 2,
-    senderName: 'Dr. Ananya Sharma',
-    receiverId: 1,
-    text: 'The project proposal looks great! Should we finalize the tech stack tonight?',
-    timestamp: '10:23 AM',
-    unread: false
-  }
-];
 
 export const projectsDB = [
   {

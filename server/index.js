@@ -51,6 +51,7 @@ app.get('/api/health', (req, res) => {
 // --------------------------------------------------------------------------
 import invitesRoutes from './routes/invitesRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
+import connectionsRoutes from './routes/connectionsRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -62,6 +63,7 @@ app.use('/api/mentors', mentorsRoutes);
 app.use('/api/resources', resourcesRoutes);
 app.use('/api/hackathons', hackathonsRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/connections', connectionsRoutes);
 app.use('/api/teammates', teammatesRoutes);
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/ai', aiRoutes);
@@ -97,7 +99,7 @@ app.use((err, req, res, next) => {
 });
 
 // --------------------------------------------------------------------------
-// 5. Socket.io Real-Time Messaging Engine with JWT Authentication
+// 5. Socket.io Real-Time Messaging & Presence Engine
 // --------------------------------------------------------------------------
 const io = new Server(httpServer, {
   cors: {
@@ -109,13 +111,15 @@ const io = new Server(httpServer, {
 app.set('io', io);
 global.io = io;
 
-// Authenticate Socket connection using JWT Token (or allow admin connections)
+// Track online users: key -> { socketId, id, email, name, lastSeen }
+const onlineUsersMap = new Map();
+
+// Authenticate Socket connection using JWT Token (or allow guest listeners)
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
 
   if (!token) {
-    // Allow anonymous admin socket connections for real-time dashboard listeners
-    socket.user = { id: `anon_${socket.id}`, name: 'Admin Listener' };
+    socket.user = { id: `anon_${socket.id}`, name: 'UniCollab Student' };
     return next();
   }
 
@@ -124,7 +128,7 @@ io.use((socket, next) => {
     socket.user = decoded;
     next();
   } catch (err) {
-    socket.user = { id: `anon_${socket.id}`, name: 'Guest Listener' };
+    socket.user = { id: `anon_${socket.id}`, name: 'UniCollab Guest' };
     next();
   }
 });
@@ -132,53 +136,128 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log(`🔌 [SOCKET.IO] Authenticated student/admin connected: ${socket.user?.name || socket.id}`);
 
+  // Register online user presence
+  socket.on('register_user', (userData) => {
+    const email = (userData?.email || socket.user?.email || '').toLowerCase().trim();
+    const id = userData?.id || socket.user?.id || socket.id;
+    const name = userData?.name || socket.user?.name || 'Student';
+
+    if (email) {
+      onlineUsersMap.set(email, { socketId: socket.id, id, email, name });
+      socket.join(`user_${email}`);
+    }
+    if (id) {
+      onlineUsersMap.set(id, { socketId: socket.id, id, email, name });
+      socket.join(`user_${id}`);
+    }
+
+    // Broadcast online presence to all connected clients
+    const onlineList = Array.from(onlineUsersMap.values()).map(u => ({ id: u.id, email: u.email, name: u.name }));
+    io.emit('online_users_updated', onlineList);
+  });
+
   socket.on('join_admin_room', () => {
     socket.join('admin_room');
     console.log(`🛡️ Socket ${socket.id} joined admin authorization room.`);
   });
 
   socket.on('join_conversation', (conversationId) => {
+    if (!conversationId) return;
     socket.join(conversationId);
+    socket.join(`conv_${conversationId}`);
     console.log(`💬 Socket ${socket.id} joined conversation room: ${conversationId}`);
   });
 
-  socket.on('send_message', async (data) => {
-    const { conversationId, content } = data;
-    if (!conversationId || !content) return;
+  socket.on('leave_conversation', (conversationId) => {
+    if (!conversationId) return;
+    socket.leave(conversationId);
+    socket.leave(`conv_${conversationId}`);
+  });
 
-    let savedMsgId = `msg_${Date.now()}`;
-    try {
-      if (process.env.DATABASE_URL) {
-        const { PrismaClient } = await import('@prisma/client');
-        const prismaClient = new PrismaClient();
-        const created = await prismaClient.message.create({
-          data: {
-            conversationId,
-            senderId: socket.user?.id || 'usr_demo',
-            content: content.trim()
-          }
-        });
-        savedMsgId = created.id;
-      }
-    } catch (err) {
-      console.warn('Prisma Socket message save fallback:', err.message);
-    }
+  // Typing indicator broadcast
+  socket.on('typing:start', (data) => {
+    const { conversationId, senderName, senderId, senderEmail } = data;
+    if (!conversationId) return;
+    socket.to(conversationId).to(`conv_${conversationId}`).emit('typing:status', {
+      conversationId,
+      senderName: senderName || 'Teammate',
+      senderId,
+      senderEmail,
+      isTyping: true
+    });
+  });
+
+  socket.on('typing:stop', (data) => {
+    const { conversationId, senderId, senderEmail } = data;
+    if (!conversationId) return;
+    socket.to(conversationId).to(`conv_${conversationId}`).emit('typing:status', {
+      conversationId,
+      senderId,
+      senderEmail,
+      isTyping: false
+    });
+  });
+
+  // Real-time message dispatch
+  socket.on('send_message', async (data) => {
+    const { conversationId, content, text, senderId, senderName, senderEmail, receiverId, receiverEmail } = data;
+    const rawContent = (content || text || '').trim();
+    if (!conversationId || !rawContent) return;
 
     const messagePayload = {
-      id: savedMsgId,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      conversation_id: conversationId,
       conversationId,
-      senderId: socket.user?.id || 'usr_demo',
-      senderName: socket.user?.name || 'Alex Rivera',
-      content: content.trim(),
-      createdAt: new Date().toISOString()
+      sender_id: senderId || socket.user?.id || 'usr_demo',
+      senderId: senderId || socket.user?.id || 'usr_demo',
+      senderName: senderName || socket.user?.name || 'Student',
+      senderEmail: (senderEmail || socket.user?.email || '').toLowerCase().trim(),
+      receiver_id: receiverId,
+      receiverId: receiverId,
+      receiverEmail: (receiverEmail || '').toLowerCase().trim(),
+      content: rawContent,
+      message: rawContent,
+      text: rawContent,
+      status: 'DELIVERED',
+      message_status: 'DELIVERED',
+      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    // Broadcast message to room members
-    io.to(conversationId).emit('receive_message', messagePayload);
+    // Broadcast to active conversation room
+    io.to(conversationId).to(`conv_${conversationId}`).emit('receive_message', messagePayload);
+
+    // Also send direct push notification event to receiver's user room
+    if (receiverEmail) {
+      io.to(`user_${receiverEmail.toLowerCase().trim()}`).emit('new_message_notification', messagePayload);
+    }
+    if (receiverId) {
+      io.to(`user_${receiverId}`).emit('new_message_notification', messagePayload);
+    }
+  });
+
+  // Mark messages as read
+  socket.on('mark_read', (data) => {
+    const { conversationId, readerId, readerEmail } = data;
+    if (!conversationId) return;
+    socket.to(conversationId).to(`conv_${conversationId}`).emit('messages_read', {
+      conversationId,
+      readerId,
+      readerEmail,
+      readAt: new Date().toISOString()
+    });
   });
 
   socket.on('disconnect', () => {
     console.log(`🔌 [SOCKET.IO] Student disconnected: ${socket.id}`);
+    for (const [key, val] of onlineUsersMap.entries()) {
+      if (val.socketId === socket.id) {
+        onlineUsersMap.delete(key);
+      }
+    }
+    const onlineList = Array.from(onlineUsersMap.values()).map(u => ({ id: u.id, email: u.email, name: u.name }));
+    io.emit('online_users_updated', onlineList);
   });
 });
 

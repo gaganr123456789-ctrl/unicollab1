@@ -77,9 +77,23 @@ export default function Sidebar({ currentPage, setCurrentPage, isMobileNavOpen, 
                 key={item.id}
                 className={`sidebar-link ${isActive ? 'active' : ''}`}
                 onClick={() => handleNavClick(item.id)}
+                style={{ position: 'relative' }}
               >
                 <Icon size={18} />
-                <span>{item.label}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.id === 'messages' && (
+                  <span style={{
+                    background: '#2563EB',
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    padding: '1px 6px',
+                    borderRadius: '9999px',
+                    marginLeft: 'auto'
+                  }}>
+                    Live
+                  </span>
+                )}
               </button>
             );
           })}

@@ -88,11 +88,13 @@ export default function App() {
   const handleOpenChat = (partner) => {
     if (partner) {
       setActiveChatPartner({
+        id: partner.id,
+        email: partner.email,
         name: partner.name || 'Student User',
         initials: partner.initials || (partner.name || 'SU').split(' ').map(n => n[0]).join('').slice(0, 2),
         avatarBg: partner.avatarBg || '#EFF6FF',
         avatarColor: partner.avatarColor || '#2563EB',
-        role: partner.title || partner.major || 'Collab Partner',
+        role: partner.title || partner.major || 'Connected Teammate',
         type: partner.type || 'direct'
       });
     }
@@ -227,6 +229,7 @@ export default function App() {
             <MessagesPage 
               activeChatPartner={activeChatPartner}
               userProfile={userProfile}
+              setCurrentPage={setCurrentPage}
             />
           )}
           {currentPage === 'profile' && (

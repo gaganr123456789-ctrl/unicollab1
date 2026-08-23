@@ -7,10 +7,13 @@ import {
   Star, 
   MapPin, 
   Briefcase, 
-  SlidersHorizontal,
-  GraduationCap,
-  Check,
-  Sparkles
+  SlidersHorizontal, 
+  GraduationCap, 
+  Check, 
+  Clock, 
+  Sparkles, 
+  ShieldCheck, 
+  UserCheck 
 } from 'lucide-react';
 
 export default function FindTeammatesPage({ onOpenChat, userProfile }) {
@@ -20,9 +23,15 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
   const [sortBy, setSortBy] = useState('Best Match');
   const [isAiMatching, setIsAiMatching] = useState(false);
   const [allTeammatesList, setAllTeammatesList] = useState([]);
-  const [pendingInvites, setPendingInvites] = useState([]);
-  const [invitingId, setInvitingId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Connection Lifecycle State
+  const [connectionsData, setConnectionsData] = useState({
+    accepted: [],
+    incomingPending: [],
+    outgoingPending: []
+  });
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const engineeringBranches = [
     'Computer Science & Engineering (CSE)',
@@ -38,6 +47,25 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     'Business Admin & Management',
     'Digital Media & UI/UX Design'
   ];
+
+  // Fetch all connections for logged in user
+  const fetchConnections = async () => {
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+    const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
+
+    try {
+      const res = await apiClient.getConnections(myEmail, myId);
+      if (res && res.success) {
+        setConnectionsData({
+          accepted: res.connections || [],
+          incomingPending: res.incomingPending || [],
+          outgoingPending: res.outgoingPending || []
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch connections:', e);
+    }
+  };
 
   // Dynamically load all registered students across API, Database, and Local storage, strictly excluding the logged in student
   const loadRegisteredTeammates = async () => {
@@ -139,16 +167,16 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
                 : ['React', 'Node.js', 'Python', 'TypeScript', 'TailwindCSS']));
 
       return {
-        id: u.id || `reg_user_${i}`,
+        id: u.id || `peer_${i + 1}`,
+        email: rawEmail,
         name: userName,
-        email: u.email || '',
-        rating: (4.8 + (i % 3) * 0.1).toFixed(1),
         major: userMajor,
         degree: userDegree,
-        year: u.year || 'Senior',
-        bio: u.bio || `Passionate student specializing in ${userMajor} at ${userUni}. Open to project collaborations and hackathon teams.`,
+        year: u.year || '3rd Year',
+        rating: 4.8 + (i % 3) * 0.1,
+        bio: u.bio || `Student in ${userMajor} at ${userUni}. Passionate about high-impact capstone projects and research.`,
         skills: skillsList,
-        projectsCount: u.projectsCount || 5 + (i % 4),
+        projectsCount: u.projectsCount || 4 + (i % 3),
         location: userUni,
         avatarBg: u.avatarBg || '#EFF6FF',
         avatarColor: u.avatarColor || '#2563EB',
@@ -163,41 +191,127 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
 
   useEffect(() => {
     loadRegisteredTeammates();
+    fetchConnections();
 
-    // Fetch sent pending invites
-    const fetchSentInvites = async () => {
-      try {
-        const res = await apiClient.getSentInvites();
-        if (res.success && Array.isArray(res.pendingRecipients)) {
-          setPendingInvites(res.pendingRecipients);
+    // Socket.IO real-time connection status listener
+    let socket = null;
+    try {
+      if (typeof window !== 'undefined' && window.io) {
+        const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
+        socket = window.io(socketUrl);
+        const myEmail = (userProfile?.email || '').toLowerCase().trim();
+        if (myEmail) {
+          socket.emit('register_user', { email: myEmail, name: userProfile?.name });
         }
-      } catch (e) {
-        console.warn('Failed to load sent invites', e);
+        socket.on('connection:request', () => fetchConnections());
+        socket.on('connection:accepted', () => fetchConnections());
+        socket.on('connection:update', () => fetchConnections());
       }
+    } catch (e) {
+      console.warn('Socket connection listener notice:', e);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
     };
-    fetchSentInvites();
   }, []);
 
-  const handleSendInvite = async (candidate) => {
-    const candidateId = candidate.id || candidate.name;
-    setInvitingId(candidateId);
+  // Determine Connection Status for each Teammate Card
+  const getCandidateConnectionState = (candidate) => {
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+    const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
 
-    const res = await apiClient.sendInvite({
-      recipientId: candidateId,
-      recipientName: candidate.name,
-      type: 'TEAM_INVITE',
-      message: `Hi ${candidate.name}, I would love to collaborate with you on a capstone project!`
+    const targetEmail = (candidate.email || '').toLowerCase().trim();
+    const targetName = (candidate.name || '').toLowerCase().trim();
+    const targetId = candidate.id;
+
+    // 1. Check ACCEPTED connections
+    const isAccepted = connectionsData.accepted.some(c => {
+      const sEmail = (c.senderEmail || '').toLowerCase().trim();
+      const rEmail = (c.receiverEmail || '').toLowerCase().trim();
+      const sName = (c.senderName || '').toLowerCase().trim();
+      const rName = (c.receiverName || '').toLowerCase().trim();
+
+      return (
+        (targetEmail && (sEmail === targetEmail || rEmail === targetEmail)) ||
+        (targetName && (sName === targetName || rName === targetName)) ||
+        (targetId && (c.senderId === targetId || c.receiverId === targetId))
+      );
+    });
+    if (isAccepted) return 'CONNECTED';
+
+    // 2. Check INCOMING pending requests
+    const incomingReq = connectionsData.incomingPending.find(c => {
+      const sEmail = (c.senderEmail || '').toLowerCase().trim();
+      const sName = (c.senderName || '').toLowerCase().trim();
+      return (targetEmail && sEmail === targetEmail) || (targetName && sName === targetName) || (targetId && c.senderId === targetId);
+    });
+    if (incomingReq) return { status: 'PENDING_RECEIVED', reqId: incomingReq.id };
+
+    // 3. Check OUTGOING pending requests
+    const isOutgoing = connectionsData.outgoingPending.some(c => {
+      const rEmail = (c.receiverEmail || '').toLowerCase().trim();
+      const rName = (c.receiverName || '').toLowerCase().trim();
+      return (targetEmail && rEmail === targetEmail) || (targetName && rName === targetName) || (targetId && c.receiverId === targetId);
+    });
+    if (isOutgoing) return 'PENDING_SENT';
+
+    return 'NOT_CONNECTED';
+  };
+
+  // Connection Actions
+  const handleSendConnection = async (candidate) => {
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+    const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : 'usr_me');
+    const myName = userProfile?.name || 'Student';
+
+    const targetEmail = (candidate.email || candidate.id || candidate.name).toLowerCase().trim();
+    const cardKey = candidate.id || candidate.email || candidate.name;
+    setActionLoadingId(cardKey);
+
+    const res = await apiClient.sendConnectionRequest({
+      senderId: myId,
+      senderEmail: myEmail,
+      senderName: myName,
+      receiverId: candidate.id,
+      receiverEmail: targetEmail,
+      receiverName: candidate.name,
+      message: `Hi ${candidate.name}, let's connect and collaborate on capstone projects!`
     });
 
-    setInvitingId(null);
-
+    setActionLoadingId(null);
     if (res.success) {
-      setPendingInvites(prev => Array.from(new Set([...prev, candidateId])));
-    } else {
-      if (res.message && res.message.includes('already pending')) {
-        setPendingInvites(prev => Array.from(new Set([...prev, candidateId])));
-      }
+      await fetchConnections();
     }
+  };
+
+  const handleAcceptConnection = async (candidate, reqId) => {
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+    const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : 'usr_me');
+
+    const targetEmail = (candidate.email || candidate.id || candidate.name).toLowerCase().trim();
+    const cardKey = candidate.id || candidate.email || candidate.name;
+    setActionLoadingId(cardKey);
+
+    const res = await apiClient.acceptConnection(reqId || 'accept', {
+      userEmail: myEmail,
+      userId: myId,
+      targetEmail,
+      targetName: candidate.name
+    });
+
+    setActionLoadingId(null);
+    if (res.success) {
+      await fetchConnections();
+    }
+  };
+
+  const handleRejectConnection = async (candidate, reqId) => {
+    const cardKey = candidate.id || candidate.email || candidate.name;
+    setActionLoadingId(cardKey);
+    await apiClient.rejectConnection(reqId || 'reject');
+    setActionLoadingId(null);
+    await fetchConnections();
   };
 
   const teammates = allTeammatesList;
@@ -451,33 +565,83 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
                   <span><MapPin size={13} /> {tm.location}</span>
                 </div>
 
-                <div className="tm-actions-row">
-                  <button 
-                    className="btn-card-message" 
-                    onClick={() => {
-                      if (onOpenChat) {
-                        onOpenChat(tm);
-                      }
-                    }}
-                  >
-                    <MessageSquare size={13} />
-                    Message
-                  </button>
-                  {pendingInvites.includes(tm.id || tm.name) ? (
-                    <button className="btn-card-invite invited" disabled style={{ background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0', fontWeight: 800 }}>
-                      <Check size={13} />
-                      Invited
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn-card-invite" 
-                      onClick={() => handleSendInvite(tm)}
-                      disabled={invitingId === (tm.id || tm.name)}
-                    >
-                      <UserPlus size={13} />
-                      {invitingId === (tm.id || tm.name) ? 'Sending...' : 'Invite'}
-                    </button>
-                  )}
+                <div className="tm-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+                  {(() => {
+                    const connState = getCandidateConnectionState(tm);
+                    const cardKey = tm.id || tm.email || tm.name;
+                    const isBusy = actionLoadingId === cardKey;
+
+                    if (connState === 'CONNECTED') {
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                          <button 
+                            className="btn-card-message" 
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#2563EB', color: 'white', fontWeight: 800 }}
+                            onClick={() => {
+                              if (onOpenChat) {
+                                onOpenChat(tm);
+                              }
+                            }}
+                          >
+                            <MessageSquare size={14} />
+                            Message
+                          </button>
+                          <span style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Check size={12} /> Connected
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    if (connState === 'PENDING_SENT') {
+                      return (
+                        <button 
+                          className="btn-card-invite invited" 
+                          disabled 
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', fontWeight: 800 }}
+                        >
+                          <Clock size={13} />
+                          Request Pending...
+                        </button>
+                      );
+                    }
+
+                    if (typeof connState === 'object' && connState.status === 'PENDING_RECEIVED') {
+                      return (
+                        <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                          <button 
+                            className="btn-primary" 
+                            onClick={() => handleAcceptConnection(tm, connState.reqId)}
+                            disabled={isBusy}
+                            style={{ flex: 1, padding: '7px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800 }}
+                          >
+                            <Check size={13} /> {isBusy ? '...' : 'Accept Request'}
+                          </button>
+                          <button 
+                            className="btn-secondary" 
+                            onClick={() => handleRejectConnection(tm, connState.reqId)}
+                            disabled={isBusy}
+                            style={{ padding: '7px 10px', fontSize: '12px' }}
+                            title="Decline"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button 
+                        className="btn-primary" 
+                        onClick={() => handleSendConnection(tm)}
+                        disabled={isBusy}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', fontWeight: 800, fontSize: '13px' }}
+                      >
+                        <UserPlus size={14} />
+                        {isBusy ? 'Connecting...' : 'Connect'}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ))}

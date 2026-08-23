@@ -581,13 +581,99 @@ export const apiClient = {
     }
   },
 
+  // Real-Time Connection Request & Accepted Status APIs
+  async sendConnectionRequest(payload) {
+    try {
+      const res = await fetch(`${BASE_URL}/connections/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('Send connection request error:', err);
+      return { success: false, message: 'Failed to send connection request.' };
+    }
+  },
+
+  async getConnections(email = '', userId = '') {
+    try {
+      const query = new URLSearchParams();
+      if (email) query.append('email', email);
+      if (userId) query.append('userId', userId);
+      const res = await fetch(`${BASE_URL}/connections?${query.toString()}`);
+      return await res.json();
+    } catch (err) {
+      return { success: false, connections: [], incomingPending: [], outgoingPending: [] };
+    }
+  },
+
+  async acceptConnection(connectionId, payload = {}) {
+    try {
+      const res = await fetch(`${BASE_URL}/connections/${connectionId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false, message: 'Failed to accept connection.' };
+    }
+  },
+
+  async rejectConnection(connectionId) {
+    try {
+      const res = await fetch(`${BASE_URL}/connections/${connectionId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false, message: 'Failed to decline connection.' };
+    }
+  },
+
+  async getConnectionStatus(targetEmail, targetId, myEmail, myId) {
+    try {
+      const query = new URLSearchParams();
+      if (targetEmail) query.append('targetEmail', targetEmail);
+      if (targetId) query.append('targetId', targetId);
+      if (myEmail) query.append('myEmail', myEmail);
+      if (myId) query.append('myId', myId);
+      const res = await fetch(`${BASE_URL}/connections/status?${query.toString()}`);
+      return await res.json();
+    } catch (err) {
+      return { success: false, status: 'NOT_CONNECTED', isConnected: false };
+    }
+  },
+
   // Real-Time Chat & Messaging APIs
-  async getOrCreateConversation(partnerName, partnerId) {
+  async getConversations(email = '', userId = '') {
+    try {
+      const query = new URLSearchParams();
+      if (email) query.append('email', email);
+      if (userId) query.append('userId', userId);
+      const res = await fetch(`${BASE_URL}/messages/conversations?${query.toString()}`);
+      return await res.json();
+    } catch (err) {
+      return { success: false, conversations: [] };
+    }
+  },
+
+  async getOrCreateConversation(partnerName, partnerId, partnerEmail, partnerRole, userAEmail, userAId, userAName) {
     try {
       const res = await fetch(`${BASE_URL}/messages/conversation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userBName: partnerName, userBId: partnerId })
+        body: JSON.stringify({ 
+          userBName: partnerName, 
+          userBId: partnerId, 
+          userBEmail: partnerEmail,
+          partnerRole,
+          userAEmail,
+          userAId,
+          userAName
+        })
       });
       return await res.json();
     } catch (err) {
@@ -595,12 +681,12 @@ export const apiClient = {
     }
   },
 
-  async sendMessage(text, conversationId, recipientId) {
+  async sendMessage(payload) {
     try {
       const res = await fetch(`${BASE_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, conversationId, recipientId })
+        body: JSON.stringify(typeof payload === 'string' ? { text: payload } : payload)
       });
       return await res.json();
     } catch (err) {
@@ -608,12 +694,28 @@ export const apiClient = {
     }
   },
 
-  async getMessages(conversationId) {
+  async getMessages(conversationId, email = '', userId = '') {
     try {
-      const res = await fetch(`${BASE_URL}/messages?conversationId=${conversationId}`);
+      const query = new URLSearchParams({ conversationId });
+      if (email) query.append('email', email);
+      if (userId) query.append('userId', userId);
+      const res = await fetch(`${BASE_URL}/messages?${query.toString()}`);
       return await res.json();
     } catch (err) {
       return { success: false, messages: [] };
+    }
+  },
+
+  async markMessagesRead(conversationId, readerEmail, readerId) {
+    try {
+      const res = await fetch(`${BASE_URL}/messages/read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, readerEmail, readerId })
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false };
     }
   }
 };
