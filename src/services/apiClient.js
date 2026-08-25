@@ -538,9 +538,13 @@ export const apiClient = {
   // Invites & Notifications APIs
   async sendInvite(payload) {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
       const res = await fetch(`${BASE_URL}/invites`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -550,25 +554,88 @@ export const apiClient = {
     }
   },
 
-  async getSentInvites(senderId = 'user_current') {
+  async sendTeamInvite(payload) {
+    return this.sendInvite(payload);
+  },
+
+  async getInvites(userId, email) {
     try {
-      const res = await fetch(`${BASE_URL}/invites/sent?senderId=${senderId}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const query = new URLSearchParams();
+      if (userId) query.append('userId', userId);
+      if (email) query.append('email', email);
+
+      const res = await fetch(`${BASE_URL}/invites?${query.toString()}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       return await res.json();
     } catch (err) {
-      return { success: false, pendingRecipients: [] };
+      return { success: false, received: [], sent: [] };
     }
   },
 
-  async respondInvite(inviteId, action, responderName = 'Student User') {
+  async getInviteDetails(inviteId) {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const res = await fetch(`${BASE_URL}/invites/${inviteId}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false, message: 'Failed to fetch invite details.' };
+    }
+  },
+
+  async getSentInvites(senderId = 'user_current') {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const res = await fetch(`${BASE_URL}/invites/sent?senderId=${senderId}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false, pendingRecipients: [], sentInvites: [] };
+    }
+  },
+
+  async respondInvite(inviteId, action, responderName = 'Student User', responderEmail = '', responderId = '') {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
       const res = await fetch(`${BASE_URL}/invites/${inviteId}/respond`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, responderName })
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ action, responderName, responderEmail, responderId })
       });
       return await res.json();
     } catch (err) {
       return { success: false, message: 'Failed to respond to invite.' };
+    }
+  },
+
+  async getTeams() {
+    try {
+      const res = await fetch(`${BASE_URL}/teams`);
+      return await res.json();
+    } catch (err) {
+      return { success: false, teams: [] };
+    }
+  },
+
+  async getTeamDetails(teamId) {
+    try {
+      const res = await fetch(`${BASE_URL}/teams/${teamId}`);
+      return await res.json();
+    } catch (err) {
+      return { success: false, message: 'Failed to fetch team.' };
     }
   },
 

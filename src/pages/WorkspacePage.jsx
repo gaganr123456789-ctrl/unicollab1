@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
+import { io } from 'socket.io-client';
+import InviteTeammateModal from '../components/InviteTeammateModal';
 import { 
   Share2, 
   Video, 
@@ -11,7 +13,9 @@ import {
   Layers,
   Edit2,
   Trash2,
-  Plus
+  Plus,
+  UserPlus,
+  Users
 } from 'lucide-react';
 
 const INITIAL_KANBAN_TASKS = [
@@ -71,9 +75,15 @@ const INITIAL_KANBAN_TASKS = [
   }
 ];
 
-export default function WorkspacePage() {
+export default function WorkspacePage({ userProfile, onOpenChat }) {
   const [activeTab, setActiveTab] = useState('Kanban Board');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState([
+    { id: 'tm_3', name: 'Alex Thompson', role: 'Project Lead & Full Stack', email: 'alex.thompson@stanford.edu', dept: 'Computer Science • Senior', avatarBg: 'blue', initials: 'AT' },
+    { id: 'tm_4', name: 'Sarah Chen', role: 'Backend Engineer', email: 'sarah.chen@stanford.edu', dept: 'Computer Science • Junior', avatarBg: 'green', initials: 'SC' },
+    { id: 'tm_5', name: 'Marcus Johnson', role: 'UI/UX Design Lead', email: 'marcus.johnson@stanford.edu', dept: 'Digital Media • Senior', avatarBg: 'purple', initials: 'MJ' }
+  ]);
   
   // Persistent Tasks State from LocalStorage with Server Sync
   const [tasks, setTasks] = useState(() => {
@@ -96,7 +106,7 @@ export default function WorkspacePage() {
     }
   }, [tasks]);
 
-  // Load from Backend API on mount
+  // Load from Backend API and Listen for newly joined team members
   useEffect(() => {
     const fetchServerTasks = async () => {
       try {
@@ -122,6 +132,53 @@ export default function WorkspacePage() {
       }
     };
     fetchServerTasks();
+
+    const fetchTeamRoster = async () => {
+      try {
+        const res = await apiClient.getTeamDetails('team_fintrack_2');
+        if (res.success && res.team && Array.isArray(res.team.members) && res.team.members.length > 0) {
+          setTeamMembers(res.team.members.map(m => ({
+            id: m.id || m.userId,
+            name: m.name || 'Team Member',
+            role: m.role || 'Contributor',
+            email: m.email || '',
+            dept: m.degree || 'Engineering • Collaborator',
+            avatarBg: 'blue',
+            initials: (m.name || 'TM').split(' ').map(n => n[0]).join('').slice(0, 2)
+          })));
+        }
+      } catch (e) {}
+    };
+    fetchTeamRoster();
+
+    // Socket listener for new team members
+    try {
+      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+        ? 'http://localhost:5000'
+        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+          ? window.location.origin
+          : 'https://unicollab1.onrender.com';
+      const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+
+      socket.on('team:member_joined', (data) => {
+        if (data && data.memberName) {
+          setTeamMembers(prev => {
+            if (prev.some(m => m.name === data.memberName)) return prev;
+            return [...prev, {
+              id: `tm_${Date.now()}`,
+              name: data.memberName,
+              role: 'Collaborator (New)',
+              email: '',
+              dept: 'Engineering • Collaborator',
+              avatarBg: 'green',
+              initials: data.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)
+            }];
+          });
+        }
+      });
+
+      return () => socket.disconnect();
+    } catch (e) {}
   }, []);
 
   const moveTask = (taskId, newCol) => {
@@ -425,52 +482,63 @@ export default function WorkspacePage() {
 
       {activeTab === 'Teammates' && (
         <div className="teammates-view mt-6">
-          <div className="section-title-row">
-            <h3>FinTrack Mobile Team Members</h3>
-            <span className="text-xs text-muted font-bold">3 Active Members</span>
+          <div className="section-title-row flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3>FinTrack Mobile Team Members</h3>
+              <span className="text-xs text-muted font-bold">{teamMembers.length} Active Members</span>
+            </div>
+            <button 
+              className="btn-primary" 
+              onClick={() => setIsInviteModalOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', borderRadius: '12px' }}
+            >
+              <UserPlus size={15} /> + Invite Classmate
+            </button>
           </div>
 
-          <div className="tm-workspace-grid mt-4">
-            <div className="tm-workspace-card">
-              <div className="tm-ws-avatar-row">
-                <div className="avatar-circle blue">AT</div>
-                <span className="online-dot-badge"></span>
+          <div className="tm-workspace-grid mt-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
+            {teamMembers.map((tm) => (
+              <div key={tm.id} className="tm-workspace-card" style={{ background: 'var(--surface-color, white)', borderRadius: '18px', padding: '20px', border: '1px solid var(--border-color, #E2E8F0)' }}>
+                <div className="tm-ws-avatar-row flex justify-between align-center">
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '16px' }}>
+                    {tm.initials || tm.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <span style={{ background: '#DEF7EC', color: '#03543F', padding: '3px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 800 }}>● Active</span>
+                </div>
+                <h4 className="tm-ws-name mt-3" style={{ fontSize: '16px', fontWeight: '800', margin: '8px 0 2px' }}>{tm.name}</h4>
+                <p className="tm-ws-role" style={{ fontSize: '13px', color: '#2563EB', fontWeight: '700', margin: 0 }}>{tm.role}</p>
+                <span className="tm-ws-dept" style={{ fontSize: '12px', color: '#64748B', display: 'block', margin: '4px 0 14px' }}>{tm.dept || 'Engineering'}</span>
+                
+                <button 
+                  className="btn-sm-primary full-width" 
+                  onClick={() => {
+                    if (onOpenChat) {
+                      onOpenChat({ name: tm.name, email: tm.email });
+                    } else {
+                      alert(`Opening chat with ${tm.name}...`);
+                    }
+                  }}
+                  style={{ width: '100%', borderRadius: '10px', fontWeight: '700' }}
+                >
+                  Message Member
+                </button>
               </div>
-              <h4 className="tm-ws-name">Alex Thompson</h4>
-              <p className="tm-ws-role">Project Lead & Full Stack</p>
-              <span className="tm-ws-dept">Computer Science • Senior</span>
-              <button className="btn-sm-primary full-width mt-3" onClick={() => alert('Opening direct message with Alex')}>
-                Message Lead
-              </button>
-            </div>
-
-            <div className="tm-workspace-card">
-              <div className="tm-ws-avatar-row">
-                <div className="avatar-circle green">SC</div>
-                <span className="online-dot-badge"></span>
-              </div>
-              <h4 className="tm-ws-name">Sarah Chen</h4>
-              <p className="tm-ws-role">Backend Engineer</p>
-              <span className="tm-ws-dept">Computer Science • Junior</span>
-              <button className="btn-sm-primary full-width mt-3" onClick={() => alert('Opening direct message with Sarah')}>
-                Message Engineer
-              </button>
-            </div>
-
-            <div className="tm-workspace-card">
-              <div className="tm-ws-avatar-row">
-                <div className="avatar-circle purple">MJ</div>
-                <span className="online-dot-badge"></span>
-              </div>
-              <h4 className="tm-ws-name">Marcus Johnson</h4>
-              <p className="tm-ws-role">UI/UX Design Lead</p>
-              <span className="tm-ws-dept">Digital Media • Senior</span>
-              <button className="btn-sm-primary full-width mt-3" onClick={() => alert('Opening direct message with Marcus')}>
-                Message Designer
-              </button>
-            </div>
+            ))}
           </div>
         </div>
+      )}
+
+      {/* Invite Teammate Modal */}
+      {isInviteModalOpen && (
+        <InviteTeammateModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          userProfile={userProfile}
+          defaultTeamName="FinTrack Mobile"
+          onInviteSent={(inv) => {
+            alert(`Team invitation sent for FinTrack Mobile!`);
+          }}
+        />
       )}
     </div>
   );

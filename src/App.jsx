@@ -216,7 +216,7 @@ export default function App() {
           )}
           {currentPage === 'projects' && <ProjectsPage setCurrentPage={setCurrentPage} userProfile={userProfile} />}
           {currentPage === 'mentor-portal' && <MentorPortalPage setCurrentPage={setCurrentPage} onOpenChat={handleOpenChat} />}
-          {currentPage === 'workspace' && <WorkspacePage />}
+          {currentPage === 'workspace' && <WorkspacePage userProfile={userProfile} onOpenChat={handleOpenChat} />}
           {currentPage === 'ai-assistant' && <AiAssistantPage />}
           {currentPage === 'resource-library' && <ResourceLibraryPage />}
           {currentPage === 'hackathons' && (
@@ -250,6 +250,7 @@ export default function App() {
           {currentPage === 'notifications' && (
             <NotificationsPage 
               setCurrentPage={setCurrentPage} 
+              userProfile={userProfile}
             />
           )}
         </div>

@@ -1,261 +1,461 @@
 import express from 'express';
 import { getPrisma } from '../db/postgres.js';
+import { invitesDB, teamsDB, teamMembersDB, usersDB } from '../db/dataStore.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'unicollab_jwt_secret_key_2026';
 
-export const invitesDB = [];
 export const notificationsDB = [
   {
-    id: 'notif_seed_1',
+    id: 'notif_seed_drone',
     userId: 'seed',
     title: 'Team Invitation Received',
-    message: 'Sarah Chen invited you to join the FinTrack Mobile capstone project.',
+    message: 'Dr. Ananya Sharma invited you to join the Autonomous Drone Navigation team.',
     type: 'TEAM_INVITE',
     category: 'Team Invites',
     time: '10 mins ago',
     read: false,
+    inviteId: 'inv_seed_drone',
+    teamId: 'team_drone_1',
+    teamName: 'Autonomous Drone Navigation',
+    sender: 'Dr. Ananya Sharma',
+    avatarInitials: 'AS',
     actionType: 'invite-buttons',
     targetPage: 'workspace'
   }
 ];
 
-// POST /api/invites - Create a Team or Mentorship Invite
-router.post('/', async (req, res) => {
-  const { senderId = 'user_current', senderName = 'Student User', recipientId, recipientName, type = 'TEAM_INVITE', message = '' } = req.body;
-
-  if (!recipientId) {
-    return res.status(400).json({ success: false, message: 'Recipient ID or identifier is required.' });
-  }
-
-  const normalizedType = type === 'MENTORSHIP_REQUEST' ? 'MENTORSHIP_REQUEST' : 'TEAM_INVITE';
-
-  try {
-    const prisma = await getPrisma();
-    if (prisma) {
-      // Check for duplicate pending invite
-      const existing = await prisma.invite.findFirst({
-        where: {
-          senderId,
-          recipientId,
-          status: 'PENDING'
-        }
-      });
-
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: 'An invitation to this person is already pending.'
-        });
-      }
-
-      const newInvite = await prisma.invite.create({
-        data: {
-          senderId,
-          recipientId,
-          type: normalizedType,
-          status: 'PENDING',
-          message
-        }
-      });
-
-      // Create Notification record for recipient
-      const notifTitle = normalizedType === 'MENTORSHIP_REQUEST' ? 'Mentorship Request Received 👨‍🏫' : 'Team Invitation Received 🎓';
-      const notifMsg = normalizedType === 'MENTORSHIP_REQUEST' 
-        ? `${senderName} sent you a mentorship session guidance request.` 
-        : `${senderName} invited you to team up on a capstone project!`;
-
-      const notification = await prisma.notification.create({
-        data: {
-          userId: recipientId,
-          title: notifTitle,
-          message: notifMsg,
-          type: normalizedType,
-          inviteId: newInvite.id,
-          read: false
-        }
-      });
-
-      // Emit Socket.io real-time event to recipient
-      try {
-        const io = req.app?.get('io') || global.io;
-        if (io) {
-          io.to(`user_${recipientId}`).emit('notification:new', notification);
-          io.emit('notification:new', notification);
-          console.log(`📡 [SOCKET.IO] Broadcasted notification:new event to user_${recipientId}`);
-        }
-      } catch (e) {
-        console.warn('Socket broadcast warning:', e.message);
-      }
-
-      return res.status(201).json({
-        success: true,
-        message: normalizedType === 'MENTORSHIP_REQUEST' ? 'Mentorship request sent successfully!' : 'Team invitation sent successfully!',
-        invite: newInvite
-      });
+// Auth Helper
+const getAuthenticatedUser = (req) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded) return decoded;
+    } catch (e) {
+      // Non-blocking JWT verification
     }
-  } catch (err) {
-    console.warn('Prisma invite error, falling back to dataStore:', err.message);
+  }
+  return null;
+};
+
+// --------------------------------------------------------------------------
+// 1. POST /api/invites - Create a Team Invitation Request
+// --------------------------------------------------------------------------
+router.post('/', async (req, res) => {
+  const authUser = getAuthenticatedUser(req);
+
+  const senderId = authUser?.id || req.body.senderId || 'user_current';
+  const senderName = authUser?.name || req.body.senderName || 'Student User';
+  const senderEmail = (authUser?.email || req.body.senderEmail || '').toLowerCase().trim();
+
+  const {
+    recipientId,
+    receiverId,
+    recipientEmail = '',
+    recipientName = 'Classmate',
+    teamId = 'team_custom',
+    teamName = 'Capstone Project Team',
+    teamDesc = 'University collaborative engineering capstone project.',
+    teamLeader = senderName,
+    projectCategory = 'Engineering',
+    requiredSkills = ['Full-Stack', 'Problem Solving'],
+    type = 'TEAM_INVITE',
+    message = ''
+  } = req.body;
+
+  const targetRecipientId = recipientId || receiverId || recipientEmail;
+
+  if (!targetRecipientId) {
+    return res.status(400).json({ success: false, message: 'Recipient identifier or email is required.' });
   }
 
-  // DataStore In-Memory Fallback
-  const existingStoreInvite = invitesDB.find(i => i.senderId === senderId && i.recipientId === recipientId && i.status === 'PENDING');
-  if (existingStoreInvite) {
-    return res.status(400).json({ success: false, message: 'An invitation to this person is already pending.' });
+  const normalizedRecipientEmail = recipientEmail.toLowerCase().trim();
+
+  // Check 1: Is recipient already a member of this team?
+  const isAlreadyMember = teamMembersDB.some(m => 
+    m.teamId === teamId && (
+      (m.userId && targetRecipientId && String(m.userId) === String(targetRecipientId)) ||
+      (m.email && normalizedRecipientEmail && m.email.toLowerCase().trim() === normalizedRecipientEmail)
+    )
+  );
+
+  if (isAlreadyMember) {
+    return res.status(400).json({
+      success: false,
+      message: `${recipientName} is already a member of the ${teamName} team.`
+    });
   }
+
+  // Check 2: Is there already an active pending invitation for this recipient and team?
+  const isAlreadyPending = invitesDB.some(inv =>
+    inv.teamId === teamId &&
+    inv.status === 'pending' && (
+      (inv.recipientId && targetRecipientId && String(inv.recipientId) === String(targetRecipientId)) ||
+      (inv.recipientEmail && normalizedRecipientEmail && inv.recipientEmail.toLowerCase().trim() === normalizedRecipientEmail)
+    )
+  );
+
+  if (isAlreadyPending) {
+    return res.status(400).json({
+      success: false,
+      message: `An invitation for the ${teamName} team is already pending for this student.`
+    });
+  }
+
+  // Ensure team exists in teamsDB
+  const existingTeam = teamsDB.find(t => t.id === teamId || t.name.toLowerCase() === teamName.toLowerCase());
+  const resolvedTeamId = existingTeam ? existingTeam.id : teamId;
+  const resolvedTeamName = existingTeam ? existingTeam.name : teamName;
+  const resolvedTeamDesc = existingTeam ? existingTeam.description : teamDesc;
+  const resolvedSkills = existingTeam ? existingTeam.requiredSkills : (Array.isArray(requiredSkills) ? requiredSkills : ['Collaboration']);
+
+  if (!existingTeam) {
+    teamsDB.push({
+      id: resolvedTeamId,
+      name: resolvedTeamName,
+      description: resolvedTeamDesc,
+      category: projectCategory,
+      leadId: senderId,
+      leadName: senderName,
+      leadEmail: senderEmail,
+      requiredSkills: resolvedSkills,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  const newInviteId = `inv_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  const inviteMessage = message || `${senderName} invited you to join the ${resolvedTeamName} team.`;
 
   const newInvite = {
-    id: `inv_${Date.now()}`,
+    id: newInviteId,
     senderId,
     senderName,
-    recipientId,
-    recipientName: recipientName || 'User',
-    type: normalizedType,
-    status: 'PENDING',
+    senderEmail,
+    recipientId: targetRecipientId,
+    receiverId: targetRecipientId,
+    recipientName,
+    recipientEmail: normalizedRecipientEmail,
+    type: 'TEAM_INVITE',
+    status: 'pending',
+    teamId: resolvedTeamId,
+    teamName: resolvedTeamName,
+    teamDesc: resolvedTeamDesc,
+    teamLeader: existingTeam?.leadName || senderName,
+    projectCategory: existingTeam?.category || projectCategory,
+    requiredSkills: resolvedSkills,
+    message: inviteMessage,
     createdAt: new Date().toISOString()
   };
-  invitesDB.push(newInvite);
 
-  const notifTitle = normalizedType === 'MENTORSHIP_REQUEST' ? 'Mentorship Request Received 👨‍🏫' : 'Team Invitation Received 🎓';
-  const notifMsg = normalizedType === 'MENTORSHIP_REQUEST' 
-    ? `${senderName} sent you a mentorship session guidance request.` 
-    : `${senderName} invited you to team up on a capstone project!`;
+  // Push to invitesDB
+  invitesDB.unshift(newInvite);
 
+  // Create Connected Actionable Notification
   const newNotification = {
     id: `notif_${Date.now()}`,
-    userId: recipientId,
-    title: notifTitle,
-    message: notifMsg,
-    type: normalizedType,
-    category: normalizedType === 'MENTORSHIP_REQUEST' ? 'Mentorship' : 'Team Invites',
+    userId: targetRecipientId,
+    recipientEmail: normalizedRecipientEmail,
+    title: 'Team Invitation Received',
+    message: `${senderName} invited you to join the ${resolvedTeamName} team.`,
+    type: 'TEAM_INVITE',
+    category: 'Team Invites',
+    time: 'Just now',
+    read: false,
     inviteId: newInvite.id,
+    teamId: resolvedTeamId,
+    teamName: resolvedTeamName,
     sender: senderName,
     avatarInitials: senderName.split(' ').map(n => n[0]).join('').slice(0, 2),
-    unread: true,
-    time: 'Just now',
-    actionType: 'invite-buttons'
+    actionType: 'invite-buttons',
+    targetPage: 'workspace',
+    status: 'pending',
+    createdAt: new Date().toISOString()
   };
 
   notificationsDB.unshift(newNotification);
 
-  // Emit Socket.io real-time event to recipient
+  // PostgreSQL Prisma Sync (if available)
+  try {
+    const prisma = await getPrisma();
+    if (prisma) {
+      const validSenderId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(senderId) ? senderId : null;
+      const validRecipientId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetRecipientId) ? targetRecipientId : null;
+
+      if (validSenderId && validRecipientId) {
+        await prisma.invite.create({
+          data: {
+            id: newInvite.id,
+            senderId: validSenderId,
+            recipientId: validRecipientId,
+            type: 'TEAM_INVITE',
+            status: 'pending',
+            teamId: resolvedTeamId,
+            teamName: resolvedTeamName,
+            teamDesc: resolvedTeamDesc,
+            teamLeader: existingTeam?.leadName || senderName,
+            projectCategory: existingTeam?.category || projectCategory,
+            requiredSkills: resolvedSkills,
+            message: inviteMessage
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Prisma invite creation notice:', err.message);
+  }
+
+  // Socket.IO Real-Time Dispatch
   try {
     const io = req.app?.get('io') || global.io;
     if (io) {
-      io.to(`user_${recipientId}`).emit('notification:new', newNotification);
+      io.to(`user_${targetRecipientId}`).emit('notification:new', newNotification);
+      io.to(`user_${normalizedRecipientEmail}`).emit('notification:new', newNotification);
       io.emit('notification:new', newNotification);
+      io.emit('invite:received', newInvite);
+      console.log(`📡 [SOCKET.IO] Dispatched team invitation to ${targetRecipientId} (${resolvedTeamName})`);
     }
   } catch (e) {
-    console.warn('Socket broadcast warning:', e.message);
+    console.warn('Socket emit notice:', e.message);
   }
 
   return res.status(201).json({
     success: true,
-    message: normalizedType === 'MENTORSHIP_REQUEST' ? 'Mentorship request sent successfully!' : 'Team invitation sent successfully!',
-    invite: newInvite
+    message: `Team invitation sent to ${recipientName} for ${resolvedTeamName}!`,
+    invite: newInvite,
+    notification: newNotification
   });
 });
 
-// GET /api/invites/sent - Get pending sent invite recipient IDs for current user
-router.get('/sent', (req, res) => {
-  const { senderId = 'user_current' } = req.query;
-  const pendingRecipients = invitesDB
-    .filter(i => (i.senderId === senderId || senderId === 'user_current') && i.status === 'PENDING')
-    .map(i => i.recipientId);
+// --------------------------------------------------------------------------
+// 2. GET /api/invites - Get Received and Sent Invites for Logged-In User
+// --------------------------------------------------------------------------
+router.get('/', (req, res) => {
+  const authUser = getAuthenticatedUser(req);
+  const myId = authUser?.id || req.query.userId || 'user_current';
+  const myEmail = (authUser?.email || req.query.email || '').toLowerCase().trim();
+
+  // Find received invitations (or seed/all demo invites)
+  const received = invitesDB.filter(inv => {
+    if (inv.recipientId === 'all' || inv.recipientId === 'seed') return true;
+    if (myId && String(inv.recipientId) === String(myId)) return true;
+    if (myEmail && inv.recipientEmail && inv.recipientEmail === myEmail) return true;
+    return false;
+  });
+
+  const sent = invitesDB.filter(inv => {
+    if (myId && String(inv.senderId) === String(myId)) return true;
+    if (myEmail && inv.senderEmail && inv.senderEmail === myEmail) return true;
+    return false;
+  });
 
   return res.status(200).json({
     success: true,
-    pendingRecipients
+    totalReceived: received.length,
+    totalSent: sent.length,
+    received,
+    sent,
+    invites: received
   });
 });
 
-// POST /api/invites/:id/respond - Accept or Decline an invite
-router.post('/:id/respond', async (req, res) => {
+// --------------------------------------------------------------------------
+// 3. GET /api/invites/sent - Get pending sent invite recipient IDs
+// --------------------------------------------------------------------------
+router.get('/sent', (req, res) => {
+  const authUser = getAuthenticatedUser(req);
+  const myId = authUser?.id || req.query.senderId || 'user_current';
+  const myEmail = (authUser?.email || '').toLowerCase().trim();
+
+  const sentInvites = invitesDB.filter(i => 
+    (String(i.senderId) === String(myId) || (myEmail && i.senderEmail === myEmail))
+  );
+
+  return res.status(200).json({
+    success: true,
+    sentInvites,
+    pendingRecipients: sentInvites.filter(i => i.status === 'pending').map(i => i.recipientId || i.recipientEmail)
+  });
+});
+
+// --------------------------------------------------------------------------
+// 4. GET /api/invites/:id - Get Details of Specific Invitation & Team
+// --------------------------------------------------------------------------
+router.get('/:id', (req, res) => {
   const inviteId = req.params.id;
-  const { action, responderName = 'Student User' } = req.body; // 'ACCEPT' or 'DECLINE'
+  const invite = invitesDB.find(i => i.id === inviteId);
 
-  const normalizedAction = action === 'ACCEPT' ? 'ACCEPTED' : 'DECLINED';
-
-  try {
-    const prisma = await getPrisma();
-    if (prisma) {
-      const invite = await prisma.invite.update({
-        where: { id: inviteId },
-        data: { status: normalizedAction }
-      });
-
-      // Create notification for original sender
-      const notifTitle = normalizedAction === 'ACCEPTED' ? 'Invite Accepted! 🎉' : 'Invite Declined';
-      const notifMsg = `${responderName} ${normalizedAction === 'ACCEPTED' ? 'accepted your invitation to team up!' : 'declined the invitation.'}`;
-
-      const senderNotification = await prisma.notification.create({
-        data: {
-          userId: invite.senderId,
-          title: notifTitle,
-          message: notifMsg,
-          type: 'RESPONSE',
-          read: false
-        }
-      });
-
-      try {
-        const io = req.app?.get('io') || global.io;
-        if (io) {
-          io.to(`user_${invite.senderId}`).emit('notification:new', senderNotification);
-          io.emit('notification:new', senderNotification);
-        }
-      } catch (e) {
-        console.warn('Socket broadcast error:', e.message);
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: `Invite ${normalizedAction.toLowerCase()} successfully!`,
-        invite
-      });
-    }
-  } catch (err) {
-    console.warn('Prisma invite respond fallback:', err.message);
+  if (!invite) {
+    return res.status(404).json({ success: false, message: 'Invitation not found.' });
   }
 
-  // DataStore Fallback
-  const invite = invitesDB.find(i => i.id === inviteId);
-  if (invite) {
-    invite.status = normalizedAction;
+  const team = teamsDB.find(t => t.id === invite.teamId || t.name === invite.teamName) || {
+    id: invite.teamId,
+    name: invite.teamName,
+    description: invite.teamDesc,
+    leadName: invite.teamLeader,
+    category: invite.projectCategory,
+    requiredSkills: invite.requiredSkills
+  };
 
-    const notifTitle = normalizedAction === 'ACCEPTED' ? 'Invite Accepted! 🎉' : 'Invite Declined';
-    const notifMsg = `${responderName} ${normalizedAction === 'ACCEPTED' ? 'accepted your invitation to team up!' : 'declined the invitation.'}`;
+  const members = teamMembersDB.filter(m => m.teamId === invite.teamId);
 
-    const senderNotif = {
-      id: `notif_resp_${Date.now()}`,
-      userId: invite.senderId,
-      title: notifTitle,
-      message: notifMsg,
-      type: 'RESPONSE',
-      category: 'Team Invites',
-      sender: responderName,
-      unread: true,
-      time: 'Just now'
-    };
-    notificationsDB.unshift(senderNotif);
-
-    try {
-      const io = req.app?.get('io') || global.io;
-      if (io) {
-        io.to(`user_${invite.senderId}`).emit('notification:new', senderNotif);
-        io.emit('notification:new', senderNotif);
-      }
-    } catch (e) {
-      console.warn('Socket broadcast error:', e.message);
+  return res.status(200).json({
+    success: true,
+    invite,
+    team: {
+      ...team,
+      members,
+      membersCount: members.length || 3
     }
+  });
+});
 
-    return res.status(200).json({
-      success: true,
-      message: `Invite ${normalizedAction.toLowerCase()} successfully!`,
-      invite
+// --------------------------------------------------------------------------
+// 5. POST /api/invites/:id/respond - Accept or Decline Team Invitation
+// --------------------------------------------------------------------------
+router.post('/:id/respond', async (req, res) => {
+  const inviteId = req.params.id;
+  const { action, responderName = 'Student User', responderEmail = '', responderId = '' } = req.body; // 'ACCEPT' | 'DECLINE'
+
+  const authUser = getAuthenticatedUser(req);
+  const effectiveUserId = authUser?.id || responderId || 'user_current';
+  const effectiveUserEmail = (authUser?.email || responderEmail || '').toLowerCase().trim();
+  const effectiveUserName = authUser?.name || responderName || 'Student User';
+
+  const normalizedAction = (action || '').toUpperCase() === 'ACCEPT' ? 'accepted' : 'declined';
+
+  const invite = invitesDB.find(i => i.id === inviteId);
+
+  if (!invite) {
+    return res.status(404).json({ success: false, message: 'Invitation not found or has expired.' });
+  }
+
+  // Authorization Check: Must be the intended recipient
+  const isAuthorizedRecipient = 
+    invite.recipientId === 'all' || 
+    invite.recipientId === 'seed' ||
+    (invite.recipientId && String(invite.recipientId) === String(effectiveUserId)) ||
+    (invite.recipientEmail && effectiveUserEmail && invite.recipientEmail === effectiveUserEmail);
+
+  if (!isAuthorizedRecipient && req.headers['authorization']) {
+    return res.status(403).json({
+      success: false,
+      message: 'You are not authorized to respond to this invitation.'
     });
   }
 
-  return res.status(404).json({ success: false, message: 'Invite not found.' });
+  // State check: Prevent duplicate response
+  if (invite.status !== 'pending') {
+    return res.status(400).json({
+      success: false,
+      message: `This invitation has already been ${invite.status}.`,
+      currentStatus: invite.status
+    });
+  }
+
+  // Update Invitation Status
+  invite.status = normalizedAction;
+  invite.respondedAt = new Date().toISOString();
+
+  // Update associated Notification in notificationsDB
+  const linkedNotif = notificationsDB.find(n => n.inviteId === inviteId);
+  if (linkedNotif) {
+    linkedNotif.status = normalizedAction;
+    linkedNotif.actionDone = normalizedAction === 'accepted' ? 'Accepted' : 'Declined';
+    linkedNotif.read = true;
+  }
+
+  // If Accepted: Add User to Team Members List
+  if (normalizedAction === 'accepted') {
+    const isMember = teamMembersDB.some(m => 
+      m.teamId === invite.teamId && (
+        (m.userId && String(m.userId) === String(effectiveUserId)) ||
+        (m.email && effectiveUserEmail && m.email.toLowerCase().trim() === effectiveUserEmail)
+      )
+    );
+
+    if (!isMember) {
+      teamMembersDB.push({
+        id: `tm_${Date.now()}`,
+        teamId: invite.teamId,
+        teamName: invite.teamName,
+        userId: effectiveUserId,
+        name: effectiveUserName,
+        email: effectiveUserEmail,
+        role: 'Collaborator',
+        joinedAt: new Date().toISOString()
+      });
+      console.log(`✅ [TEAM ROSTER] Added ${effectiveUserName} to team ${invite.teamName}`);
+    }
+  }
+
+  // Create Notification for the Sender
+  const notifTitle = normalizedAction === 'accepted' ? 'Team Invitation Accepted! 🎉' : 'Team Invitation Declined';
+  const notifMsg = normalizedAction === 'accepted'
+    ? `${effectiveUserName} accepted your invitation and joined the ${invite.teamName} team!`
+    : `${effectiveUserName} declined the invitation to join ${invite.teamName}.`;
+
+  const senderNotif = {
+    id: `notif_resp_${Date.now()}`,
+    userId: invite.senderId,
+    recipientEmail: invite.senderEmail,
+    title: notifTitle,
+    message: notifMsg,
+    type: 'TEAM_INVITE_RESPONSE',
+    category: 'Team Invites',
+    sender: effectiveUserName,
+    avatarInitials: effectiveUserName.split(' ').map(n => n[0]).join('').slice(0, 2),
+    unread: true,
+    time: 'Just now',
+    teamId: invite.teamId,
+    teamName: invite.teamName,
+    status: normalizedAction,
+    createdAt: new Date().toISOString()
+  };
+
+  notificationsDB.unshift(senderNotif);
+
+  // PostgreSQL Prisma sync
+  try {
+    const prisma = await getPrisma();
+    if (prisma) {
+      await prisma.invite.update({
+        where: { id: inviteId },
+        data: { status: normalizedAction }
+      });
+    }
+  } catch (err) {
+    console.warn('Prisma invite update notice:', err.message);
+  }
+
+  // Socket.IO Broadcast
+  try {
+    const io = req.app?.get('io') || global.io;
+    if (io) {
+      io.to(`user_${invite.senderId}`).emit('notification:new', senderNotif);
+      io.to(`user_${invite.senderEmail}`).emit('notification:new', senderNotif);
+      io.emit('notification:new', senderNotif);
+      io.emit('invite:updated', { inviteId, status: normalizedAction, teamId: invite.teamId, member: effectiveUserName });
+      io.emit('team:member_joined', { teamId: invite.teamId, teamName: invite.teamName, memberName: effectiveUserName });
+    }
+  } catch (e) {
+    console.warn('Socket broadcast notice:', e.message);
+  }
+
+  const successMessage = normalizedAction === 'accepted'
+    ? 'You have joined the team successfully!'
+    : 'Invitation Declined';
+
+  return res.status(200).json({
+    success: true,
+    message: successMessage,
+    status: normalizedAction,
+    invite,
+    teamId: invite.teamId
+  });
 });
 
 export default router;

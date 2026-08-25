@@ -10,6 +10,111 @@ export const conversationsDB = [];
 
 export const messagesDB = [];
 
+export const invitesDB = [
+  {
+    id: 'inv_seed_drone',
+    senderId: 'usr_ananya',
+    senderName: 'Dr. Ananya Sharma',
+    senderEmail: 'ananya.sharma@stanford.edu',
+    recipientId: 'all',
+    recipientEmail: '',
+    type: 'TEAM_INVITE',
+    teamId: 'team_drone_1',
+    teamName: 'Autonomous Drone Navigation',
+    teamDesc: 'Autonomous multi-rotor drone navigation with ROS 2 and OpenCV for campus micro-deliveries.',
+    teamLeader: 'Dr. Ananya Sharma',
+    projectCategory: 'Engineering & Robotics',
+    requiredSkills: ['ROS 2', 'Python', 'C++', 'Computer Vision', 'Robotics'],
+    message: 'Dr. Ananya Sharma invited you to join the Autonomous Drone Navigation team.',
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const teamsDB = [
+  {
+    id: 'team_drone_1',
+    name: 'Autonomous Drone Navigation',
+    description: 'Autonomous multi-rotor drone navigation with ROS 2 and OpenCV for campus micro-deliveries.',
+    category: 'Engineering & Robotics',
+    leadId: 'usr_ananya',
+    leadName: 'Dr. Ananya Sharma',
+    leadEmail: 'ananya.sharma@stanford.edu',
+    requiredSkills: ['ROS 2', 'Python', 'C++', 'Computer Vision', 'Robotics'],
+    createdAt: '2026-08-15T10:00:00Z'
+  },
+  {
+    id: 'team_fintrack_2',
+    name: 'FinTrack Mobile',
+    description: 'Cross-platform financial collaboration and budget management app for university students and capstone evaluation.',
+    category: 'Software & FinTech',
+    leadId: 'usr_alex',
+    leadName: 'Alex Thompson',
+    leadEmail: 'alex.thompson@stanford.edu',
+    requiredSkills: ['React Native', 'TypeScript', 'Node.js', 'PostgreSQL'],
+    createdAt: '2026-08-10T10:00:00Z'
+  },
+  {
+    id: 'team_ecotrack_3',
+    name: 'EcoTrack Sustainability',
+    description: 'Campus sustainability tracker reducing carbon footprint through IoT sensors and automated metric reporting.',
+    category: 'CleanTech & IoT',
+    leadId: 'usr_sarah',
+    leadName: 'Sarah Chen',
+    leadEmail: 'sarah.chen@stanford.edu',
+    requiredSkills: ['React', 'Node.js', 'IoT', 'Hardware'],
+    createdAt: '2026-08-12T10:00:00Z'
+  }
+];
+
+export const teamMembersDB = [
+  {
+    id: 'tm_1',
+    teamId: 'team_drone_1',
+    userId: 'usr_ananya',
+    name: 'Dr. Ananya Sharma',
+    email: 'ananya.sharma@stanford.edu',
+    role: 'Project Leader',
+    joinedAt: '2026-08-15T10:00:00Z'
+  },
+  {
+    id: 'tm_2',
+    teamId: 'team_drone_1',
+    userId: 'usr_sarah',
+    name: 'Sarah Chen',
+    email: 'sarah.chen@stanford.edu',
+    role: 'Software Architect',
+    joinedAt: '2026-08-16T11:00:00Z'
+  },
+  {
+    id: 'tm_3',
+    teamId: 'team_fintrack_2',
+    userId: 'usr_alex',
+    name: 'Alex Thompson',
+    email: 'alex.thompson@stanford.edu',
+    role: 'Project Lead',
+    joinedAt: '2026-08-10T10:00:00Z'
+  },
+  {
+    id: 'tm_4',
+    teamId: 'team_fintrack_2',
+    userId: 'usr_sarah',
+    name: 'Sarah Chen',
+    email: 'sarah.chen@stanford.edu',
+    role: 'Backend Engineer',
+    joinedAt: '2026-08-11T12:00:00Z'
+  },
+  {
+    id: 'tm_5',
+    teamId: 'team_fintrack_2',
+    userId: 'usr_marcus',
+    name: 'Marcus Johnson',
+    email: 'marcus.johnson@stanford.edu',
+    role: 'UI/UX Lead',
+    joinedAt: '2026-08-12T14:00:00Z'
+  }
+];
+
 export const hackathonRegistrationsDB = [
   {
     id: 'HACK-984210',

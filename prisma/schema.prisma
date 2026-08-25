@@ -240,16 +240,22 @@ model Connection {
 }
 
 model Invite {
-  id          String   @id @default(uuid())
-  senderId    String
-  sender      User     @relation("SentInvites", fields: [senderId], references: [id], onDelete: Cascade)
-  recipientId String
-  recipient   User     @relation("ReceivedInvites", fields: [recipientId], references: [id], onDelete: Cascade)
-  type        String   @default("TEAM_INVITE")
-  status      String   @default("PENDING")
-  message     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  senderId        String
+  sender          User     @relation("SentInvites", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId     String
+  recipient       User     @relation("ReceivedInvites", fields: [recipientId], references: [id], onDelete: Cascade)
+  type            String   @default("TEAM_INVITE")
+  status          String   @default("pending") // pending, accepted, declined
+  teamId          String?
+  teamName        String?
+  teamDesc        String?
+  teamLeader      String?
+  projectCategory String?
+  requiredSkills  String[]
+  message         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([senderId])
   @@index([recipientId])

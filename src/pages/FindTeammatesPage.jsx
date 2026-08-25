@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
+import InviteTeammateModal from '../components/InviteTeammateModal';
 import { 
   Search, 
   MessageSquare, 
   UserPlus, 
+  Users,
   Star, 
   MapPin, 
   Briefcase, 
@@ -24,6 +26,11 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
   const [isAiMatching, setIsAiMatching] = useState(false);
   const [allTeammatesList, setAllTeammatesList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Team Invite State
+  const [sentTeamInvites, setSentTeamInvites] = useState([]);
+  const [targetStudentForInvite, setTargetStudentForInvite] = useState(null);
+  const [isTeamInviteModalOpen, setIsTeamInviteModalOpen] = useState(false);
 
   // Connection Lifecycle State
   const [connectionsData, setConnectionsData] = useState({
@@ -48,7 +55,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     'Digital Media & UI/UX Design'
   ];
 
-  // Fetch all connections for logged in user
+  // Fetch all connections and sent team invites for logged in user
   const fetchConnections = async () => {
     const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
     const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
@@ -65,6 +72,31 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     } catch (e) {
       console.warn('Failed to fetch connections:', e);
     }
+
+    try {
+      const invitesRes = await apiClient.getSentInvites(myId);
+      if (invitesRes && invitesRes.success) {
+        setSentTeamInvites(invitesRes.sentInvites || []);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch sent invites:', e);
+    }
+  };
+
+  const getCandidateTeamInviteState = (candidate) => {
+    const targetEmail = (candidate.email || '').toLowerCase().trim();
+    const targetId = candidate.id;
+    const targetName = (candidate.name || '').toLowerCase().trim();
+
+    const invite = sentTeamInvites.find(i => {
+      const rEmail = (i.recipientEmail || '').toLowerCase().trim();
+      const rId = i.recipientId;
+      const rName = (i.recipientName || '').toLowerCase().trim();
+
+      return (targetEmail && rEmail === targetEmail) || (targetId && rId === targetId) || (targetName && rName === targetName);
+    });
+
+    return invite ? invite.status : null;
   };
 
   // Dynamically load all registered students across API, Database, and Local storage, strictly excluding the logged in student
@@ -565,81 +597,119 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
                   <span><MapPin size={13} /> {tm.location}</span>
                 </div>
 
-                <div className="tm-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+                <div className="tm-actions-row" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
                   {(() => {
                     const connState = getCandidateConnectionState(tm);
+                    const inviteState = getCandidateTeamInviteState(tm);
                     const cardKey = tm.id || tm.email || tm.name;
                     const isBusy = actionLoadingId === cardKey;
 
-                    if (connState === 'CONNECTED') {
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                          <button 
-                            className="btn-card-message" 
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#2563EB', color: 'white', fontWeight: 800 }}
-                            onClick={() => {
-                              if (onOpenChat) {
-                                onOpenChat(tm);
-                              }
-                            }}
-                          >
-                            <MessageSquare size={14} />
-                            Message
-                          </button>
-                          <span style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Check size={12} /> Connected
-                          </span>
-                        </div>
-                      );
-                    }
-
-                    if (connState === 'PENDING_SENT') {
-                      return (
-                        <button 
-                          className="btn-card-invite invited" 
-                          disabled 
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', fontWeight: 800 }}
-                        >
-                          <Clock size={13} />
-                          Request Pending...
-                        </button>
-                      );
-                    }
-
-                    if (typeof connState === 'object' && connState.status === 'PENDING_RECEIVED') {
-                      return (
-                        <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
-                          <button 
-                            className="btn-primary" 
-                            onClick={() => handleAcceptConnection(tm, connState.reqId)}
-                            disabled={isBusy}
-                            style={{ flex: 1, padding: '7px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800 }}
-                          >
-                            <Check size={13} /> {isBusy ? '...' : 'Accept Request'}
-                          </button>
-                          <button 
-                            className="btn-secondary" 
-                            onClick={() => handleRejectConnection(tm, connState.reqId)}
-                            disabled={isBusy}
-                            style={{ padding: '7px 10px', fontSize: '12px' }}
-                            title="Decline"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-
                     return (
-                      <button 
-                        className="btn-primary" 
-                        onClick={() => handleSendConnection(tm)}
-                        disabled={isBusy}
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', fontWeight: 800, fontSize: '13px' }}
-                      >
-                        <UserPlus size={14} />
-                        {isBusy ? 'Connecting...' : 'Connect'}
-                      </button>
+                      <>
+                        {/* Connection State Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                          {connState === 'CONNECTED' ? (
+                            <>
+                              <button 
+                                className="btn-card-message" 
+                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#2563EB', color: 'white', fontWeight: 800, borderRadius: '10px', height: '36px' }}
+                                onClick={() => {
+                                  if (onOpenChat) {
+                                    onOpenChat(tm);
+                                  }
+                                }}
+                              >
+                                <MessageSquare size={14} />
+                                Message
+                              </button>
+                              <span style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Check size={12} /> Connected
+                              </span>
+                            </>
+                          ) : connState === 'PENDING_SENT' ? (
+                            <button 
+                              className="btn-card-invite invited" 
+                              disabled 
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', fontWeight: 800, borderRadius: '10px', height: '36px' }}
+                            >
+                              <Clock size={13} />
+                              Request Pending...
+                            </button>
+                          ) : typeof connState === 'object' && connState.status === 'PENDING_RECEIVED' ? (
+                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                              <button 
+                                className="btn-primary" 
+                                onClick={() => handleAcceptConnection(tm, connState.reqId)}
+                                disabled={isBusy}
+                                style={{ flex: 1, padding: '7px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, borderRadius: '10px' }}
+                              >
+                                <Check size={13} /> {isBusy ? '...' : 'Accept Request'}
+                              </button>
+                              <button 
+                                className="btn-secondary" 
+                                onClick={() => handleRejectConnection(tm, connState.reqId)}
+                                disabled={isBusy}
+                                style={{ padding: '7px 10px', fontSize: '12px', borderRadius: '10px' }}
+                                title="Decline"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button 
+                              className="btn-primary" 
+                              onClick={() => handleSendConnection(tm)}
+                              disabled={isBusy}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', fontWeight: 800, fontSize: '13px' }}
+                            >
+                              <UserPlus size={14} />
+                              {isBusy ? 'Connecting...' : 'Connect'}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Team Invitation Status / Action */}
+                        <div style={{ width: '100%' }}>
+                          {inviteState === 'pending' ? (
+                            <div style={{ background: '#EFF6FF', color: '#1E40AF', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 700, border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                              <Clock size={13} /> Invitation Sent • Pending
+                            </div>
+                          ) : inviteState === 'accepted' ? (
+                            <div style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                              <Check size={13} /> ✓ Joined Your Team
+                            </div>
+                          ) : inviteState === 'declined' ? (
+                            <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 700, border: '1px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                              ✕ Invitation Declined
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTargetStudentForInvite(tm);
+                                setIsTeamInviteModalOpen(true);
+                              }}
+                              style={{
+                                width: '100%',
+                                background: 'transparent',
+                                border: '1px dashed #2563EB',
+                                color: '#2563EB',
+                                padding: '6px 12px',
+                                borderRadius: '10px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <Users size={13} /> + Invite to Team
+                            </button>
+                          )}
+                        </div>
+                      </>
                     );
                   })()}
                 </div>
@@ -676,6 +746,22 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
           </div>
         </main>
       </div>
+
+      {/* Invite Teammate Modal */}
+      {isTeamInviteModalOpen && (
+        <InviteTeammateModal
+          isOpen={isTeamInviteModalOpen}
+          onClose={() => {
+            setIsTeamInviteModalOpen(false);
+            setTargetStudentForInvite(null);
+          }}
+          userProfile={userProfile}
+          targetUser={targetStudentForInvite}
+          onInviteSent={(newInv) => {
+            fetchConnections();
+          }}
+        />
+      )}
     </div>
   );
 }
