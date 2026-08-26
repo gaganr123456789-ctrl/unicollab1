@@ -340,7 +340,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
 
   return (
     <div className="page-container animate-fade-in">
-      {/* Toast Banner */}
+      {/* Toast Alert */}
       {toastMessage && (
         <div 
           className="toast-alert animate-fade-in" 
@@ -365,6 +365,222 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Top Banner */}
+      <div className="dash-top-bar">
+        <div>
+          <div className="flex align-center gap-3">
+            <h1 className="dash-title">Notifications & Requests</h1>
+            {unreadCount > 0 && (
+              <span className="notif-badge-pill">{unreadCount} New</span>
+            )}
+          </div>
+          <p className="dash-subtitle">
+            Actionable team invitations, hackathon confirmations, AI teammate matches, and academic updates.
+          </p>
+        </div>
+
+        <div className="dash-actions">
+          <button className="btn-secondary" onClick={handleMarkAllRead} disabled={unreadCount === 0}>
+            <CheckCircle2 size={16} />
+            <span>Mark All as Read</span>
+          </button>
+          <button className="btn-secondary" onClick={handleClearAll} disabled={notifications.length === 0}>
+            <Trash2 size={16} />
+            <span>Clear All</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Tabs Row */}
+      <div className="notif-filter-bar mt-6">
+        <div className="notif-tabs-scroll">
+          {categories.map((cat) => {
+            const count = cat === 'Unread' 
+              ? unreadCount 
+              : cat === 'All' 
+                ? notifications.length 
+                : cat === 'Team Invites'
+                  ? notifications.filter(n => n.category === 'Team Invites' || n.type === 'TEAM_INVITE' || n.type === 'team-invite').length
+                  : notifications.filter(n => n.category === cat).length;
+
+            return (
+              <button
+                key={cat}
+                className={`notif-tab-btn ${activeFilter === cat ? 'active' : ''}`}
+                onClick={() => setActiveFilter(cat)}
+              >
+                <span>{cat}</span>
+                <span className="tab-count-tag">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Notifications Stream Feed */}
+      <div className="notif-stream-container mt-6">
+        {filteredNotifications.length === 0 ? (
+          <div className="notif-empty-state">
+            <div className="empty-icon-circle">
+              <Bell size={32} />
+            </div>
+            <h4>No Notifications Found</h4>
+            <p>You're all caught up! Check back later for new team invites and campus updates.</p>
+          </div>
+        ) : (
+          <div className="notif-list-stack">
+            {filteredNotifications.map((notif) => {
+              const isTeamInvite = notif.type === 'TEAM_INVITE' || notif.type === 'team-invite' || notif.actionType === 'invite-buttons';
+              const isPending = !notif.status || notif.status === 'pending' || !notif.actionDone;
+              const isAccepted = notif.status === 'accepted' || notif.actionDone === 'Accepted';
+              const isDeclined = notif.status === 'declined' || notif.actionDone === 'Declined';
+              const isActionBusy = actionLoadingId === (notif.inviteId || notif.id);
+
+              return (
+                <div 
+                  key={notif.id} 
+                  className={`notif-card-item ${notif.unread ? 'unread' : ''} ${isTeamInvite ? 'team-invite-card' : ''}`}
+                  style={{
+                    borderLeft: isTeamInvite 
+                      ? (isAccepted ? '4px solid #10B981' : isDeclined ? '4px solid #EF4444' : '4px solid #2563EB') 
+                      : undefined
+                  }}
+                >
+                  <div className="notif-card-left">
+                    {/* Dedicated Icon with Badge */}
+                    <div 
+                      className="notif-type-icon-box"
+                      style={{
+                        background: isTeamInvite ? '#EFF6FF' : undefined,
+                        color: isTeamInvite ? '#2563EB' : undefined
+                      }}
+                    >
+                      {getIconForType(notif.type)}
+                    </div>
+                    
+                    <div className="notif-main-info" style={{ width: '100%' }}>
+                      <div className="notif-header-line flex justify-between align-center">
+                        <div className="flex align-center gap-2">
+                          <h4 className="notif-title" style={{ fontSize: '15px', fontWeight: '800' }}>
+                            {isTeamInvite ? 'Team Invitation Received' : notif.title}
+                          </h4>
+                          {isTeamInvite && isPending && (
+                            <span style={{ background: '#FEF3C7', color: '#D97706', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, border: '1px solid #FDE68A' }}>
+                              Action Required
+                            </span>
+                          )}
+                        </div>
+                        <span className="notif-time-stamp">
+                          <Clock size={12} /> {notif.time}
+                        </span>
+                      </div>
+
+                      {/* Clean Message Quotation matching reference UI */}
+                      <p className="notif-message-text" style={{ fontSize: '14px', lineHeight: 1.5, marginTop: '6px', color: 'var(--text-color, #334155)' }}>
+                        "{notif.message}"
+                      </p>
+
+                      {/* Actionable Team Invitation Buttons */}
+                      {isTeamInvite && (
+                        <div className="notif-action-row mt-3" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          {isPending && (
+                            <>
+                              <button 
+                                className="btn-primary" 
+                                onClick={() => handleAcceptInvite(notif)}
+                                disabled={isActionBusy}
+                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563EB' }}
+                              >
+                                <Check size={14} />
+                                {isActionBusy ? 'Joining...' : 'Accept Invite'}
+                              </button>
+
+                              <button 
+                                className="btn-secondary" 
+                                onClick={() => handleDeclineInvite(notif)}
+                                disabled={isActionBusy}
+                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px', color: '#64748B' }}
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+
+                          {isAccepted && (
+                            <span style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Check size={14} /> You have joined the team successfully!
+                            </span>
+                          )}
+
+                          {isDeclined && (
+                            <span style={{ background: '#FEE2E2', color: '#DC2626', padding: '6px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 800, border: '1px solid #FCA5A5', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              ✕ Invitation Declined
+                            </span>
+                          )}
+
+                          {/* View Team Details Option */}
+                          <button 
+                            className="text-link-sm" 
+                            onClick={() => handleOpenTeamModal(notif)}
+                            style={{ background: 'none', border: 'none', color: '#2563EB', fontWeight: '700', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
+                          >
+                            View Team Details →
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Non-Team Notification Actions */}
+                      {notif.type === 'ai-match' && (
+                        <div className="notif-action-row mt-3">
+                          <button className="btn-sm-primary" onClick={() => setCurrentPage('find-teammates')}>
+                            View AI Teammate Matches →
+                          </button>
+                        </div>
+                      )}
+
+                      {notif.type === 'hackathon' && (
+                        <div className="notif-action-row mt-3">
+                          <button className="btn-sm-primary" onClick={() => setCurrentPage('hackathons')}>
+                            Go to Hackathon Hub →
+                          </button>
+                        </div>
+                      )}
+
+                      {(notif.type === 'mentorship' || notif.type === 'message') && (
+                        <div className="notif-action-row mt-3">
+                          <button className="btn-sm-primary" onClick={() => setCurrentPage('messages')}>
+                            Open Chat & Messages →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Side Controls */}
+                  <div className="notif-card-right">
+                    <button 
+                      className="notif-icon-opt" 
+                      onClick={() => handleToggleRead(notif.id)}
+                      title={notif.unread ? "Mark as read" : "Mark as unread"}
+                    >
+                      <CheckCircle2 size={16} className={notif.unread ? "text-blue" : "text-muted"} />
+                    </button>
+
+                    <button 
+                      className="notif-icon-opt hover-red" 
+                      onClick={() => handleDeleteNotification(notif.id)}
+                      title="Delete notification"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Interactive Team Details Modal */}
       {isTeamModalOpen && selectedInviteForModal && (
