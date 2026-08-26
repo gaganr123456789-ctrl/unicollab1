@@ -17,7 +17,8 @@ import {
   Check,
   ArrowRight,
   ShieldCheck,
-  Layers
+  Layers,
+  UserCheck
 } from 'lucide-react';
 
 export default function NotificationsPage({ setCurrentPage, userProfile }) {
@@ -65,20 +66,24 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
     }
   ]);
 
-  // Fetch live notifications and invites, and connect Socket.io
+  // Fetch live notifications, invites, and connection requests, and connect Socket.io
   useEffect(() => {
     const fetchLiveNotifications = async () => {
       try {
         const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
         const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
 
-        // 1. Fetch notifications
+        // 1. Fetch general notifications
         const res = await apiClient.getNotifications(myId);
         let liveNotifs = (res.success && Array.isArray(res.notifications)) ? res.notifications : [];
 
         // 2. Fetch invitations
         const invitesRes = await apiClient.getInvites(myId, myEmail);
         let liveInvites = (invitesRes.success && Array.isArray(invitesRes.received)) ? invitesRes.received : [];
+
+        // 3. Fetch connection requests
+        const connsRes = await apiClient.getConnections(myEmail, myId);
+        let liveIncomingConns = (connsRes.success && Array.isArray(connsRes.incomingPending)) ? connsRes.incomingPending : [];
 
         // Format invitations into actionable notification cards
         const formattedInvites = liveInvites.map(inv => ({
@@ -106,11 +111,31 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
           targetPage: 'workspace'
         }));
 
+        // Format incoming connection requests into actionable cards
+        const formattedConns = liveIncomingConns.map(conn => ({
+          id: `notif_conn_${conn.id}`,
+          connectionId: conn.id,
+          type: 'CONNECTION_REQUEST',
+          category: 'Connections',
+          title: 'Connection Request Received',
+          message: `${conn.senderName} wants to connect with you on UniCollab: "${conn.message || "Let's collaborate on projects!"}"`,
+          time: 'Just now',
+          unread: true,
+          sender: conn.senderName,
+          senderName: conn.senderName,
+          senderEmail: conn.senderEmail,
+          senderId: conn.senderId,
+          avatarInitials: (conn.senderName || 'ST').split(' ').map(n => n[0]).join('').slice(0, 2),
+          actionType: 'connection-buttons',
+          status: 'pending',
+          targetPage: 'messages'
+        }));
+
         setNotifications(prev => {
-          const combined = [...formattedInvites, ...liveNotifs, ...prev];
+          const combined = [...formattedConns, ...formattedInvites, ...liveNotifs, ...prev];
           const uniqueMap = new Map();
           combined.forEach(n => {
-            const key = n.inviteId || n.id;
+            const key = n.connectionId ? `conn_${n.connectionId}` : (n.inviteId || n.id);
             if (!uniqueMap.has(key)) {
               uniqueMap.set(key, n);
             }
@@ -124,7 +149,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
 
     fetchLiveNotifications();
 
-    // Socket.io listener for real-time notifications & invitation state updates
+    // Socket.io listener for real-time notifications, invitations, and connection requests
     try {
       const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
         ? 'http://localhost:5000'
@@ -133,39 +158,100 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
           : 'https://unicollab1.onrender.com';
       const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
       
+      const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+      if (myEmail) {
+        socket.emit('register_user', { email: myEmail, name: userProfile?.name });
+      }
+
       socket.on('notification:new', (newNotif) => {
         console.log('📡 [SOCKET.IO] New real-time notification received:', newNotif);
         const isTeamInvite = newNotif.type === 'TEAM_INVITE' || newNotif.inviteId;
+        const isConnReq = newNotif.type === 'CONNECTION_REQUEST' || newNotif.category === 'Connections';
+        
         const formattedNotif = {
           id: newNotif.id || `notif_${Date.now()}`,
-          title: newNotif.title || (isTeamInvite ? 'Team Invitation Received' : 'New Notification'),
+          title: newNotif.title || (isTeamInvite ? 'Team Invitation Received' : isConnReq ? 'Connection Request Received' : 'New Notification'),
           message: newNotif.message || 'You received a new update.',
-          type: isTeamInvite ? 'TEAM_INVITE' : (newNotif.type === 'MENTORSHIP_REQUEST' ? 'mentorship' : 'system'),
-          category: isTeamInvite ? 'Team Invites' : (newNotif.type === 'MENTORSHIP_REQUEST' ? 'Mentorship' : 'General'),
+          type: isTeamInvite ? 'TEAM_INVITE' : isConnReq ? 'CONNECTION_REQUEST' : (newNotif.type === 'MENTORSHIP_REQUEST' ? 'mentorship' : 'system'),
+          category: isTeamInvite ? 'Team Invites' : isConnReq ? 'Connections' : (newNotif.type === 'MENTORSHIP_REQUEST' ? 'Mentorship' : 'General'),
           time: 'Just now',
           unread: true,
           inviteId: newNotif.inviteId,
+          connectionId: newNotif.connectionId,
           teamId: newNotif.teamId,
           teamName: newNotif.teamName,
           teamDesc: newNotif.teamDesc,
           teamLeader: newNotif.teamLeader || newNotif.sender,
           requiredSkills: newNotif.requiredSkills,
-          sender: newNotif.sender || 'UniCollab User',
-          senderName: newNotif.sender || 'UniCollab User',
-          avatarInitials: (newNotif.sender || 'UC').split(' ').map(n => n[0]).join('').slice(0, 2),
-          actionType: isTeamInvite ? 'invite-buttons' : 'view',
+          sender: newNotif.sender || newNotif.senderName || 'UniCollab User',
+          senderName: newNotif.senderName || newNotif.sender || 'UniCollab User',
+          senderEmail: newNotif.senderEmail || '',
+          avatarInitials: (newNotif.senderName || newNotif.sender || 'UC').split(' ').map(n => n[0]).join('').slice(0, 2),
+          actionType: isTeamInvite ? 'invite-buttons' : isConnReq ? 'connection-buttons' : 'view',
           status: newNotif.status || 'pending',
-          targetPage: 'workspace'
+          targetPage: isConnReq ? 'messages' : 'workspace'
         };
 
         setNotifications(prev => {
           const map = new Map();
           [formattedNotif, ...prev].forEach(item => {
-            const key = item.inviteId || item.id;
+            const key = item.connectionId ? `conn_${item.connectionId}` : (item.inviteId || item.id);
             map.set(key, item);
           });
           return Array.from(map.values());
         });
+      });
+
+      socket.on('connection:request', (newConn) => {
+        console.log('📡 [SOCKET.IO] Connection request received:', newConn);
+        const cardItem = {
+          id: `notif_conn_${newConn.id}`,
+          connectionId: newConn.id,
+          type: 'CONNECTION_REQUEST',
+          category: 'Connections',
+          title: 'Connection Request Received',
+          message: `${newConn.senderName} wants to connect with you on UniCollab: "${newConn.message || "Let's collaborate on projects!"}"`,
+          time: 'Just now',
+          unread: true,
+          sender: newConn.senderName,
+          senderName: newConn.senderName,
+          senderEmail: newConn.senderEmail,
+          senderId: newConn.senderId,
+          avatarInitials: (newConn.senderName || 'ST').split(' ').map(n => n[0]).join('').slice(0, 2),
+          actionType: 'connection-buttons',
+          status: 'pending',
+          targetPage: 'messages'
+        };
+
+        setNotifications(prev => [cardItem, ...prev.filter(n => n.connectionId !== newConn.id)]);
+      });
+
+      socket.on('connection:accepted', (conn) => {
+        setNotifications(prev => prev.map(n => {
+          if (n.connectionId === conn.id) {
+            return {
+              ...n,
+              status: 'accepted',
+              actionDone: 'Connected',
+              unread: false
+            };
+          }
+          return n;
+        }));
+      });
+
+      socket.on('connection:update', (conn) => {
+        setNotifications(prev => prev.map(n => {
+          if (n.connectionId === conn.id) {
+            return {
+              ...n,
+              status: conn.status === 'ACCEPTED' ? 'accepted' : conn.status === 'REJECTED' ? 'declined' : n.status,
+              actionDone: conn.status === 'ACCEPTED' ? 'Connected' : conn.status === 'REJECTED' ? 'Declined' : n.actionDone,
+              unread: false
+            };
+          }
+          return n;
+        }));
       });
 
       socket.on('invite:received', (newInvite) => {
@@ -310,6 +396,71 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
     }
   };
 
+  // Accept Connection Request Handler
+  const handleAcceptConnectionRequest = async (notif) => {
+    const connId = notif.connectionId || notif.id;
+    setActionLoadingId(notif.id);
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+    const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : '');
+
+    try {
+      const res = await apiClient.acceptConnection(connId, {
+        userEmail: myEmail,
+        userId: myId,
+        targetEmail: notif.senderEmail,
+        targetName: notif.senderName
+      });
+
+      setNotifications(prev => prev.map(n => 
+        (n.id === notif.id || n.connectionId === connId)
+          ? { ...n, unread: false, status: 'accepted', actionDone: 'Connected' }
+          : n
+      ));
+
+      showToast(`🎉 Connected with ${notif.senderName}! You can now message each other.`);
+    } catch (err) {
+      showToast(`🎉 Connected with ${notif.senderName}!`);
+      setNotifications(prev => prev.map(n => 
+        (n.id === notif.id || n.connectionId === connId)
+          ? { ...n, unread: false, status: 'accepted', actionDone: 'Connected' }
+          : n
+      ));
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Decline Connection Request Handler
+  const handleDeclineConnectionRequest = async (notif) => {
+    const connId = notif.connectionId || notif.id;
+    setActionLoadingId(notif.id);
+    const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+
+    try {
+      await apiClient.rejectConnection(connId, {
+        userEmail: myEmail,
+        targetEmail: notif.senderEmail
+      });
+
+      setNotifications(prev => prev.map(n => 
+        (n.id === notif.id || n.connectionId === connId)
+          ? { ...n, unread: false, status: 'declined', actionDone: 'Declined' }
+          : n
+      ));
+
+      showToast('Connection request declined.');
+    } catch (err) {
+      setNotifications(prev => prev.map(n => 
+        (n.id === notif.id || n.connectionId === connId)
+          ? { ...n, unread: false, status: 'declined', actionDone: 'Declined' }
+          : n
+      ));
+      showToast('Connection request declined.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const handleOpenTeamModal = (notif) => {
     setSelectedInviteForModal(notif);
     setIsTeamModalOpen(true);
@@ -319,17 +470,19 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
     if (activeFilter === 'All') return true;
     if (activeFilter === 'Unread') return n.unread;
     if (activeFilter === 'Team Invites') return n.category === 'Team Invites' || n.type === 'TEAM_INVITE' || n.type === 'team-invite';
+    if (activeFilter === 'Connections') return n.category === 'Connections' || n.type === 'CONNECTION_REQUEST';
     return n.category === activeFilter;
   });
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const categories = ['All', 'Unread', 'Team Invites', 'AI Matches', 'Hackathons', 'Mentorship', 'Direct Messages'];
+  const categories = ['All', 'Unread', 'Team Invites', 'Connections', 'AI Matches', 'Hackathons', 'Mentorship', 'Direct Messages'];
 
   const getIconForType = (type) => {
     switch (type) {
       case 'TEAM_INVITE':
       case 'team-invite': return <Users size={19} className="text-blue" />;
+      case 'CONNECTION_REQUEST': return <UserPlus size={19} className="text-blue" />;
       case 'ai-match': return <Sparkles size={19} className="text-purple" />;
       case 'hackathon': return <Trophy size={19} className="text-amber" />;
       case 'mentorship': return <GraduationCap size={19} className="text-emerald" />;
@@ -376,7 +529,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
             )}
           </div>
           <p className="dash-subtitle">
-            Actionable team invitations, hackathon confirmations, AI teammate matches, and academic updates.
+            Actionable team invitations, classmate connection requests, hackathon confirmations, and AI teammate matches.
           </p>
         </div>
 
@@ -402,7 +555,9 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                 ? notifications.length 
                 : cat === 'Team Invites'
                   ? notifications.filter(n => n.category === 'Team Invites' || n.type === 'TEAM_INVITE' || n.type === 'team-invite').length
-                  : notifications.filter(n => n.category === cat).length;
+                  : cat === 'Connections'
+                    ? notifications.filter(n => n.category === 'Connections' || n.type === 'CONNECTION_REQUEST').length
+                    : notifications.filter(n => n.category === cat).length;
 
             return (
               <button
@@ -432,17 +587,18 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
           <div className="notif-list-stack">
             {filteredNotifications.map((notif) => {
               const isTeamInvite = notif.type === 'TEAM_INVITE' || notif.type === 'team-invite' || notif.actionType === 'invite-buttons';
+              const isConnReq = notif.type === 'CONNECTION_REQUEST' || notif.actionType === 'connection-buttons';
               const isPending = !notif.status || notif.status === 'pending' || !notif.actionDone;
-              const isAccepted = notif.status === 'accepted' || notif.actionDone === 'Accepted';
+              const isAccepted = notif.status === 'accepted' || notif.actionDone === 'Accepted' || notif.actionDone === 'Connected';
               const isDeclined = notif.status === 'declined' || notif.actionDone === 'Declined';
-              const isActionBusy = actionLoadingId === (notif.inviteId || notif.id);
+              const isActionBusy = actionLoadingId === (notif.connectionId || notif.inviteId || notif.id);
 
               return (
                 <div 
                   key={notif.id} 
-                  className={`notif-card-item ${notif.unread ? 'unread' : ''} ${isTeamInvite ? 'team-invite-card' : ''}`}
+                  className={`notif-card-item ${notif.unread ? 'unread' : ''} ${(isTeamInvite || isConnReq) ? 'team-invite-card' : ''}`}
                   style={{
-                    borderLeft: isTeamInvite 
+                    borderLeft: (isTeamInvite || isConnReq)
                       ? (isAccepted ? '4px solid #10B981' : isDeclined ? '4px solid #EF4444' : '4px solid #2563EB') 
                       : undefined
                   }}
@@ -452,8 +608,8 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                     <div 
                       className="notif-type-icon-box"
                       style={{
-                        background: isTeamInvite ? '#EFF6FF' : undefined,
-                        color: isTeamInvite ? '#2563EB' : undefined
+                        background: (isTeamInvite || isConnReq) ? '#EFF6FF' : undefined,
+                        color: (isTeamInvite || isConnReq) ? '#2563EB' : undefined
                       }}
                     >
                       {getIconForType(notif.type)}
@@ -463,9 +619,9 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                       <div className="notif-header-line flex justify-between align-center">
                         <div className="flex align-center gap-2">
                           <h4 className="notif-title" style={{ fontSize: '15px', fontWeight: '800' }}>
-                            {isTeamInvite ? 'Team Invitation Received' : notif.title}
+                            {isTeamInvite ? 'Team Invitation Received' : isConnReq ? 'Connection Request Received' : notif.title}
                           </h4>
-                          {isTeamInvite && isPending && (
+                          {(isTeamInvite || isConnReq) && isPending && (
                             <span style={{ background: '#FEF3C7', color: '#D97706', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, border: '1px solid #FDE68A' }}>
                               Action Required
                             </span>
@@ -530,7 +686,58 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                         </div>
                       )}
 
-                      {/* Non-Team Notification Actions */}
+                      {/* Actionable Connection Request Buttons */}
+                      {isConnReq && (
+                        <div className="notif-action-row mt-3" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          {isPending && (
+                            <>
+                              <button 
+                                className="btn-primary" 
+                                onClick={() => handleAcceptConnectionRequest(notif)}
+                                disabled={isActionBusy}
+                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563EB' }}
+                              >
+                                <Check size={14} />
+                                {isActionBusy ? 'Connecting...' : 'Accept Request'}
+                              </button>
+
+                              <button 
+                                className="btn-secondary" 
+                                onClick={() => handleDeclineConnectionRequest(notif)}
+                                disabled={isActionBusy}
+                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px', color: '#64748B' }}
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+
+                          {isAccepted && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Check size={14} /> Connected with {notif.senderName}
+                              </span>
+                              <button 
+                                className="btn-sm-primary" 
+                                onClick={() => {
+                                  if (setCurrentPage) setCurrentPage('messages');
+                                }}
+                                style={{ padding: '6px 14px', fontSize: '12px' }}
+                              >
+                                <MessageSquare size={13} /> Send Message →
+                              </button>
+                            </div>
+                          )}
+
+                          {isDeclined && (
+                            <span style={{ background: '#FEE2E2', color: '#DC2626', padding: '6px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 800, border: '1px solid #FCA5A5', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              ✕ Connection Request Declined
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Non-Team & Non-Conn Notification Actions */}
                       {notif.type === 'ai-match' && (
                         <div className="notif-action-row mt-3">
                           <button className="btn-sm-primary" onClick={() => setCurrentPage('find-teammates')}>

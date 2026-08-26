@@ -688,11 +688,12 @@ export const apiClient = {
     }
   },
 
-  async rejectConnection(connectionId) {
+  async rejectConnection(connectionId, payload = {}) {
     try {
       const res = await fetch(`${BASE_URL}/connections/${connectionId}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
       return await res.json();
     } catch (err) {

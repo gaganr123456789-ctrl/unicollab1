@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
+import { io } from 'socket.io-client';
 import InviteTeammateModal from '../components/InviteTeammateModal';
 import { 
   Search, 
@@ -228,17 +229,23 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     // Socket.IO real-time connection status listener
     let socket = null;
     try {
-      if (typeof window !== 'undefined' && window.io) {
-        const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
-        socket = window.io(socketUrl);
-        const myEmail = (userProfile?.email || '').toLowerCase().trim();
-        if (myEmail) {
-          socket.emit('register_user', { email: myEmail, name: userProfile?.name });
-        }
-        socket.on('connection:request', () => fetchConnections());
-        socket.on('connection:accepted', () => fetchConnections());
-        socket.on('connection:update', () => fetchConnections());
+      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+        ? 'http://localhost:5000'
+        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+          ? window.location.origin
+          : 'https://unicollab1.onrender.com';
+
+      socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+      const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
+      if (myEmail) {
+        socket.emit('register_user', { email: myEmail, name: userProfile?.name });
       }
+
+      socket.on('connection:request', () => fetchConnections());
+      socket.on('connection:accepted', () => fetchConnections());
+      socket.on('connection:update', () => fetchConnections());
+      socket.on('invite:received', () => fetchConnections());
+      socket.on('invite:updated', () => fetchConnections());
     } catch (e) {
       console.warn('Socket connection listener notice:', e);
     }
@@ -246,7 +253,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     return () => {
       if (socket) socket.disconnect();
     };
-  }, []);
+  }, [userProfile]);
 
   // Determine Connection Status for each Teammate Card
   const getCandidateConnectionState = (candidate) => {

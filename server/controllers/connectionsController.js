@@ -79,28 +79,39 @@ export const sendConnectionRequest = async (req, res) => {
 
   // Add in-app notification for receiver
   const notifId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-  notificationsDB.unshift({
+  const connNotification = {
     id: notifId,
     userId: receiverEmail,
-    title: 'New Connection Request',
-    message: `${senderName} sent you a connection request: "${message}"`,
+    recipientEmail: receiverEmail,
+    title: 'Connection Request Received',
+    message: `${senderName} wants to connect with you on UniCollab: "${message}"`,
     type: 'CONNECTION_REQUEST',
     category: 'Connections',
     time: 'Just now',
     read: false,
     connectionId: connId,
+    senderId,
     senderEmail,
     senderName,
+    actionType: 'connection-buttons',
+    status: 'pending',
     createdAt: new Date().toISOString()
-  });
+  };
+  notificationsDB.unshift(connNotification);
 
   // Real-time broadcast via Socket.IO
   try {
     const io = req.app?.get('io') || global.io;
     if (io) {
       io.to(`user_${receiverEmail}`).emit('connection:request', newConnection);
-      if (receiverId) io.to(`user_${receiverId}`).emit('connection:request', newConnection);
+      io.to(`user_${receiverEmail}`).emit('notification:new', connNotification);
+      if (receiverId) {
+        io.to(`user_${receiverId}`).emit('connection:request', newConnection);
+        io.to(`user_${receiverId}`).emit('notification:new', connNotification);
+      }
+      io.emit('connection:request', newConnection);
       io.emit('connection:update', newConnection);
+      io.emit('notification:new', connNotification);
     }
   } catch (err) {
     console.warn('Socket broadcast warning:', err.message);
@@ -279,11 +290,32 @@ export const acceptConnection = async (req, res) => {
 // 4. POST /api/connections/:id/reject - Decline connection request
 export const rejectConnection = async (req, res) => {
   const connId = req.params.id;
-  const connIndex = connectionsDB.findIndex(c => c.id === connId);
+  const userEmail = normalizeEmail(req.user?.email || req.body.userEmail);
+  const targetEmail = normalizeEmail(req.body.targetEmail);
+
+  let connIndex = connectionsDB.findIndex(c => c.id === connId);
+  if (connIndex === -1 && targetEmail && userEmail) {
+    connIndex = connectionsDB.findIndex(c => 
+      (normalizeEmail(c.senderEmail) === targetEmail && normalizeEmail(c.receiverEmail) === userEmail) ||
+      (normalizeEmail(c.senderEmail) === userEmail && normalizeEmail(c.receiverEmail) === targetEmail)
+    );
+  }
   
   if (connIndex !== -1) {
     connectionsDB[connIndex].status = 'REJECTED';
     connectionsDB[connIndex].updatedAt = new Date().toISOString();
+
+    const conn = connectionsDB[connIndex];
+    try {
+      const io = req.app?.get('io') || global.io;
+      if (io) {
+        io.to(`user_${conn.senderEmail}`).emit('connection:update', conn);
+        io.to(`user_${conn.receiverEmail}`).emit('connection:update', conn);
+        io.emit('connection:update', conn);
+      }
+    } catch (e) {
+      console.warn('Socket reject emit warning:', e.message);
+    }
   }
 
   return res.status(200).json({
