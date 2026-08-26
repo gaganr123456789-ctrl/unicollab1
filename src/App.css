@@ -7866,6 +7866,26 @@ input:checked + .toggle-slider:before {
   border-radius: 999px;
 }
 
+.badge-declined {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #DC2626;
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.team-invite-card {
+  border: 1px solid #BFDBFE !important;
+  background: #FFFFFF;
+}
+
+.dark-theme .team-invite-card {
+  border: 1px solid #1E3A8A !important;
+  background: #0F172A;
+}
+
 .btn-sm-primary {
   background: #2563EB;
   color: white;

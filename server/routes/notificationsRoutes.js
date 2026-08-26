@@ -25,13 +25,16 @@ router.get('/', async (req, res) => {
             id: n.id,
             title: n.title,
             message: n.message,
-            type: n.type === 'MENTORSHIP_REQUEST' ? 'mentorship' : 'team-invite',
+            type: n.type === 'MENTORSHIP_REQUEST' ? 'mentorship' : 'TEAM_INVITE',
             category: n.type === 'MENTORSHIP_REQUEST' ? 'Mentorship' : 'Team Invites',
             time: new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             unread: !n.read,
             inviteId: n.inviteId,
-            sender: n.title.includes('Mentorship') ? 'Academic Mentor' : 'Teammate Candidate',
-            avatarInitials: n.title.includes('Mentorship') ? 'AM' : 'TM',
+            teamId: n.teamId,
+            teamName: n.teamName,
+            status: n.status || 'pending',
+            sender: n.title.includes('Mentorship') ? 'Academic Mentor' : (n.sender || 'Teammate Candidate'),
+            avatarInitials: (n.sender || (n.title.includes('Mentorship') ? 'AM' : 'TM')).split(' ').map(w => w[0]).join('').slice(0, 2),
             actionType: n.inviteId ? 'invite-buttons' : 'view'
           }))
         });
