@@ -18,7 +18,13 @@ import {
   Users
 } from 'lucide-react';
 
-const INITIAL_KANBAN_TASKS = [
+const getDynamicDate = (daysAgo = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const getInitialTasks = () => [
   {
     id: 1,
     column: 'todo',
@@ -26,7 +32,7 @@ const INITIAL_KANBAN_TASKS = [
     desc: 'Configure GitHub Actions for automated deployment.',
     priority: 'HIGH',
     comments: 3,
-    date: 'Oct 24'
+    date: getDynamicDate(0)
   },
   {
     id: 2,
@@ -35,7 +41,7 @@ const INITIAL_KANBAN_TASKS = [
     desc: 'Analyze interview transcripts from first testing round.',
     priority: 'MEDIUM',
     comments: 4,
-    date: 'Oct 28'
+    date: getDynamicDate(1)
   },
   {
     id: 3,
@@ -44,7 +50,7 @@ const INITIAL_KANBAN_TASKS = [
     desc: 'Fixing spacing issues on the hamburger menu.',
     priority: 'MEDIUM',
     comments: 2,
-    date: 'Oct 22'
+    date: getDynamicDate(2)
   },
   {
     id: 4,
@@ -53,7 +59,7 @@ const INITIAL_KANBAN_TASKS = [
     desc: 'Backend Node.js & Express REST endpoints.',
     priority: 'HIGH',
     comments: 5,
-    date: 'Oct 26'
+    date: getDynamicDate(3)
   },
   {
     id: 5,
@@ -62,7 +68,7 @@ const INITIAL_KANBAN_TASKS = [
     desc: 'Final check of the ER diagram before migration.',
     priority: 'HIGH',
     comments: 5,
-    date: 'Oct 19'
+    date: getDynamicDate(4)
   },
   {
     id: 6,
@@ -71,7 +77,7 @@ const INITIAL_KANBAN_TASKS = [
     desc: 'Internal wiki page setup and initial roadmap.',
     priority: 'LOW',
     comments: 8,
-    date: 'Oct 10'
+    date: getDynamicDate(5)
   }
 ];
 
@@ -92,11 +98,18 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((t, i) => ({
+              ...t,
+              date: (!t.date || t.date.includes('Oct ') || t.date.includes('Nov ')) 
+                ? getDynamicDate(i % 6) 
+                : t.date
+            }));
+          }
         } catch (e) {}
       }
     }
-    return INITIAL_KANBAN_TASKS;
+    return getInitialTasks();
   });
 
   // Save to LocalStorage whenever tasks update
@@ -414,7 +427,7 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
               <div className="step-content-box">
                 <div className="step-top-badge-row">
                   <span className="step-status-pill green">COMPLETED</span>
-                  <span className="step-date">Oct 15, 2026</span>
+                  <span className="step-date">{getDynamicDate(10)}, {new Date().getFullYear()}</span>
                 </div>
                 <h4 className="step-title">Milestone 1: Prototype & High-Fidelity Wireframes</h4>
                 <p className="step-desc">
@@ -435,7 +448,7 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
               <div className="step-content-box active-border">
                 <div className="step-top-badge-row">
                   <span className="step-status-pill blue">IN PROGRESS</span>
-                  <span className="step-date">Due Oct 30, 2026</span>
+                  <span className="step-date">Due {getDynamicDate(-5)}, {new Date().getFullYear()}</span>
                 </div>
                 <h4 className="step-title">Milestone 2: REST API & Mobile Navigation Integration</h4>
                 <p className="step-desc">
@@ -464,7 +477,7 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
               <div className="step-content-box">
                 <div className="step-top-badge-row">
                   <span className="step-status-pill grey">UPCOMING</span>
-                  <span className="step-date">Scheduled Nov 15, 2026</span>
+                  <span className="step-date">Scheduled {getDynamicDate(-20)}, {new Date().getFullYear()}</span>
                 </div>
                 <h4 className="step-title">Milestone 3: Beta Testing, Security Audit & Demo Release</h4>
                 <p className="step-desc">
