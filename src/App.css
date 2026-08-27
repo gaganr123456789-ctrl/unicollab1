@@ -7199,10 +7199,14 @@ input:checked + .toggle-slider:before {
 .dark-theme .prof-bio,
 .dark-theme .port-desc,
 .dark-theme .task-desc,
+.dark-theme .tm-bio,
 .dark-theme .match-sub,
-.dark-theme .deadline-meta,
-.dark-theme span:not(.btn-primary span):not(.active):not(.brand-main.white-main):not(.badge):not(.online-indicator) {
-  color: #9CA3AF;
+.dark-theme .deadline-meta {
+  color: #E2E8F0 !important;
+}
+
+.dark-theme span:not(.btn-primary span):not(.active):not(.brand-main.white-main):not(.badge):not(.online-indicator):not(.notif-time-stamp):not(.meta-item) {
+  color: #CBD5E1;
 }
 
 /* --------------------------------------------------------------------------
@@ -8029,11 +8033,15 @@ input:checked + .toggle-slider:before {
 }
 
 .dark-theme .notif-title {
-  color: #F8FAFC !important;
+  color: #FFFFFF !important;
 }
 
-.dark-theme .notif-message-text {
-  color: #CBD5E1 !important;
+.dark-theme .notif-message-text,
+.dark-theme .notif-card-item .notif-message-text,
+.dark-theme .notif-card-item p.notif-message-text {
+  color: #F1F5F9 !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
 }
 
 .dark-theme .notif-time-stamp {
