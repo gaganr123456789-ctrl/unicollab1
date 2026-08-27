@@ -642,18 +642,19 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       {/* LEFT PANEL: Conversations Directory                            */}
       {/* ------------------------------------------------------------- */}
       <aside className={`messages-sidebar ${mobileShowChat ? 'hidden-on-mobile' : ''}`}>
-        {/* Header & Tabs */}
+        {/* Header & Search & Tabs */}
         <div className="messages-sidebar-header">
-          <div className="flex justify-between align-center mb-3">
-            <h2 className="messages-sidebar-title">
-              Messages
-            </h2>
+          <div className="messages-sidebar-top-row">
+            <div className="messages-title-badge-group">
+              <h2 className="messages-sidebar-title">Messages</h2>
+              <span className="messages-count-pill">{conversations.length}</span>
+            </div>
             <button 
               onClick={loadConversations} 
               title="Refresh conversations" 
-              className="btn-icon-plain"
+              className="messages-refresh-btn"
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
 
@@ -711,7 +712,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                   onClick={() => {
                     setActiveConversationId(conv.id);
                     setMobileShowChat(true);
-                    // Clear unread
+                    // Clear unread locally
                     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread: 0 } : c));
                   }}
                   className={`conversation-card ${isSelected ? 'selected' : ''}`}
@@ -775,6 +776,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                 <button 
                   className="mobile-back-btn" 
                   onClick={() => setMobileShowChat(false)}
+                  title="Back to conversations"
                 >
                   <ArrowLeft size={18} />
                 </button>
@@ -794,7 +796,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                   />
                 </div>
 
-                <div>
+                <div className="chat-header-meta">
                   <h3 className="chat-partner-name">
                     {activeConversation.name}
                   </h3>
@@ -811,7 +813,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
 
               <div className="chat-header-actions-right">
                 <span className="badge-connected">
-                  ✓ Connected
+                  <ShieldCheck size={13} /> Connected
                 </span>
               </div>
             </div>
@@ -843,11 +845,11 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                       {isMe && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
                           {msg.status === 'READ' ? (
-                            <CheckCheck size={14} style={{ color: '#2563EB' }} title="Read" />
+                            <CheckCheck size={14} style={{ color: '#60A5FA' }} title="Read" />
                           ) : msg.status === 'DELIVERED' ? (
-                            <CheckCheck size={14} style={{ color: '#94A3B8' }} title="Delivered" />
+                            <CheckCheck size={14} style={{ color: '#CBD5E1' }} title="Delivered" />
                           ) : (
-                            <Check size={13} style={{ color: '#94A3B8' }} title="Sent" />
+                            <Check size={13} style={{ color: '#CBD5E1' }} title="Sent" />
                           )}
                         </span>
                       )}
