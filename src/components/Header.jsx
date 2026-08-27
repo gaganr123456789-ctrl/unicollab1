@@ -23,7 +23,7 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
     'hackathons': 'Hackathon Hub',
     'messages': 'Messages & Chat',
     'profile': 'Student Profile',
-    'notifications': 'Notifications Stream',
+    'notifications': 'Notifications',
     'settings': 'Account Settings'
   };
 

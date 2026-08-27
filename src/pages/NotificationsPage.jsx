@@ -603,8 +603,8 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                       : undefined
                   }}
                 >
-                  <div className="notif-card-left">
-                    {/* Dedicated Icon with Badge */}
+                  <div className="notif-card-left" style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                    {/* Dedicated Icon Box */}
                     <div 
                       className="notif-type-icon-box"
                       style={{
@@ -615,38 +615,56 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                       {getIconForType(notif.type)}
                     </div>
                     
-                    <div className="notif-main-info" style={{ width: '100%' }}>
-                      <div className="notif-header-line flex justify-between align-center">
-                        <div className="flex align-center gap-2">
-                          <h4 className="notif-title" style={{ fontSize: '15px', fontWeight: '800' }}>
+                    <div className="notif-main-info" style={{ flex: 1, minWidth: 0 }}>
+                      <div className="notif-header-line flex justify-between align-center" style={{ flexWrap: 'wrap', gap: '10px' }}>
+                        <div className="flex align-center gap-2" style={{ flexWrap: 'wrap' }}>
+                          <h4 className="notif-title" style={{ fontSize: '15.5px', fontWeight: '800', margin: 0 }}>
                             {isTeamInvite ? 'Team Invitation Received' : isConnReq ? 'Connection Request Received' : notif.title}
                           </h4>
                           {(isTeamInvite || isConnReq) && isPending && (
-                            <span style={{ background: '#FEF3C7', color: '#D97706', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, border: '1px solid #FDE68A' }}>
+                            <span className="badge-action-req" style={{ padding: '3px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800 }}>
                               Action Required
                             </span>
                           )}
                         </div>
-                        <span className="notif-time-stamp">
-                          <Clock size={12} /> {notif.time}
-                        </span>
+
+                        {/* Top-Right: Timestamp + Mark Read / Delete Actions */}
+                        <div className="notif-top-right-actions flex align-center gap-2">
+                          <span className="notif-time-stamp" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={13} /> {notif.time}
+                          </span>
+                          <button 
+                            className="notif-icon-opt" 
+                            onClick={() => handleToggleRead(notif.id)}
+                            title={notif.unread ? "Mark as read" : "Mark as unread"}
+                          >
+                            <CheckCircle2 size={16} className={notif.unread ? "text-blue" : "text-muted"} />
+                          </button>
+                          <button 
+                            className="notif-icon-opt hover-red" 
+                            onClick={() => handleDeleteNotification(notif.id)}
+                            title="Delete notification"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Clean Message Quotation matching reference UI */}
-                      <p className="notif-message-text" style={{ fontSize: '14px', lineHeight: 1.5, marginTop: '6px' }}>
+                      <p className="notif-message-text" style={{ fontSize: '14px', lineHeight: 1.6, margin: '8px 0 14px 0' }}>
                         "{notif.message}"
                       </p>
 
                       {/* Actionable Team Invitation Buttons */}
                       {isTeamInvite && (
-                        <div className="notif-action-row mt-3" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <div className="notif-action-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                           {isPending && (
                             <>
                               <button 
                                 className="btn-primary" 
                                 onClick={() => handleAcceptInvite(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                style={{ padding: '8px 20px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}
                               >
                                 <Check size={14} />
                                 {isActionBusy ? 'Joining...' : 'Accept Invite'}
@@ -656,7 +674,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                                 className="btn-secondary" 
                                 onClick={() => handleDeclineInvite(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px' }}
+                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '700', borderRadius: '10px' }}
                               >
                                 Decline
                               </button>
@@ -675,7 +693,6 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                             </span>
                           )}
 
-                          {/* View Team Details Option */}
                           <button 
                             className="text-link-sm" 
                             onClick={() => handleOpenTeamModal(notif)}
@@ -688,14 +705,14 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
 
                       {/* Actionable Connection Request Buttons */}
                       {isConnReq && (
-                        <div className="notif-action-row mt-3" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <div className="notif-action-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                           {isPending && (
                             <>
                               <button 
                                 className="btn-primary" 
                                 onClick={() => handleAcceptConnectionRequest(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563EB' }}
+                                style={{ padding: '8px 20px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563EB' }}
                               >
                                 <Check size={14} />
                                 {isActionBusy ? 'Connecting...' : 'Accept Request'}
@@ -705,7 +722,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                                 className="btn-secondary" 
                                 onClick={() => handleDeclineConnectionRequest(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px' }}
+                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '700', borderRadius: '10px' }}
                               >
                                 Decline
                               </button>
@@ -739,7 +756,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
 
                       {/* Non-Team & Non-Conn Notification Actions */}
                       {notif.type === 'ai-match' && (
-                        <div className="notif-action-row mt-3">
+                        <div className="notif-action-row">
                           <button className="btn-sm-primary" onClick={() => setCurrentPage('find-teammates')}>
                             View AI Teammate Matches →
                           </button>
@@ -747,7 +764,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                       )}
 
                       {notif.type === 'hackathon' && (
-                        <div className="notif-action-row mt-3">
+                        <div className="notif-action-row">
                           <button className="btn-sm-primary" onClick={() => setCurrentPage('hackathons')}>
                             Go to Hackathon Hub →
                           </button>
@@ -755,32 +772,13 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                       )}
 
                       {(notif.type === 'mentorship' || notif.type === 'message') && (
-                        <div className="notif-action-row mt-3">
+                        <div className="notif-action-row">
                           <button className="btn-sm-primary" onClick={() => setCurrentPage('messages')}>
                             Open Chat & Messages →
                           </button>
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Right Side Controls */}
-                  <div className="notif-card-right">
-                    <button 
-                      className="notif-icon-opt" 
-                      onClick={() => handleToggleRead(notif.id)}
-                      title={notif.unread ? "Mark as read" : "Mark as unread"}
-                    >
-                      <CheckCircle2 size={16} className={notif.unread ? "text-blue" : "text-muted"} />
-                    </button>
-
-                    <button 
-                      className="notif-icon-opt hover-red" 
-                      onClick={() => handleDeleteNotification(notif.id)}
-                      title="Delete notification"
-                    >
-                      <X size={16} />
-                    </button>
                   </div>
                 </div>
               );

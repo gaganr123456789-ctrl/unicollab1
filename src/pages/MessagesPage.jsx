@@ -543,74 +543,45 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
   const normalizeEmail = (e) => (e || '').toLowerCase().trim();
 
   return (
-    <div className="messages-layout animate-fade-in" style={{ display: 'flex', height: 'calc(100vh - 84px)', overflow: 'hidden', background: 'var(--bg-main)' }}>
+    <div className="messages-layout animate-fade-in">
       {/* ------------------------------------------------------------- */}
       {/* LEFT PANEL: Conversations Directory                            */}
       {/* ------------------------------------------------------------- */}
-      <aside 
-        className={`messages-sidebar ${mobileShowChat ? 'hidden-on-mobile' : ''}`}
-        style={{ 
-          width: '380px', 
-          borderRight: '1px solid var(--border-color, #E2E8F0)', 
-          background: 'var(--surface-color, #FFFFFF)', 
-          display: 'flex', 
-          flexDirection: 'column',
-          flexShrink: 0
-        }}
-      >
+      <aside className={`messages-sidebar ${mobileShowChat ? 'hidden-on-mobile' : ''}`}>
         {/* Header & Tabs */}
-        <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color, #E2E8F0)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: 'var(--text-main, #0F172A)' }}>
+        <div className="messages-sidebar-header">
+          <div className="flex justify-between align-center mb-3">
+            <h2 className="messages-sidebar-title">
               Messages
             </h2>
             <button 
               onClick={loadConversations} 
               title="Refresh conversations" 
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center' }}
+              className="btn-icon-plain"
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
 
           {/* Search Conversations Input */}
-          <div className="input-with-icon" style={{ position: 'relative', width: '100%', marginBottom: '12px' }}>
-            <Search size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: '#94A3B8' }} />
+          <div className="messages-search-wrapper">
+            <Search size={15} className="messages-search-icon" />
             <input 
               type="text" 
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ 
-                width: '100%', 
-                padding: '9px 12px 9px 36px', 
-                borderRadius: '12px', 
-                border: '1px solid var(--border-color, #E2E8F0)', 
-                background: 'var(--bg-main, #F8FAFC)',
-                fontSize: '13px',
-                color: 'var(--text-main, #0F172A)'
-              }}
+              className="messages-search-input"
             />
           </div>
 
           {/* Filter Tabs */}
-          <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-main, #F1F5F9)', padding: '4px', borderRadius: '10px' }}>
+          <div className="messages-filter-tabs">
             {['All', 'Students', 'Mentors'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveFilter(tab)}
-                style={{
-                  flex: 1,
-                  padding: '6px 8px',
-                  borderRadius: '7px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: activeFilter === tab ? '#2563EB' : 'transparent',
-                  color: activeFilter === tab ? '#FFFFFF' : '#64748B',
-                  transition: 'all 0.2s ease'
-                }}
+                className={`messages-tab-btn ${activeFilter === tab ? 'active' : ''}`}
               >
                 {tab}
               </button>
@@ -619,17 +590,17 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
         </div>
 
         {/* Conversations Scrollable List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+        <div className="messages-conv-list">
           {filteredConversations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748B' }}>
-              <MessageSquare size={32} style={{ color: '#94A3B8', margin: '0 auto 10px' }} />
-              <p style={{ fontSize: '13px', fontWeight: 600, margin: 0 }}>No conversations found</p>
-              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '4px 0 16px' }}>Connect with peers in Find Teammates to unlock chat.</p>
+            <div className="messages-empty-conv">
+              <MessageSquare size={32} className="empty-msg-icon" />
+              <p className="empty-title">No conversations found</p>
+              <p className="empty-desc">Connect with peers in Find Teammates to unlock chat.</p>
               {setCurrentPage && (
                 <button 
                   className="btn-primary" 
                   onClick={() => setCurrentPage('find-teammates')}
-                  style={{ padding: '8px 14px', fontSize: '12px', fontWeight: 700 }}
+                  style={{ padding: '8px 16px', fontSize: '12.5px', fontWeight: 700, borderRadius: '10px' }}
                 >
                   Find Teammates
                 </button>
@@ -649,86 +620,43 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                     // Clear unread
                     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread: 0 } : c));
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    borderRadius: '14px',
-                    cursor: 'pointer',
-                    marginBottom: '4px',
-                    background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                    border: isSelected ? '1px solid #BFDBFE' : '1px solid transparent',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className={`conversation-card ${isSelected ? 'selected' : ''}`}
                 >
                   {/* Profile Avatar with Online Dot Indicator */}
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '50%',
-                      background: conv.avatarBg || '#EFF6FF',
-                      color: conv.avatarColor || '#2563EB',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '14px'
-                    }}>
+                  <div className="conv-avatar-wrapper">
+                    <div 
+                      className="conv-avatar-circle"
+                      style={{
+                        background: conv.avatarBg || '#EFF6FF',
+                        color: conv.avatarColor || '#2563EB'
+                      }}
+                    >
                       {conv.initials || conv.name?.slice(0, 2).toUpperCase() || 'ST'}
                     </div>
                     <span 
-                      style={{
-                        position: 'absolute',
-                        bottom: '1px',
-                        right: '1px',
-                        width: '11px',
-                        height: '11px',
-                        borderRadius: '50%',
-                        background: online ? '#10B981' : '#CBD5E1',
-                        border: '2px solid white'
-                      }}
+                      className={`conv-online-dot ${online ? 'online' : 'offline'}`}
                       title={online ? 'Online now' : 'Offline'}
                     />
                   </div>
 
                   {/* Conversation Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                      <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--text-main, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div className="conv-main-info">
+                    <div className="conv-top-row">
+                      <span className="conv-name">
                         {conv.name}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#94A3B8', flexShrink: 0, marginLeft: '6px' }}>
+                      <span className="conv-time">
                         {conv.time}
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <p style={{
-                        fontSize: '12px',
-                        color: conv.unread > 0 ? 'var(--text-main, #0F172A)' : '#64748B',
-                        fontWeight: conv.unread > 0 ? 800 : 500,
-                        margin: 0,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '220px'
-                      }}>
+                    <div className="conv-bottom-row">
+                      <p className={`conv-last-msg ${conv.unread > 0 ? 'unread' : ''}`}>
                         {conv.lastMsg || 'Chat active'}
                       </p>
 
                       {conv.unread > 0 && (
-                        <span style={{
-                          background: '#2563EB',
-                          color: 'white',
-                          fontSize: '10.5px',
-                          fontWeight: 800,
-                          padding: '2px 7px',
-                          borderRadius: '9999px',
-                          flexShrink: 0,
-                          marginLeft: '6px'
-                        }}>
+                        <span className="conv-unread-badge">
                           {conv.unread}
                         </span>
                       )}
@@ -744,108 +672,62 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       {/* ------------------------------------------------------------- */}
       {/* RIGHT PANEL: Chat Window & Live Messaging Feed                */}
       {/* ------------------------------------------------------------- */}
-      <main 
-        className={`messages-chat-pane ${!mobileShowChat ? 'hidden-on-mobile' : ''}`}
-        style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          background: 'var(--surface-color, #FFFFFF)' 
-        }}
-      >
+      <main className={`messages-chat-pane ${!mobileShowChat ? 'hidden-on-mobile' : ''}`}>
         {activeConversation ? (
           <>
             {/* Active Partner Chat Header */}
-            <div style={{
-              padding: '16px 24px',
-              borderBottom: '1px solid var(--border-color, #E2E8F0)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'var(--surface-color, #FFFFFF)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className="chat-pane-header">
+              <div className="chat-partner-info-left">
                 <button 
                   className="mobile-back-btn" 
                   onClick={() => setMobileShowChat(false)}
-                  style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#64748B' }}
                 >
                   <ArrowLeft size={18} />
                 </button>
 
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '50%',
-                    background: activeConversation.avatarBg || '#EFF6FF',
-                    color: activeConversation.avatarColor || '#2563EB',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '14px'
-                  }}>
+                <div className="chat-header-avatar-box">
+                  <div 
+                    className="chat-header-avatar"
+                    style={{
+                      background: activeConversation.avatarBg || '#EFF6FF',
+                      color: activeConversation.avatarColor || '#2563EB'
+                    }}
+                  >
                     {activeConversation.initials || activeConversation.name?.slice(0, 2).toUpperCase() || 'ST'}
                   </div>
                   <span 
-                    style={{
-                      position: 'absolute',
-                      bottom: '1px',
-                      right: '1px',
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      background: isPartnerOnline(activeConversation.email, activeConversation.name) ? '#10B981' : '#CBD5E1',
-                      border: '2px solid white'
-                    }}
+                    className={`chat-header-status-dot ${isPartnerOnline(activeConversation.email, activeConversation.name) ? 'online' : 'offline'}`}
                   />
                 </div>
 
                 <div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text-main, #0F172A)' }}>
+                  <h3 className="chat-partner-name">
                     {activeConversation.name}
                   </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', marginTop: '2px' }}>
-                    <span style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      color: isPartnerOnline(activeConversation.email, activeConversation.name) ? '#10B981' : '#94A3B8',
-                      fontWeight: 700
-                    }}>
+                  <div className="chat-partner-status-row">
+                    <span className={`status-pill-text ${isPartnerOnline(activeConversation.email, activeConversation.name) ? 'text-emerald' : 'text-muted'}`}>
                       <Circle size={8} fill={isPartnerOnline(activeConversation.email, activeConversation.name) ? '#10B981' : '#94A3B8'} />
                       {isPartnerOnline(activeConversation.email, activeConversation.name) ? 'Online' : 'Offline'}
                     </span>
-                    <span style={{ color: '#CBD5E1' }}>•</span>
-                    <span style={{ color: '#64748B' }}>{activeConversation.role || 'Connected Teammate'}</span>
+                    <span className="status-separator">•</span>
+                    <span className="partner-role-text">{activeConversation.role || 'Connected Teammate'}</span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ background: '#DEF7EC', color: '#03543F', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, border: '1px solid #BCF0DA' }}>
+              <div className="chat-header-actions-right">
+                <span className="badge-connected">
                   ✓ Connected
                 </span>
               </div>
             </div>
 
             {/* Message History Feed */}
-            <div 
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                padding: '24px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-                background: 'var(--bg-main, #F8FAFC)'
-              }}
-            >
+            <div className="chat-history-feed">
               {/* Security Verified Banner */}
-              <div style={{ textAlign: 'center', margin: '4px 0 12px' }}>
-                <span style={{ background: 'rgba(37, 99, 235, 0.08)', color: '#2563EB', padding: '6px 14px', borderRadius: '9999px', fontSize: '11.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <ShieldCheck size={13} /> Connection verified. End-to-end student chat active.
+              <div className="chat-security-banner-wrapper">
+                <span className="chat-security-banner">
+                  <ShieldCheck size={14} /> Connection verified. End-to-end student chat active.
                 </span>
               </div>
 
@@ -855,40 +737,21 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                 return (
                   <div
                     key={msg.id || i}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isMe ? 'flex-end' : 'flex-start',
-                      width: '100%'
-                    }}
+                    className={`chat-msg-row ${isMe ? 'row-me' : 'row-them'}`}
                   >
-                    <div
-                      className={`msg-bubble ${isMe ? 'msg-bubble-me' : 'msg-bubble-them'}`}
-                      style={{
-                        maxWidth: '70%',
-                        padding: '12px 16px',
-                        borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                        background: isMe ? 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)' : 'var(--surface-color, #FFFFFF)',
-                        color: isMe ? '#FFFFFF' : 'var(--text-main, #0F172A)',
-                        boxShadow: isMe ? '0 4px 12px rgba(37, 99, 235, 0.2)' : '0 2px 6px rgba(0,0,0,0.05)',
-                        border: isMe ? 'none' : '1px solid var(--border-color, #E2E8F0)',
-                        fontSize: '13.5px',
-                        lineHeight: 1.5,
-                        wordBreak: 'break-word'
-                      }}
-                    >
+                    <div className={`chat-msg-bubble ${isMe ? 'bubble-me' : 'bubble-them'}`}>
                       {msg.text || msg.content || msg.message}
                     </div>
 
                     {/* Timestamp and Read Status */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '10.5px', color: '#94A3B8', padding: '0 4px' }}>
+                    <div className="chat-msg-meta">
                       <span>{msg.time || 'Just now'}</span>
                       {isMe && (
                         <span>
                           {msg.status === 'READ' ? (
-                            <CheckCheck size={13} style={{ color: '#2563EB' }} title="Read" />
+                            <CheckCheck size={13} className="text-blue" title="Read" />
                           ) : (
-                            <Check size={12} style={{ color: '#94A3B8' }} title="Delivered" />
+                            <Check size={12} className="text-muted" title="Delivered" />
                           )}
                         </span>
                       )}
@@ -899,11 +762,11 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
 
               {/* Real-Time Typing Indicator Bubble */}
               {typingUsers[activeConversation.id] && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '16px', background: 'var(--surface-color, #FFFFFF)', border: '1px solid #E2E8F0', width: 'fit-content', color: '#64748B', fontSize: '12px', fontWeight: 600 }}>
+                <div className="chat-typing-bubble">
                   <span className="typing-dots flex gap-1">
-                    <span className="dot animate-bounce" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2563EB', display: 'inline-block' }}></span>
-                    <span className="dot animate-bounce" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2563EB', display: 'inline-block', animationDelay: '0.2s' }}></span>
-                    <span className="dot animate-bounce" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2563EB', display: 'inline-block', animationDelay: '0.4s' }}></span>
+                    <span className="dot animate-bounce dot-1"></span>
+                    <span className="dot animate-bounce dot-2"></span>
+                    <span className="dot animate-bounce dot-3"></span>
                   </span>
                   <span>{typingUsers[activeConversation.id].name} is typing...</span>
                 </div>
@@ -915,14 +778,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
             {/* Message Input Bar */}
             <form 
               onSubmit={handleSendMessage}
-              style={{
-                padding: '16px 24px',
-                borderTop: '1px solid var(--border-color, #E2E8F0)',
-                background: 'var(--surface-color, #FFFFFF)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}
+              className="chat-input-bar-form"
             >
               <input
                 type="text"
@@ -935,35 +791,13 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                     handleSendMessage();
                   }
                 }}
-                style={{
-                  flex: 1,
-                  padding: '12px 18px',
-                  borderRadius: '9999px',
-                  border: '1px solid var(--border-color, #CBD5E1)',
-                  background: 'var(--bg-main, #F8FAFC)',
-                  fontSize: '13.5px',
-                  color: 'var(--text-main, #0F172A)',
-                  outline: 'none'
-                }}
+                className="chat-input-field"
               />
 
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || sending}
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '50%',
-                  background: inputMessage.trim() ? '#2563EB' : '#E2E8F0',
-                  color: inputMessage.trim() ? '#FFFFFF' : '#94A3B8',
-                  border: 'none',
-                  cursor: inputMessage.trim() ? 'pointer' : 'default',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s ease',
-                  flexShrink: 0
-                }}
+                className={`chat-send-btn ${inputMessage.trim() ? 'active' : 'disabled'}`}
                 title="Send Message (Enter)"
               >
                 <Send size={17} />
@@ -971,10 +805,10 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
             </form>
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#64748B', padding: '40px' }}>
-            <MessageSquare size={48} style={{ color: '#CBD5E1', marginBottom: '16px' }} />
-            <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-main, #0F172A)' }}>Select a Conversation</h3>
-            <p style={{ fontSize: '13px', margin: '6px 0 0' }}>Choose an accepted teammate or mentor from the left panel to start chatting.</p>
+          <div className="chat-empty-selection">
+            <MessageSquare size={48} className="chat-empty-icon" />
+            <h3 className="chat-empty-title">Select a Conversation</h3>
+            <p className="chat-empty-desc">Choose an accepted teammate or mentor from the left panel to start chatting.</p>
           </div>
         )}
       </main>
