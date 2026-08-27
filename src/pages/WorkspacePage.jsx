@@ -98,6 +98,15 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
   const [selectedProject, setSelectedProject] = useState(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
+  // Modern UI Task Creation/Edit Modal State
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskModalMode, setTaskModalMode] = useState('create');
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskFormTitle, setTaskFormTitle] = useState('');
+  const [taskFormDesc, setTaskFormDesc] = useState('');
+  const [taskFormPriority, setTaskFormPriority] = useState('MEDIUM');
+  const [taskFormCol, setTaskFormCol] = useState('todo');
+
   const [teamMembers, setTeamMembers] = useState([
     { id: 'tm_3', name: 'Alex Thompson', role: 'Project Lead & Full Stack', email: 'alex.thompson@stanford.edu', dept: 'Computer Science • Senior', avatarBg: 'blue', initials: 'AT' },
     { id: 'tm_4', name: 'Sarah Chen', role: 'Backend Engineer', email: 'sarah.chen@stanford.edu', dept: 'Computer Science • Junior', avatarBg: 'green', initials: 'SC' },
@@ -295,47 +304,61 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, column: newCol } : t));
   };
 
-  const addTask = async (col) => {
-    const title = prompt('Enter task title:');
-    if (!title || !title.trim()) return;
-    const desc = prompt('Enter task description (optional):') || 'Task deliverable item.';
-    const priority = prompt('Enter priority (HIGH / MEDIUM / LOW):', 'MEDIUM')?.toUpperCase() || 'MEDIUM';
-
-    const newTask = {
-      id: Date.now(),
-      column: col,
-      title: title.trim(),
-      desc: desc.trim(),
-      priority: ['HIGH', 'MEDIUM', 'LOW'].includes(priority) ? priority : 'MEDIUM',
-      comments: 0,
-      date: getDynamicDate(0)
-    };
-
-    setTasks(prev => [...prev, newTask]);
-
-    try {
-      await apiClient.createTask(newTask);
-    } catch (e) {}
+  const openCreateTaskModal = (colId = 'todo') => {
+    setTaskModalMode('create');
+    setEditingTask(null);
+    setTaskFormTitle('');
+    setTaskFormDesc('');
+    setTaskFormPriority('MEDIUM');
+    setTaskFormCol(colId);
+    setIsTaskModalOpen(true);
   };
 
-  const editTask = (task) => {
-    const newTitle = prompt('Edit task title:', task.title);
-    if (!newTitle || !newTitle.trim()) return;
-    const newDesc = prompt('Edit description:', task.desc) || task.desc;
-    const newPriority = prompt('Edit priority (HIGH / MEDIUM / LOW):', task.priority)?.toUpperCase() || task.priority;
+  const openEditTaskModal = (task) => {
+    setTaskModalMode('edit');
+    setEditingTask(task);
+    setTaskFormTitle(task.title || '');
+    setTaskFormDesc(task.desc || '');
+    setTaskFormPriority(task.priority || 'MEDIUM');
+    setTaskFormCol(task.column || 'todo');
+    setIsTaskModalOpen(true);
+  };
 
-    setTasks(prev => prev.map(t => t.id === task.id ? {
-      ...t,
-      title: newTitle.trim(),
-      desc: newDesc.trim(),
-      priority: ['HIGH', 'MEDIUM', 'LOW'].includes(newPriority) ? newPriority : t.priority
-    } : t));
+  const handleSaveTask = async (e) => {
+    e.preventDefault();
+    if (!taskFormTitle.trim()) return;
+
+    if (taskModalMode === 'create') {
+      const newTask = {
+        id: Date.now(),
+        column: taskFormCol,
+        title: taskFormTitle.trim(),
+        desc: taskFormDesc.trim() || 'Task deliverable item.',
+        priority: taskFormPriority,
+        comments: 0,
+        date: getDynamicDate(0)
+      };
+
+      setTasks(prev => [...prev, newTask]);
+
+      try {
+        await apiClient.createTask(newTask);
+      } catch (e) {}
+    } else if (editingTask) {
+      setTasks(prev => prev.map(t => t.id === editingTask.id ? {
+        ...t,
+        title: taskFormTitle.trim(),
+        desc: taskFormDesc.trim() || 'Task deliverable item.',
+        priority: taskFormPriority,
+        column: taskFormCol
+      } : t));
+    }
+
+    setIsTaskModalOpen(false);
   };
 
   const deleteTask = (taskId) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      setTasks(prev => prev.filter(t => t.id !== taskId));
-    }
+    setTasks(prev => prev.filter(t => t.id !== taskId));
   };
 
   const columns = [
@@ -563,7 +586,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                       <h4>{col.title}</h4>
                       <span className="task-count">{colTasks.length}</span>
                     </div>
-                    <button className="add-task-icon-btn" onClick={() => addTask(col.id)} title="Add Task">+</button>
+                    <button className="add-task-icon-btn" onClick={() => openCreateTaskModal(col.id)} title="Add Task">+</button>
                   </div>
 
                   <div className="task-cards-stack">
@@ -572,7 +595,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                         <div className="task-card-top flex justify-between align-center">
                           <span className={`priority-badge ${t.priority.toLowerCase()}`}>{t.priority}</span>
                           <div className="flex gap-1">
-                            <button onClick={() => editTask(t)} className="icon-btn-micro" title="Edit task">
+                            <button onClick={() => openEditTaskModal(t)} className="icon-btn-micro" title="Edit task">
                               <Edit2 size={12} />
                             </button>
                             <button onClick={() => deleteTask(t.id)} className="icon-btn-micro text-danger" title="Delete task">
@@ -605,7 +628,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                     ))}
                   </div>
 
-                  <button className="btn-add-task-full" onClick={() => addTask(col.id)}>
+                  <button className="btn-add-task-full" onClick={() => openCreateTaskModal(col.id)}>
                     + Add Task
                   </button>
                 </div>
@@ -627,60 +650,47 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
             </button>
           </div>
 
-          <div className="timeline-roadmap-card mt-6">
-            <div className="roadmap-track-line"></div>
-
-            {/* Step 1: Milestone 1 (Completed) */}
-            <div className="roadmap-step done">
-              <div className="step-node-circle done">
-                <CheckCircle2 size={18} />
+          <div className="timeline-roadmap-vertical mt-4">
+            <div className="roadmap-step completed">
+              <div className="step-node-circle completed">
+                <CheckCircle2 size={16} />
               </div>
               <div className="step-content-box">
                 <div className="step-top-badge-row">
                   <span className="step-status-pill green">COMPLETED</span>
-                  <span className="step-date">{getDynamicDate(10)}, {new Date().getFullYear()}</span>
+                  <span className="step-date">Completed {getDynamicDate(10)}, {new Date().getFullYear()}</span>
                 </div>
-                <h4 className="step-title">Milestone 1: Prototype & High-Fidelity Wireframes</h4>
+                <h4 className="step-title">Milestone 1: Architecture, Core Schemas & API Stubs</h4>
                 <p className="step-desc">
-                  Finalized Figma design system, core user flow diagrams, and student dashboard interactive prototype.
+                  Defined PostgreSQL database schemas in Prisma, generated JWT authentication, and validated REST routes.
                 </p>
                 <div className="step-meta-footer mt-3">
-                  <span className="meta-lead">Lead: Marcus Johnson (UI/UX)</span>
-                  <span className="meta-progress green">100% Delivered</span>
+                  <span className="meta-lead">Lead: Sarah Chen</span>
+                  <span className="meta-progress green">100% Finalized</span>
                 </div>
               </div>
             </div>
 
-            {/* Step 2: Milestone 2 (In Progress) */}
-            <div className="roadmap-step active">
+            <div className="roadmap-step in_progress">
               <div className="step-node-circle active">
-                <Clock size={18} />
+                <Clock size={16} />
               </div>
-              <div className="step-content-box active-border">
+              <div className="step-content-box">
                 <div className="step-top-badge-row">
                   <span className="step-status-pill blue">IN PROGRESS</span>
-                  <span className="step-date">Due {getDynamicDate(-5)}, {new Date().getFullYear()}</span>
+                  <span className="step-date">Target: {getDynamicDate(-5)}, {new Date().getFullYear()}</span>
                 </div>
-                <h4 className="step-title">Milestone 2: REST API & Mobile Navigation Integration</h4>
+                <h4 className="step-title">Milestone 2: Real-time Messaging & Kanban Workspace Sync</h4>
                 <p className="step-desc">
-                  Integrating authentication endpoints, task export service, and live WebSocket notification updates.
+                  Integrating Socket.io event loop for instantaneous chat alerts and team board card movements.
                 </p>
-                <div className="step-progress-row mt-3">
-                  <div className="progress-info">
-                    <span>Overall Completion</span>
-                    <strong>68%</strong>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill" style={{ width: '68%' }}></div>
-                  </div>
-                </div>
                 <div className="step-meta-footer mt-3">
-                  <span className="meta-lead">Lead: Sarah Chen (Backend) & Alex Thompson (Lead)</span>
+                  <span className="meta-lead">Lead: Marcus Johnson</span>
+                  <span className="meta-progress blue">Phase 2 • 65% Completed</span>
                 </div>
               </div>
             </div>
 
-            {/* Step 3: Milestone 3 (Scheduled) */}
             <div className="roadmap-step pending">
               <div className="step-node-circle pending">
                 <span className="node-number">3</span>
@@ -708,7 +718,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
         <div className="teammates-view mt-6">
           <div className="section-title-row flex justify-between align-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3>FinTrack Mobile Team Members</h3>
+              <h3>{selectedProject?.title || 'FinTrack Mobile'} Team Members</h3>
               <span className="text-xs text-muted font-bold">{teamMembers.length} Active Members</span>
             </div>
             <button 
@@ -748,6 +758,115 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modern Create / Edit Task Modal */}
+      {isTaskModalOpen && (
+        <div className="modal-backdrop animate-fade-in" style={{ zIndex: 9999 }}>
+          <div className="modal-card animate-fade-in" style={{ maxWidth: '500px', width: '100%', borderRadius: '24px', padding: '30px' }}>
+            <div className="modal-header flex justify-between align-center pb-3" style={{ borderBottom: '1px solid var(--border-color, #E2E8F0)', marginBottom: '20px' }}>
+              <div className="flex align-center gap-3">
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Layers size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>
+                    {taskModalMode === 'create' ? 'Create New Task' : 'Edit Workspace Task'}
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0' }}>
+                    Deliverable for {selectedProject?.title || 'Active Project'}
+                  </p>
+                </div>
+              </div>
+              <button className="close-btn" onClick={() => setIsTaskModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94A3B8' }}>✕</button>
+            </div>
+
+            <form onSubmit={handleSaveTask} className="form-group-stack">
+              <div className="form-group mb-3">
+                <label style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', display: 'block' }}>Task Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Setup Authentication & JWT Refresh flow"
+                  value={taskFormTitle}
+                  onChange={(e) => setTaskFormTitle(e.target.value)}
+                  required
+                  autoFocus
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid #CBD5E1', fontSize: '13.5px' }}
+                />
+              </div>
+
+              <div className="form-group mb-3">
+                <label style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', display: 'block' }}>Description (Optional)</label>
+                <textarea
+                  rows="3"
+                  placeholder="Details, requirements, or acceptance criteria..."
+                  value={taskFormDesc}
+                  onChange={(e) => setTaskFormDesc(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid #CBD5E1', fontSize: '13.5px', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', display: 'block' }}>Column Stage</label>
+                  <select
+                    value={taskFormCol}
+                    onChange={(e) => setTaskFormCol(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid #CBD5E1', fontSize: '13px', background: 'white' }}
+                  >
+                    {columns.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', display: 'block' }}>Priority</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['LOW', 'MEDIUM', 'HIGH'].map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setTaskFormPriority(p)}
+                        style={{
+                          flex: 1,
+                          padding: '9px 0',
+                          borderRadius: '10px',
+                          border: taskFormPriority === p ? '2px solid #2563EB' : '1px solid #E2E8F0',
+                          background: taskFormPriority === p ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
+                          color: taskFormPriority === p ? '#2563EB' : 'inherit',
+                          fontWeight: 800,
+                          fontSize: '11.5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setIsTaskModalOpen(false)}
+                  style={{ flex: 1, padding: '11px', borderRadius: '12px', fontWeight: 700 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ flex: 2, padding: '11px', borderRadius: '12px', fontWeight: 800 }}
+                >
+                  {taskModalMode === 'create' ? '+ Add Task to Board' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
