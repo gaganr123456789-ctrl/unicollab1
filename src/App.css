@@ -8153,7 +8153,8 @@ input:checked + .toggle-slider:before {
 
 .dark-theme .workspace-header-card .ws-subtitle,
 .dark-theme .workspace-header-card p {
-  color: #94A3B8 !important;
+  color: #E2E8F0 !important;
+  opacity: 1 !important;
 }
 
 .dark-theme .kanban-col {
@@ -8181,17 +8182,69 @@ input:checked + .toggle-slider:before {
   border-color: #3B82F6 !important;
 }
 
+.dark-theme .task-card .task-title,
 .dark-theme .task-title {
-  color: #F8FAFC !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
 }
 
+.dark-theme .task-card .task-desc,
 .dark-theme .task-desc {
-  color: #94A3B8 !important;
+  color: #E2E8F0 !important;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+  opacity: 1 !important;
 }
 
-.dark-theme .task-meta {
-  color: #64748B !important;
+/* Priority Badges in Dark Mode */
+.dark-theme .priority-badge.high {
+  background: rgba(239, 68, 68, 0.22) !important;
+  color: #FCA5A5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.45) !important;
+  font-weight: 800 !important;
+}
+
+.dark-theme .priority-badge.medium {
+  background: rgba(245, 158, 11, 0.22) !important;
+  color: #FCD34D !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  font-weight: 800 !important;
+}
+
+.dark-theme .priority-badge.low {
+  background: rgba(100, 116, 139, 0.28) !important;
+  color: #E2E8F0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  font-weight: 800 !important;
+}
+
+.dark-theme .task-card .task-meta,
+.dark-theme .task-meta,
+.dark-theme .meta-item {
+  color: #94A3B8 !important;
   border-top-color: #374151 !important;
+}
+
+.dark-theme .move-task-row {
+  border-top: 1px solid #374151 !important;
+}
+
+.dark-theme .move-task-label {
+  color: #94A3B8 !important;
+  font-weight: 700 !important;
+}
+
+.dark-theme .move-pill-btn {
+  background: #1E293B !important;
+  color: #93C5FD !important;
+  border: 1px solid #334155 !important;
+  font-weight: 600 !important;
+}
+
+.dark-theme .move-pill-btn:hover {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-color: #2563EB !important;
 }
 
 .dark-theme .btn-add-task-full {
