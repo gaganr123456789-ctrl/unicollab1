@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
-import { io } from 'socket.io-client';
+import { socketService } from '../services/socketService';
 import { 
   Search, 
   Send, 
@@ -29,11 +29,13 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
   const [sending, setSending] = useState(false);
   const [onlineUsersList, setOnlineUsersList] = useState([]);
   const [typingUsers, setTypingUsers] = useState({}); // { conversationId: { name, isTyping } }
+  const [connectionState, setConnectionState] = useState('connected');
 
   const messagesEndRef = useRef(null);
+  const chatPaneRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const socketRef = useRef(null);
   const seenMessageIds = useRef(new Set());
+  const isAutoScrollEnabled = useRef(true);
 
   const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
   const myId = userProfile?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').id : 'usr_me');
@@ -43,7 +45,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
   const defaultConversations = [
     {
       id: 'conv_seed_1',
-      pairKey: 'dr. ananya sharma',
+      pairKey: 'ananya.sharma@stanford.edu',
       name: 'Dr. Ananya Sharma',
       email: 'ananya.sharma@stanford.edu',
       role: 'Distinguished Professor & AI Research Lead',
@@ -87,7 +89,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
     },
     {
       id: 'conv_seed_2',
-      pairKey: 'marcus sterling',
+      pairKey: 'marcus.sterling@mit.edu',
       name: 'Dr. Marcus Sterling',
       email: 'marcus.sterling@mit.edu',
       role: 'Principal Cloud Architect & AWS Advisor',
@@ -140,14 +142,18 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       const res = await apiClient.getConversations(myEmail, myId);
       if (res.success && Array.isArray(res.conversations) && res.conversations.length > 0) {
         setConversations(prev => {
-          const combined = [...res.conversations, ...prev];
-          const uniqueMap = new Map();
-          combined.forEach(c => {
-            if (c && c.id && !uniqueMap.has(c.id)) {
-              uniqueMap.set(c.id, c);
+          const map = new Map();
+          // Server conversations first
+          res.conversations.forEach(c => {
+            if (c && c.id) map.set(c.id, c);
+          });
+          // Merge any local conversations not yet on server
+          prev.forEach(c => {
+            if (c && c.id && !map.has(c.id)) {
+              map.set(c.id, c);
             }
           });
-          return Array.from(uniqueMap.values());
+          return Array.from(map.values()).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
         });
       }
     } catch (err) {
@@ -157,135 +163,200 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
     }
   };
 
-  // 1. Initialize Socket.IO connection & Presence
+  // 1. Initialize Single Persistent Socket.IO Connection & Listeners
   useEffect(() => {
     loadConversations();
 
-    let socket = null;
-    try {
-      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-        ? 'http://localhost:5000'
-        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
-          ? window.location.origin
-          : 'https://unicollab1.onrender.com';
+    const socket = socketService.connect({
+      id: myId,
+      email: myEmail,
+      name: myName
+    });
 
-      socket = io(socketUrl, { transports: ['websocket', 'polling'] });
-      socketRef.current = socket;
+    const unsubs = [];
 
-      // Register presence
-      if (myEmail || myId) {
-        socket.emit('register_user', { email: myEmail, id: myId, name: myName });
+    // Connection changes
+    unsubs.push(socketService.on('connection_change', (data) => {
+      setConnectionState(data.status);
+    }));
+
+    // Online presence
+    unsubs.push(socketService.on('online_users', (onlineList) => {
+      if (Array.isArray(onlineList)) {
+        setOnlineUsersList(onlineList);
       }
+    }));
 
-      // Online status updates
-      socket.on('online_users_updated', (onlineList) => {
-        if (Array.isArray(onlineList)) {
-          setOnlineUsersList(onlineList);
-        }
-      });
-
-      // Receive real-time message
-      socket.on('receive_message', (msgPayload) => {
-        if (!msgPayload || seenMessageIds.current.has(msgPayload.id)) return;
-        seenMessageIds.current.add(msgPayload.id);
-
-        const convId = msgPayload.conversationId || msgPayload.conversation_id;
-        const rawText = msgPayload.content || msgPayload.text || msgPayload.message;
-        const isFromMe = (msgPayload.senderEmail && normalizeEmail(msgPayload.senderEmail) === myEmail) || msgPayload.senderId === myId;
-
-        const newMsgObj = {
-          id: msgPayload.id || `msg_${Date.now()}`,
-          senderId: msgPayload.senderId || msgPayload.sender_id,
-          senderName: msgPayload.senderName || 'Teammate',
-          senderEmail: msgPayload.senderEmail,
-          text: rawText,
-          time: msgPayload.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: isFromMe ? 'DELIVERED' : 'READ',
-          createdAt: msgPayload.createdAt || new Date().toISOString()
-        };
-
-        setConversations(prev => {
-          let found = false;
-          const updated = prev.map(c => {
-            if (c.id === convId || (c.pairKey && msgPayload.senderEmail && c.pairKey.includes(msgPayload.senderEmail.toLowerCase()))) {
-              found = true;
-              return {
-                ...c,
-                lastMsg: rawText,
-                time: newMsgObj.time,
-                updatedAt: new Date().toISOString(),
-                unread: activeConversationId === c.id ? 0 : (c.unread || 0) + 1,
-                messages: [...(c.messages || []), newMsgObj]
-              };
-            }
-            return c;
-          });
-
-          if (!found) {
-            // New incoming conversation from peer
-            const newConv = {
-              id: convId,
-              name: msgPayload.senderName || 'Connected Teammate',
-              email: msgPayload.senderEmail,
-              role: 'Connected Student',
-              avatarBg: '#EFF6FF',
-              avatarColor: '#2563EB',
-              initials: (msgPayload.senderName || 'TM').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
-              type: 'direct',
-              lastMsg: rawText,
-              time: 'Just now',
-              unread: 1,
-              updatedAt: new Date().toISOString(),
-              messages: [newMsgObj]
-            };
-            return [newConv, ...updated];
+    // Presence changed
+    unsubs.push(socketService.on('presence_changed', (userStatus) => {
+      if (userStatus) {
+        setOnlineUsersList(prev => {
+          if (userStatus.status === 'offline') {
+            return prev.filter(u => u.email !== userStatus.email && u.id !== userStatus.id);
           }
-
-          // Re-sort conversations by latest activity
-          return updated.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+          if (!prev.some(u => u.email === userStatus.email)) {
+            return [...prev, userStatus];
+          }
+          return prev;
         });
+      }
+    }));
 
-        // If currently viewing this conversation, mark as read
-        if (activeConversationId === convId) {
-          socket.emit('mark_read', { conversationId: convId, readerId: myId, readerEmail: myEmail });
-        }
-      });
+    // Real-time message listener
+    unsubs.push(socketService.on('message', (msgPayload) => {
+      if (!msgPayload) return;
+      if (seenMessageIds.current.has(msgPayload.id) || (msgPayload.clientTempId && seenMessageIds.current.has(msgPayload.clientTempId))) {
+        return;
+      }
+      seenMessageIds.current.add(msgPayload.id);
 
-      // Typing status listener
-      socket.on('typing:status', (data) => {
-        if (!data || !data.conversationId) return;
-        setTypingUsers(prev => ({
-          ...prev,
-          [data.conversationId]: data.isTyping ? { name: data.senderName, isTyping: true } : null
-        }));
-      });
+      const convId = msgPayload.conversationId || msgPayload.conversation_id;
+      const rawText = msgPayload.content || msgPayload.text || msgPayload.message;
+      const isFromMe = (msgPayload.senderEmail && msgPayload.senderEmail.toLowerCase() === myEmail) || msgPayload.senderId === myId;
 
-      // Read receipt listener
-      socket.on('messages_read', (data) => {
-        if (!data || !data.conversationId) return;
-        setConversations(prev => prev.map(c => {
-          if (c.id === data.conversationId) {
+      const newMsgObj = {
+        id: msgPayload.id || `msg_${Date.now()}`,
+        clientTempId: msgPayload.clientTempId || null,
+        conversationId: convId,
+        senderId: msgPayload.senderId || msgPayload.sender_id,
+        senderName: msgPayload.senderName || 'Teammate',
+        senderEmail: msgPayload.senderEmail,
+        text: rawText,
+        content: rawText,
+        time: msgPayload.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: isFromMe ? (msgPayload.status || 'DELIVERED') : 'READ',
+        createdAt: msgPayload.createdAt || new Date().toISOString()
+      };
+
+      setConversations(prev => {
+        let found = false;
+        const updated = prev.map(c => {
+          const isMatchingConv = c.id === convId || 
+            (c.pairKey && msgPayload.senderEmail && c.pairKey.includes(msgPayload.senderEmail.toLowerCase())) ||
+            (c.email && msgPayload.senderEmail && c.email.toLowerCase() === msgPayload.senderEmail.toLowerCase());
+
+          if (isMatchingConv) {
+            found = true;
+            // Prevent duplicate message in array
+            const existingMessages = c.messages || [];
+            const isDuplicate = existingMessages.some(m => m.id === newMsgObj.id || (newMsgObj.clientTempId && m.id === newMsgObj.clientTempId));
+            const newMessagesList = isDuplicate ? existingMessages : [...existingMessages, newMsgObj];
+
             return {
               ...c,
-              messages: (c.messages || []).map(m => ({ ...m, status: 'READ' }))
+              lastMsg: rawText,
+              time: newMsgObj.time,
+              updatedAt: new Date().toISOString(),
+              unread: activeConversationId === c.id ? 0 : (c.unread || 0) + 1,
+              messages: newMessagesList
             };
           }
           return c;
-        }));
+        });
+
+        if (!found) {
+          const newConv = {
+            id: convId,
+            name: msgPayload.senderName || 'Connected Teammate',
+            email: msgPayload.senderEmail,
+            role: 'Connected Student',
+            avatarBg: '#EFF6FF',
+            avatarColor: '#2563EB',
+            initials: (msgPayload.senderName || 'TM').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+            type: 'direct',
+            lastMsg: rawText,
+            time: 'Just now',
+            unread: activeConversationId === convId ? 0 : 1,
+            updatedAt: new Date().toISOString(),
+            messages: [newMsgObj]
+          };
+          return [newConv, ...updated];
+        }
+
+        return updated.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
       });
-    } catch (e) {
-      console.warn('Socket engine notice:', e);
-    }
+
+      // If active conversation received a message, mark as read immediately
+      if (activeConversationId === convId && !isFromMe) {
+        socketService.markMessagesRead(convId, { id: myId, email: myEmail });
+      }
+    }));
+
+    // Typing status listener
+    unsubs.push(socketService.on('typing', (data) => {
+      if (!data || !data.conversationId) return;
+      setTypingUsers(prev => ({
+        ...prev,
+        [data.conversationId]: data.isTyping ? { name: data.senderName, isTyping: true } : null
+      }));
+    }));
+
+    // Read receipts listener
+    unsubs.push(socketService.on('messages_read', (data) => {
+      if (!data || !data.conversationId) return;
+      setConversations(prev => prev.map(c => {
+        if (c.id === data.conversationId) {
+          return {
+            ...c,
+            unread: 0,
+            messages: (c.messages || []).map(m => ({ ...m, status: 'READ' }))
+          };
+        }
+        return c;
+      }));
+    }));
 
     return () => {
-      if (socket) socket.disconnect();
+      unsubs.forEach(unsub => unsub && unsub());
     };
-  }, [activeConversationId]);
+  }, [myId, myEmail]);
 
-  // 2. Auto-initialize conversation when directed from Find Teammates or other pages
+  // 2. Join conversation room and mark messages as read when activeConversationId changes
+  useEffect(() => {
+    if (!activeConversationId) return;
+
+    socketService.joinConversation(activeConversationId);
+    socketService.markMessagesRead(activeConversationId, { id: myId, email: myEmail });
+
+    // Clear unread count locally for active conversation
+    setConversations(prev => prev.map(c => {
+      if (c.id === activeConversationId) {
+        return { ...c, unread: 0 };
+      }
+      return c;
+    }));
+
+    // Fetch conversation messages from server to guarantee sync
+    const fetchHistory = async () => {
+      try {
+        const res = await apiClient.getConversationMessages(activeConversationId, myId, myEmail);
+        if (res.success && Array.isArray(res.messages) && res.messages.length > 0) {
+          setConversations(prev => prev.map(c => {
+            if (c.id === activeConversationId) {
+              const formatted = res.messages.map(m => ({
+                id: m.id || m.message_id,
+                senderId: m.senderId || m.sender_id,
+                senderName: m.senderName || (m.senderId === myId ? myName : c.name),
+                text: m.content || m.text || m.message,
+                time: m.time || new Date(m.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: m.status || 'DELIVERED',
+                createdAt: m.createdAt || new Date().toISOString()
+              }));
+              return { ...c, messages: formatted };
+            }
+            return c;
+          }));
+        }
+      } catch (err) {
+        console.warn('History fetch notice:', err);
+      }
+    };
+    fetchHistory();
+  }, [activeConversationId, myId, myEmail]);
+
+  // 3. Auto-initialize conversation when directed from Find Teammates or other pages
   useEffect(() => {
     if (!activeChatPartner || !activeChatPartner.name) {
-      // Set first conversation as default active if none selected
       if (!activeConversationId && conversations.length > 0) {
         setActiveConversationId(conversations[0].id);
       }
@@ -358,10 +429,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
           setConversations(prev => [newConv, ...prev.filter(c => c.id !== convId)]);
           setActiveConversationId(convId);
           setMobileShowChat(true);
-
-          if (socketRef.current) {
-            socketRef.current.emit('join_conversation', convId);
-          }
+          socketService.joinConversation(convId);
           return;
         }
       } catch (err) {
@@ -389,18 +457,21 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       setConversations(prev => [localConv, ...prev]);
       setActiveConversationId(localId);
       setMobileShowChat(true);
+      socketService.joinConversation(localId);
     };
 
     initPartnerChat();
   }, [activeChatPartner]);
 
-  // 3. Scroll to newest message automatically
+  // 4. Scroll to newest message automatically
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    scrollToBottom();
+    if (isAutoScrollEnabled.current) {
+      scrollToBottom();
+    }
   }, [activeConversationId, conversations, typingUsers]);
 
   // Active Conversation Object
@@ -418,32 +489,30 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
     );
   };
 
-  // 4. Handle Typing Indicators
+  // 5. Handle Typing Indicators
   const handleInputChange = (e) => {
     setInputMessage(e.target.value);
 
-    if (socketRef.current && activeConversation) {
-      socketRef.current.emit('typing:start', {
-        conversationId: activeConversation.id,
-        senderName: myName,
-        senderId: myId,
-        senderEmail: myEmail
+    if (activeConversation) {
+      socketService.sendTypingStart(activeConversation.id, {
+        name: myName,
+        id: myId,
+        email: myEmail
       });
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
-        if (socketRef.current && activeConversation) {
-          socketRef.current.emit('typing:stop', {
-            conversationId: activeConversation.id,
-            senderId: myId,
-            senderEmail: myEmail
+        if (activeConversation) {
+          socketService.sendTypingStop(activeConversation.id, {
+            id: myId,
+            email: myEmail
           });
         }
-      }, 1500);
+      }, 2000);
     }
   };
 
-  // 5. Send Message Action
+  // 6. Send Message Action
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!inputMessage.trim() || sending || !activeConversation) return;
@@ -459,7 +528,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
 
     const newMsgObj = {
       id: localMsgId,
-      message_id: localMsgId,
+      clientTempId: localMsgId,
       conversationId: activeConversation.id,
       senderId: myId,
       senderName: myName,
@@ -490,27 +559,38 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       return updated.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
     });
 
-    // Send via Socket.IO
-    if (socketRef.current) {
-      socketRef.current.emit('send_message', {
-        conversationId: activeConversation.id,
-        content: rawText,
-        text: rawText,
-        senderId: myId,
-        senderName: myName,
-        senderEmail: myEmail,
-        receiverEmail: activeConversation.email,
-        receiverId: activeConversation.id
-      });
-      socketRef.current.emit('typing:stop', {
-        conversationId: activeConversation.id,
-        senderId: myId
-      });
-    }
+    // 1. Emit via real-time Socket.IO
+    socketService.sendMessage({
+      conversationId: activeConversation.id,
+      content: rawText,
+      text: rawText,
+      senderId: myId,
+      senderName: myName,
+      senderEmail: myEmail,
+      receiverEmail: activeConversation.email,
+      receiverId: activeConversation.id,
+      clientTempId: localMsgId
+    }, (ack) => {
+      if (ack?.success && ack?.message) {
+        // Reconcile message with server confirmation
+        seenMessageIds.current.add(ack.message.id);
+        setConversations(prev => prev.map(c => {
+          if (c.id === activeConversation.id) {
+            return {
+              ...c,
+              messages: (c.messages || []).map(m => m.id === localMsgId ? { ...m, id: ack.message.id, status: 'DELIVERED' } : m)
+            };
+          }
+          return c;
+        }));
+      }
+    });
 
-    // Persist via REST API
+    socketService.sendTypingStop(activeConversation.id, { id: myId, email: myEmail });
+
+    // 2. Persist via REST API
     try {
-      await apiClient.sendMessage({
+      const res = await apiClient.sendMessage({
         conversationId: activeConversation.id,
         senderId: myId,
         senderEmail: myEmail,
@@ -519,8 +599,22 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
         receiverId: activeConversation.id,
         text: rawText
       });
+
+      if (res.success && res.data) {
+        const confirmedMsg = res.data;
+        seenMessageIds.current.add(confirmedMsg.id);
+        setConversations(prev => prev.map(c => {
+          if (c.id === activeConversation.id) {
+            return {
+              ...c,
+              messages: (c.messages || []).map(m => m.id === localMsgId ? { ...m, id: confirmedMsg.id, status: 'DELIVERED' } : m)
+            };
+          }
+          return c;
+        }));
+      }
     } catch (err) {
-      console.warn('REST message save notice:', err);
+      console.warn('REST API message save fallback notice:', err);
     } finally {
       setSending(false);
     }
@@ -747,11 +841,13 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                     <div className="chat-msg-meta">
                       <span>{msg.time || 'Just now'}</span>
                       {isMe && (
-                        <span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
                           {msg.status === 'READ' ? (
-                            <CheckCheck size={13} className="text-blue" title="Read" />
+                            <CheckCheck size={14} style={{ color: '#2563EB' }} title="Read" />
+                          ) : msg.status === 'DELIVERED' ? (
+                            <CheckCheck size={14} style={{ color: '#94A3B8' }} title="Delivered" />
                           ) : (
-                            <Check size={12} className="text-muted" title="Delivered" />
+                            <Check size={13} style={{ color: '#94A3B8' }} title="Sent" />
                           )}
                         </span>
                       )}

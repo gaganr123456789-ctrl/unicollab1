@@ -113,8 +113,9 @@ const io = new Server(httpServer, {
 app.set('io', io);
 global.io = io;
 
-// Track online users: key -> { socketId, id, email, name, lastSeen }
-const onlineUsersMap = new Map();
+// Track online users and socket mappings
+const userSocketsMap = new Map(); // socket.id -> { id, email, name }
+const onlineUsersMap = new Map(); // id or email -> { id, email, name, sockets: Set<socketId>, lastSeen }
 
 // Authenticate Socket connection using JWT Token (or allow guest listeners)
 io.use((socket, next) => {
@@ -136,27 +137,48 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log(`🔌 [SOCKET.IO] Authenticated student/admin connected: ${socket.user?.name || socket.id}`);
+  console.log(`🔌 [SOCKET.IO] Connected: ${socket.user?.name || socket.id}`);
 
-  // Register online user presence
-  socket.on('register_user', (userData) => {
+  // Helper to register user presence
+  const registerUserPresence = (userData) => {
     const email = (userData?.email || socket.user?.email || '').toLowerCase().trim();
     const id = userData?.id || socket.user?.id || socket.id;
     const name = userData?.name || socket.user?.name || 'Student';
 
-    if (email) {
-      onlineUsersMap.set(email, { socketId: socket.id, id, email, name });
-      socket.join(`user_${email}`);
+    userSocketsMap.set(socket.id, { id, email, name });
+
+    const key = email || id;
+    if (!onlineUsersMap.has(key)) {
+      onlineUsersMap.set(key, { id, email, name, sockets: new Set(), lastSeen: null });
     }
-    if (id) {
-      onlineUsersMap.set(id, { socketId: socket.id, id, email, name });
-      socket.join(`user_${id}`);
-    }
+    const entry = onlineUsersMap.get(key);
+    entry.sockets.add(socket.id);
+    entry.name = name;
+    entry.email = email;
+    entry.id = id;
+
+    if (email) socket.join(`user_${email}`);
+    if (id) socket.join(`user_${id}`);
 
     // Broadcast online presence to all connected clients
-    const onlineList = Array.from(onlineUsersMap.values()).map(u => ({ id: u.id, email: u.email, name: u.name }));
+    const onlineList = Array.from(onlineUsersMap.values()).map(u => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      status: 'online'
+    }));
     io.emit('online_users_updated', onlineList);
+  };
+
+  // Register online user presence
+  socket.on('register_user', (userData) => {
+    registerUserPresence(userData);
   });
+
+  // Auto-register if user authenticated via handshake
+  if (socket.user && socket.user.email) {
+    registerUserPresence(socket.user);
+  }
 
   socket.on('join_admin_room', () => {
     socket.join('admin_room');
@@ -182,9 +204,9 @@ io.on('connection', (socket) => {
     if (!conversationId) return;
     socket.to(conversationId).to(`conv_${conversationId}`).emit('typing:status', {
       conversationId,
-      senderName: senderName || 'Teammate',
-      senderId,
-      senderEmail,
+      senderName: senderName || socket.user?.name || 'Teammate',
+      senderId: senderId || socket.user?.id,
+      senderEmail: senderEmail || socket.user?.email,
       isTyping: true
     });
   });
@@ -194,71 +216,147 @@ io.on('connection', (socket) => {
     if (!conversationId) return;
     socket.to(conversationId).to(`conv_${conversationId}`).emit('typing:status', {
       conversationId,
-      senderId,
-      senderEmail,
+      senderId: senderId || socket.user?.id,
+      senderEmail: senderEmail || socket.user?.email,
       isTyping: false
     });
   });
 
   // Real-time message dispatch
-  socket.on('send_message', async (data) => {
-    const { conversationId, content, text, senderId, senderName, senderEmail, receiverId, receiverEmail } = data;
-    const rawContent = (content || text || '').trim();
-    if (!conversationId || !rawContent) return;
+  socket.on('send_message', async (data, ackCallback) => {
+    const { conversationId, content, text, message, senderId, senderName, senderEmail, receiverId, receiverEmail, clientTempId } = data;
+    const rawContent = (content || text || message || '').trim();
+    if (!conversationId || !rawContent) {
+      if (typeof ackCallback === 'function') ackCallback({ success: false, message: 'Missing conversationId or content' });
+      return;
+    }
+
+    const sEmail = (senderEmail || socket.user?.email || '').toLowerCase().trim();
+    const sId = senderId || socket.user?.id || socket.id;
+    const sName = senderName || socket.user?.name || 'Student';
+    const rEmail = (receiverEmail || '').toLowerCase().trim();
+    const rId = receiverId || '';
+
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const messagePayload = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      conversation_id: conversationId,
+      id: messageId,
+      message_id: messageId,
+      clientTempId: clientTempId || null,
       conversationId,
-      sender_id: senderId || socket.user?.id || 'usr_demo',
-      senderId: senderId || socket.user?.id || 'usr_demo',
-      senderName: senderName || socket.user?.name || 'Student',
-      senderEmail: (senderEmail || socket.user?.email || '').toLowerCase().trim(),
-      receiver_id: receiverId,
-      receiverId: receiverId,
-      receiverEmail: (receiverEmail || '').toLowerCase().trim(),
+      conversation_id: conversationId,
+      senderId: sId,
+      sender_id: sId,
+      senderName: sName,
+      senderEmail: sEmail,
+      receiverId: rId || rEmail,
+      receiver_id: rId || rEmail,
+      receiverEmail: rEmail,
       content: rawContent,
       message: rawContent,
       text: rawContent,
       status: 'DELIVERED',
       message_status: 'DELIVERED',
-      createdAt: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      createdAt: now.toISOString(),
+      created_at: now.toISOString(),
+      time: timeFormatted
     };
 
-    // Broadcast to active conversation room
+    // 1. Store in memory dataStore
+    try {
+      const { messagesDB, conversationsDB } = await import('./db/dataStore.js');
+      messagesDB.push(messagePayload);
+
+      const conv = conversationsDB.find(c => c.id === conversationId);
+      if (conv) {
+        conv.lastMsg = rawContent;
+        conv.time = timeFormatted;
+        conv.updatedAt = now.toISOString();
+      }
+    } catch (e) {
+      console.warn('DataStore save notice:', e.message);
+    }
+
+    // 2. Broadcast immediately to active conversation room
     io.to(conversationId).to(`conv_${conversationId}`).emit('receive_message', messagePayload);
 
-    // Also send direct push notification event to receiver's user room
-    if (receiverEmail) {
-      io.to(`user_${receiverEmail.toLowerCase().trim()}`).emit('new_message_notification', messagePayload);
+    // 3. Deliver to receiver's user rooms (for real-time sidebar & unread count updates)
+    if (rEmail) {
+      io.to(`user_${rEmail}`).emit('receive_message', messagePayload);
+      io.to(`user_${rEmail}`).emit('new_message_notification', messagePayload);
     }
-    if (receiverId) {
-      io.to(`user_${receiverId}`).emit('new_message_notification', messagePayload);
+    if (rId) {
+      io.to(`user_${rId}`).emit('receive_message', messagePayload);
+      io.to(`user_${rId}`).emit('new_message_notification', messagePayload);
+    }
+
+    // 4. Acknowledge sender client
+    if (typeof ackCallback === 'function') {
+      ackCallback({ success: true, message: messagePayload });
     }
   });
 
   // Mark messages as read
-  socket.on('mark_read', (data) => {
+  socket.on('mark_read', async (data) => {
     const { conversationId, readerId, readerEmail } = data;
     if (!conversationId) return;
-    socket.to(conversationId).to(`conv_${conversationId}`).emit('messages_read', {
+    const normalizedReader = (readerEmail || socket.user?.email || readerId || '').toLowerCase().trim();
+    const readAt = new Date().toISOString();
+
+    try {
+      const { messagesDB } = await import('./db/dataStore.js');
+      messagesDB.forEach(m => {
+        if (m.conversationId === conversationId &&
+            ((m.receiverEmail && m.receiverEmail.toLowerCase() === normalizedReader) || m.receiverId === readerId) &&
+            m.status !== 'READ') {
+          m.status = 'READ';
+          m.message_status = 'READ';
+          m.readAt = readAt;
+          m.read_at = readAt;
+        }
+      });
+    } catch (e) {}
+
+    io.to(conversationId).to(`conv_${conversationId}`).emit('messages_read', {
       conversationId,
-      readerId,
-      readerEmail,
-      readAt: new Date().toISOString()
+      readerId: normalizedReader,
+      readerEmail: normalizedReader,
+      readAt
     });
   });
 
   socket.on('disconnect', () => {
     console.log(`🔌 [SOCKET.IO] Student disconnected: ${socket.id}`);
-    for (const [key, val] of onlineUsersMap.entries()) {
-      if (val.socketId === socket.id) {
-        onlineUsersMap.delete(key);
+    const userMeta = userSocketsMap.get(socket.id);
+    userSocketsMap.delete(socket.id);
+
+    if (userMeta) {
+      const key = userMeta.email || userMeta.id;
+      if (onlineUsersMap.has(key)) {
+        const entry = onlineUsersMap.get(key);
+        entry.sockets.delete(socket.id);
+        if (entry.sockets.size === 0) {
+          entry.lastSeen = new Date().toISOString();
+          onlineUsersMap.delete(key);
+          io.emit('user:presence_changed', {
+            id: entry.id,
+            email: entry.email,
+            name: entry.name,
+            status: 'offline',
+            lastSeen: entry.lastSeen
+          });
+        }
       }
     }
-    const onlineList = Array.from(onlineUsersMap.values()).map(u => ({ id: u.id, email: u.email, name: u.name }));
+
+    const onlineList = Array.from(onlineUsersMap.values()).map(u => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      status: 'online'
+    }));
     io.emit('online_users_updated', onlineList);
   });
 });

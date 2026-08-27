@@ -40,11 +40,42 @@ export const getConversations = async (req, res) => {
     });
   }
 
-  // Calculate unread counts for each conversation for this user
+  // Calculate unread counts and resolve symmetric partner details for each conversation
   const formatted = userConvs.map(conv => {
+    let partnerName = conv.name || 'Teammate';
+    let partnerEmail = conv.email || '';
+    let partnerRole = conv.role || 'Connected Teammate';
+    let partnerAvatarBg = conv.avatarBg || '#EFF6FF';
+    let partnerAvatarColor = conv.avatarColor || '#2563EB';
+
+    if (Array.isArray(conv.participantDetails) && conv.participantDetails.length === 2) {
+      const other = conv.participantDetails.find(pd => 
+        (myEmail && normalizeEmail(pd.email) !== myEmail) || (myId && pd.id !== myId)
+      );
+      if (other) {
+        partnerName = other.name || partnerName;
+        partnerEmail = other.email || partnerEmail;
+        partnerRole = other.role || partnerRole;
+        partnerAvatarBg = other.avatarBg || partnerAvatarBg;
+        partnerAvatarColor = other.avatarColor || partnerAvatarColor;
+      }
+    } else if (Array.isArray(conv.participants) && conv.participants.length === 2) {
+      const otherIdentifier = conv.participants.find(p => 
+        (myEmail && normalizeEmail(p) !== myEmail) && (myId && p !== myId)
+      );
+      if (otherIdentifier && normalizeEmail(conv.email) === myEmail) {
+        const otherUser = usersDB.find(u => normalizeEmail(u.email) === normalizeEmail(otherIdentifier) || u.id === otherIdentifier);
+        if (otherUser) {
+          partnerName = otherUser.name;
+          partnerEmail = otherUser.email;
+          partnerRole = otherUser.major || otherUser.role;
+        }
+      }
+    }
+
     const unreadCount = messagesDB.filter(m => 
       m.conversationId === conv.id && 
-      (normalizeEmail(m.receiverId) === myEmail || m.receiverId === myId) &&
+      (normalizeEmail(m.receiverId) === myEmail || normalizeEmail(m.receiverEmail) === myEmail || m.receiverId === myId) &&
       m.status !== 'READ'
     ).length;
 
@@ -53,6 +84,12 @@ export const getConversations = async (req, res) => {
 
     return {
       ...conv,
+      name: partnerName,
+      email: partnerEmail,
+      role: partnerRole,
+      avatarBg: partnerAvatarBg,
+      avatarColor: partnerAvatarColor,
+      initials: partnerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'TM',
       unread: unreadCount,
       lastMsg: lastMsgObj ? (lastMsgObj.content || lastMsgObj.text || lastMsgObj.message) : (conv.lastMsg || 'Chat active'),
       time: lastMsgObj ? formatMessageTime(lastMsgObj.createdAt) : (conv.time || 'Active'),
@@ -78,13 +115,13 @@ export const getOrCreateConversation = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Partner identification (name, email, or ID) is required.' });
   }
 
-  const myIdentifier = normalizeEmail(userAEmail || userAId);
+  const myIdentifier = normalizeEmail(userAEmail || req.user?.email || userAId);
   const targetIdentifier = normalizeEmail(userBEmail || userBId || userBName);
   const targetDisplayName = userBName || (userBEmail ? userBEmail.split('@')[0] : 'Teammate');
 
   const pairKey = [myIdentifier, targetIdentifier].sort().join(':');
 
-  // Verify connection access
+  // Verify connection access or auto-connect registered students
   const isConnected = connectionsDB.some(c => 
     c.status === 'ACCEPTED' && (
       (normalizeEmail(c.senderEmail) === myIdentifier && normalizeEmail(c.receiverEmail) === targetIdentifier) ||
@@ -94,7 +131,6 @@ export const getOrCreateConversation = async (req, res) => {
     )
   );
 
-  // If not explicitly recorded as connected, auto-connect if it is a registered student peer to enable seamless chatting
   if (!isConnected && myIdentifier && targetIdentifier && myIdentifier !== targetIdentifier) {
     connectionsDB.unshift({
       id: `conn_auto_${Date.now()}`,
@@ -123,6 +159,10 @@ export const getOrCreateConversation = async (req, res) => {
       id: newConvId,
       pairKey,
       participants: [myIdentifier, targetIdentifier],
+      participantDetails: [
+        { id: userAId, email: myIdentifier, name: userAName, role: req.user?.major || req.user?.role || 'Student' },
+        { id: userBId, email: targetIdentifier, name: targetDisplayName, role: partnerRole || 'Connected Teammate' }
+      ],
       name: targetDisplayName,
       email: targetIdentifier,
       role: partnerRole || 'Connected Teammate',
@@ -157,11 +197,26 @@ export const getConversationMessages = async (req, res) => {
 
   // Mark all unread messages received by this user as READ
   messagesDB.forEach(m => {
-    if (m.conversationId === conversationId && (normalizeEmail(m.receiverId) === myEmail || m.receiverId === myId) && m.status !== 'READ') {
+    if (m.conversationId === conversationId &&
+        (normalizeEmail(m.receiverId) === myEmail || normalizeEmail(m.receiverEmail) === myEmail || m.receiverId === myId) &&
+        m.status !== 'READ') {
       m.status = 'READ';
+      m.message_status = 'READ';
       m.readAt = new Date().toISOString();
+      m.read_at = m.readAt;
     }
   });
+
+  // Emit real-time read receipt notification
+  try {
+    const io = req.app?.get('io') || global.io;
+    if (io) {
+      io.to(conversationId).to(`conv_${conversationId}`).emit('messages_read', {
+        conversationId,
+        readerId: myEmail || myId
+      });
+    }
+  } catch (e) {}
 
   const convMessages = messagesDB.filter(m => m.conversationId === conversationId);
 

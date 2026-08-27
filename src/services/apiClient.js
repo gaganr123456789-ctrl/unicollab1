@@ -797,6 +797,10 @@ export const apiClient = {
     }
   },
 
+  async getConversationMessages(conversationId, userId = '', email = '') {
+    return this.getMessages(conversationId, email, userId);
+  },
+
   async markMessagesRead(conversationId, readerEmail, readerId) {
     try {
       const res = await fetch(`${BASE_URL}/messages/read`, {
