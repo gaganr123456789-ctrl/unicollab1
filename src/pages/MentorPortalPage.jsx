@@ -326,7 +326,7 @@ export default function MentorPortalPage({ setCurrentPage, onOpenChat }) {
                   <div className="media-art-icon">🏞️</div>
                   <span className="card-top-rating-badge">
                     <Star size={11} fill="#F59E0B" color="#F59E0B" />
-                    {m.rating}
+                    {typeof m.rating === 'number' ? m.rating.toFixed(1) : Number(m.rating || 5.0).toFixed(1)}
                   </span>
                 </div>
 

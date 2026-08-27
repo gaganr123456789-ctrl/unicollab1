@@ -206,7 +206,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
         major: userMajor,
         degree: userDegree,
         year: u.year || '3rd Year',
-        rating: 4.8 + (i % 3) * 0.1,
+        rating: Number((4.8 + (i % 3) * 0.1).toFixed(1)),
         bio: u.bio || `Student in ${userMajor} at ${userUni}. Passionate about high-impact capstone projects and research.`,
         skills: skillsList,
         projectsCount: u.projectsCount || 4 + (i % 3),
@@ -582,7 +582,9 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
                     </div>
                     <span className={`status-dot ${idx % 3 === 0 ? 'orange' : idx % 3 === 1 ? 'yellow' : 'green'}`}></span>
                   </div>
-                  <span className="card-rating-text">{tm.rating}</span>
+                  <span className="card-rating-text">
+                    {typeof tm.rating === 'number' ? tm.rating.toFixed(1) : Number(tm.rating || 4.9).toFixed(1)}
+                  </span>
                 </div>
 
                 <h3 className="tm-name">{tm.name}</h3>
