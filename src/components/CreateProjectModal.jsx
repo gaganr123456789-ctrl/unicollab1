@@ -28,10 +28,13 @@ export default function CreateProjectModal({ isOpen, onClose, userProfile, onPro
     e.preventDefault();
 
     setLoading(true);
+    const finalTitle = (title || 'New Collaborative Project').trim();
+    const finalDesc = (description || 'A new university student team project focused on innovation and collaboration.').trim();
+
     const res = await apiClient.createProject({
-      title: title || 'New Collaborative Project',
-      description: description || 'A new university student team project focused on innovation and collaboration.',
-      desc: description || 'A new university student team project focused on innovation and collaboration.',
+      title: finalTitle,
+      description: finalDesc,
+      desc: finalDesc,
       category: category,
       level: level,
       tags: skillsInput.split(',').map(s => s.trim()).filter(Boolean),
@@ -43,15 +46,29 @@ export default function CreateProjectModal({ isOpen, onClose, userProfile, onPro
 
     const createdProj = res.project || {
       id: `proj_${Date.now()}`,
-      title: title || 'New Collaborative Project',
+      title: finalTitle,
+      description: finalDesc,
       category: category,
       level: level,
-      desc: description || 'A new university student team project focused on innovation and collaboration.',
+      desc: finalDesc,
       tags: skillsInput.split(',').map(s => s.trim()).filter(Boolean),
       commitment: commitment,
       spots: spots,
-      lead: userProfile?.name || 'Alex Rivera'
+      lead: userProfile?.name || 'Alex Rivera',
+      createdAt: new Date().toISOString()
     };
+
+    // Permanently save to localStorage for client-side persistence across reloads
+    if (typeof window !== 'undefined') {
+      try {
+        const existing = JSON.parse(localStorage.getItem('unicollab_user_created_projects') || '[]');
+        const updated = [createdProj, ...existing.filter(p => p.id !== createdProj.id)];
+        localStorage.setItem('unicollab_user_created_projects', JSON.stringify(updated));
+        localStorage.setItem('unicollab_active_workspace_project_id', createdProj.id);
+      } catch (err) {
+        console.warn('LocalStorage save error:', err);
+      }
+    }
 
     if (onProjectCreated) {
       onProjectCreated(createdProj);
@@ -62,7 +79,10 @@ export default function CreateProjectModal({ isOpen, onClose, userProfile, onPro
     setTimeout(() => {
       setSubmitted(false);
       onClose();
-    }, 1200);
+      if (setCurrentPage) {
+        setCurrentPage('workspace');
+      }
+    }, 1000);
   };
 
   return (

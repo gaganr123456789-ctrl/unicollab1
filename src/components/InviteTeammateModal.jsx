@@ -3,12 +3,8 @@ import { UserPlus, CheckCircle2, AlertCircle, X, Users, Layers, Mail, ShieldChec
 import { apiClient } from '../services/apiClient';
 
 export default function InviteTeammateModal({ isOpen, onClose, userProfile, targetUser, defaultTeamName, onInviteSent }) {
-  const [teams, setTeams] = useState([
-    { id: 'team_drone_1', name: 'Autonomous Drone Navigation', category: 'Engineering & Robotics' },
-    { id: 'team_fintrack_2', name: 'FinTrack Mobile', category: 'Software & FinTech' },
-    { id: 'team_ecotrack_3', name: 'EcoTrack Sustainability', category: 'CleanTech & IoT' }
-  ]);
-  const [selectedTeamId, setSelectedTeamId] = useState('team_drone_1');
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
   const [customTeamName, setCustomTeamName] = useState(defaultTeamName || '');
   const [recipientEmail, setRecipientEmail] = useState(targetUser?.email || '');
   const [recipientName, setRecipientName] = useState(targetUser?.name || '');
@@ -25,23 +21,66 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
       setRecipientName(targetUser.name || '');
     }
 
-    if (defaultTeamName) {
-      setCustomTeamName(defaultTeamName);
-      const match = teams.find(t => t.name.toLowerCase() === defaultTeamName.toLowerCase());
-      if (match) setSelectedTeamId(match.id);
-    }
-
-    // Load registered students for dropdown selection
-    const loadStudents = async () => {
+    // Load all user's projects to populate team options
+    const loadProjectsAndStudents = async () => {
       try {
-        const myEmail = (userProfile?.email || '').toLowerCase().trim();
-        const res = await apiClient.getTeammates('', '', '', myEmail);
-        if (res.success && Array.isArray(res.teammates)) {
-          setRegisteredStudents(res.teammates);
+        let userProjectsList = [];
+        if (typeof window !== 'undefined') {
+          try {
+            userProjectsList = JSON.parse(localStorage.getItem('unicollab_user_created_projects') || '[]');
+          } catch (e) {}
         }
-      } catch (e) {}
+
+        const resProjects = await apiClient.getMyProjects();
+        if (resProjects.success && Array.isArray(resProjects.projects)) {
+          const map = new Map();
+          [...resProjects.projects, ...userProjectsList].forEach(p => {
+            if (p && p.id) map.set(p.id, p);
+          });
+          userProjectsList = Array.from(map.values());
+        }
+
+        const starterTeams = [
+          { id: 'team_drone_1', name: 'Autonomous Drone Navigation', category: 'Engineering & Robotics' },
+          { id: 'team_fintrack_2', name: 'FinTrack Mobile', category: 'Software & FinTech' },
+          { id: 'team_ecotrack_3', name: 'EcoTrack Sustainability', category: 'CleanTech & IoT' }
+        ];
+
+        const mappedUserTeams = userProjectsList.map(p => ({
+          id: p.id,
+          name: p.title,
+          category: p.category || 'Software / Capstone',
+          description: p.description || p.desc
+        }));
+
+        const combinedTeams = [...mappedUserTeams, ...starterTeams.filter(st => !mappedUserTeams.some(mt => mt.name.toLowerCase() === st.name.toLowerCase()))];
+        setTeams(combinedTeams);
+
+        if (defaultTeamName) {
+          setCustomTeamName(defaultTeamName);
+          const match = combinedTeams.find(t => t.name.toLowerCase() === defaultTeamName.toLowerCase());
+          if (match) {
+            setSelectedTeamId(match.id);
+          } else {
+            setSelectedTeamId(combinedTeams[0]?.id || 'team_custom');
+          }
+        } else if (combinedTeams.length > 0) {
+          setSelectedTeamId(combinedTeams[0].id);
+          setCustomTeamName(combinedTeams[0].name);
+        }
+
+        // Load registered students for dropdown selection
+        const myEmail = (userProfile?.email || '').toLowerCase().trim();
+        const resStudents = await apiClient.getTeammates('', '', '', myEmail);
+        if (resStudents.success && Array.isArray(resStudents.teammates)) {
+          setRegisteredStudents(resStudents.teammates);
+        }
+      } catch (e) {
+        console.warn('Error loading projects/students in invite modal:', e);
+      }
     };
-    loadStudents();
+
+    loadProjectsAndStudents();
   }, [isOpen, targetUser, defaultTeamName, userProfile]);
 
   if (!isOpen) return null;
@@ -55,6 +94,15 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
     }
   };
 
+  const handleTeamChange = (e) => {
+    const teamId = e.target.value;
+    setSelectedTeamId(teamId);
+    const foundTeam = teams.find(t => t.id === teamId);
+    if (foundTeam) {
+      setCustomTeamName(foundTeam.name);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!recipientEmail) {
@@ -63,7 +111,7 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
     }
 
     const selectedTeam = teams.find(t => t.id === selectedTeamId);
-    const finalTeamName = customTeamName || selectedTeam?.name || 'Capstone Project Team';
+    const finalTeamName = customTeamName || selectedTeam?.name || defaultTeamName || 'Capstone Project Team';
     const finalTeamId = selectedTeam ? selectedTeam.id : 'team_' + Date.now();
 
     setLoading(true);
@@ -89,7 +137,7 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
       });
 
       if (res.success) {
-        setFeedback({ type: 'success', text: `Team invitation sent to ${recipientName || recipientEmail} successfully!` });
+        setFeedback({ type: 'success', text: `Team invitation for "${finalTeamName}" sent to ${recipientName || recipientEmail} successfully!` });
         if (onInviteSent) onInviteSent(res.invite);
         setTimeout(() => {
           onClose();
@@ -115,7 +163,9 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
             </div>
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Invite Teammate to Capstone</h3>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0' }}>Send an actionable team invitation request</p>
+              <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0' }}>
+                {customTeamName ? `Inviting to: "${customTeamName}"` : 'Send an actionable team invitation request'}
+              </p>
             </div>
           </div>
           <button className="close-btn" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94A3B8' }}>✕</button>
@@ -134,7 +184,7 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
             <label style={{ fontSize: '13px', fontWeight: '700', marginBottom: '6px', display: 'block' }}>Select Project Team *</label>
             <select
               value={selectedTeamId}
-              onChange={(e) => setSelectedTeamId(e.target.value)}
+              onChange={handleTeamChange}
               className="custom-sort-btn"
               style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid #CBD5E1', fontSize: '13.5px', background: 'white' }}
             >

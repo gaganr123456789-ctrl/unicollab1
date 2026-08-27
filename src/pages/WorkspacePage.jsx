@@ -132,35 +132,34 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
     }
   }, [tasks]);
 
-  // Load real projects belonging to the logged-in user (as Owner or Member)
+  // Load real projects belonging to the logged-in user (from Backend DB + LocalStorage)
   const loadUserProjects = async () => {
     setLoadingProjects(true);
     try {
+      // 1. Read locally cached user-created projects
+      let localProjects = [];
+      if (typeof window !== 'undefined') {
+        try {
+          localProjects = JSON.parse(localStorage.getItem('unicollab_user_created_projects') || '[]');
+        } catch (e) {}
+      }
+
+      // 2. Fetch from Backend API
       const res = await apiClient.getMyProjects();
-      console.log('[Workspace] Fetched user projects:', res?.projects);
-      if (res.success && Array.isArray(res.projects)) {
-        setUserProjects(res.projects);
-        if (res.projects.length > 0) {
-          setSelectedProject(prev => {
-            if (prev && res.projects.some(p => p.id === prev.id)) {
-              return res.projects.find(p => p.id === prev.id);
-            }
-            return res.projects[0];
-          });
-        } else {
-          // If no custom projects created yet, fallback to default starter project
-          const starterProject = {
-            id: 'proj_starter_fintrack',
-            title: 'FinTrack Mobile',
-            description: 'Internal FinTech collaboration platform for senior capstone project.',
-            desc: 'Internal FinTech collaboration platform for senior capstone project.',
-            category: 'FINTECH / MOBILE',
-            status: 'Active Phase'
-          };
-          setUserProjects([starterProject]);
-          setSelectedProject(starterProject);
+      const serverProjects = (res.success && Array.isArray(res.projects)) ? res.projects : [];
+
+      // Combine and deduplicate
+      const map = new Map();
+      [...serverProjects, ...localProjects].forEach(p => {
+        if (p && (p.id || p.title)) {
+          const key = p.id || p.title;
+          map.set(key, p);
         }
-      } else {
+      });
+
+      let allProjects = Array.from(map.values());
+
+      if (allProjects.length === 0) {
         const starterProject = {
           id: 'proj_starter_fintrack',
           title: 'FinTrack Mobile',
@@ -169,9 +168,16 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
           category: 'FINTECH / MOBILE',
           status: 'Active Phase'
         };
-        setUserProjects([starterProject]);
-        setSelectedProject(starterProject);
+        allProjects = [starterProject];
       }
+
+      setUserProjects(allProjects);
+
+      // Restore previously selected active project or pick newest
+      const savedActiveId = typeof window !== 'undefined' ? localStorage.getItem('unicollab_active_workspace_project_id') : null;
+      const matched = allProjects.find(p => p.id === savedActiveId || p.title === savedActiveId);
+      setSelectedProject(matched || allProjects[0]);
+
     } catch (err) {
       console.warn('[Workspace] Error loading projects:', err);
     } finally {
@@ -267,10 +273,21 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
     } catch (e) {}
   }, []);
 
+  const handleSelectProject = (proj) => {
+    setSelectedProject(proj);
+    if (typeof window !== 'undefined' && proj) {
+      localStorage.setItem('unicollab_active_workspace_project_id', proj.id);
+    }
+    setIsProjectDropdownOpen(false);
+  };
+
   const handleProjectCreated = (newProj) => {
     console.log('[Workspace] Project created callback:', newProj);
     setUserProjects(prev => [newProj, ...prev.filter(p => p.id !== newProj.id)]);
     setSelectedProject(newProj);
+    if (typeof window !== 'undefined' && newProj) {
+      localStorage.setItem('unicollab_active_workspace_project_id', newProj.id);
+    }
     setIsProjectDropdownOpen(false);
   };
 
@@ -406,10 +423,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                       {userProjects.map((p) => (
                         <button
                           key={p.id}
-                          onClick={() => {
-                            setSelectedProject(p);
-                            setIsProjectDropdownOpen(false);
-                          }}
+                          onClick={() => handleSelectProject(p)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
