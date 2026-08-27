@@ -50,12 +50,12 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
   const [resetMsg, setResetMsg] = useState({ type: '', text: '' });
   const [issuedResetToken, setIssuedResetToken] = useState('');
 
-  // Get active Admin Key from localStorage or default
+  // Get custom Admin Key from localStorage if set
   const getActiveAdminKey = () => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('unicollab_custom_admin_key') || 'unicollab0704';
+      return localStorage.getItem('unicollab_custom_admin_key') || '';
     }
-    return 'unicollab0704';
+    return '';
   };
 
   const fetchHackathonRegistrations = async () => {
@@ -173,22 +173,12 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
         setAuthError('');
         setAdminKeyInput('');
         return;
+      } else {
+        setAuthError(res.message || 'Access Denied: Invalid Admin Authorization Key.');
+        return;
       }
     } catch (err) {
-      console.warn('Backend admin auth fallback');
-    }
-
-    // Local fallback check
-    const currentAdminKey = getActiveAdminKey();
-    if (adminKeyInput.trim() === currentAdminKey) {
-      setIsAdminAuthenticated(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('unicollab_admin_auth', 'true');
-      }
-      setAuthError('');
-      setAdminKeyInput('');
-    } else {
-      setAuthError('Access Denied: Invalid Admin Authorization Key. Only authorized administrators may enter.');
+      setAuthError('Access Denied: Server authentication error.');
     }
   };
 
