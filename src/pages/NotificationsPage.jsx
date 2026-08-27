@@ -633,7 +633,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                       </div>
 
                       {/* Clean Message Quotation matching reference UI */}
-                      <p className="notif-message-text" style={{ fontSize: '14px', lineHeight: 1.5, marginTop: '6px', color: 'var(--text-color, #334155)' }}>
+                      <p className="notif-message-text" style={{ fontSize: '14px', lineHeight: 1.5, marginTop: '6px' }}>
                         "{notif.message}"
                       </p>
 
@@ -646,7 +646,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                                 className="btn-primary" 
                                 onClick={() => handleAcceptInvite(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: '#2563EB' }}
+                                style={{ padding: '8px 18px', fontSize: '13px', fontWeight: '800', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}
                               >
                                 <Check size={14} />
                                 {isActionBusy ? 'Joining...' : 'Accept Invite'}
@@ -656,7 +656,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                                 className="btn-secondary" 
                                 onClick={() => handleDeclineInvite(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px', color: '#64748B' }}
+                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px' }}
                               >
                                 Decline
                               </button>
@@ -705,7 +705,7 @@ export default function NotificationsPage({ setCurrentPage, userProfile }) {
                                 className="btn-secondary" 
                                 onClick={() => handleDeclineConnectionRequest(notif)}
                                 disabled={isActionBusy}
-                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px', color: '#64748B' }}
+                                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', borderRadius: '10px' }}
                               >
                                 Decline
                               </button>

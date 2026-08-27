@@ -863,6 +863,7 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
                     }}
                   >
                     <div
+                      className={`msg-bubble ${isMe ? 'msg-bubble-me' : 'msg-bubble-them'}`}
                       style={{
                         maxWidth: '70%',
                         padding: '12px 16px',

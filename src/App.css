@@ -8001,21 +8001,43 @@ input:checked + .toggle-slider:before {
   max-width: 400px;
 }
 
-/* Dark theme overrides for Notifications Page */
+/* ==========================================================================
+   DARK THEME OVERRIDES FOR NOTIFICATIONS, MESSAGES, AND WORKSPACE
+   ========================================================================== */
+
+/* 1. Notifications Page Dark Theme */
 .dark-theme .notif-filter-bar,
-.dark-theme .notif-card-item,
 .dark-theme .notif-empty-state {
   background: #111827 !important;
   border-color: #1F2937 !important;
 }
 
+.dark-theme .notif-card-item {
+  background: #111827 !important;
+  border: 1px solid #1F2937 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .notif-card-item.team-invite-card {
+  border: 1px solid #1E3A8A !important;
+  background: #111827 !important;
+}
+
 .dark-theme .notif-card-item.unread {
-  background: #1F2937 !important;
+  background: #172133 !important;
   border-left-color: #3B82F6 !important;
 }
 
 .dark-theme .notif-title {
-  color: #F9FAFB !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .notif-message-text {
+  color: #CBD5E1 !important;
+}
+
+.dark-theme .notif-time-stamp {
+  color: #94A3B8 !important;
 }
 
 .dark-theme .notif-type-icon-box {
@@ -8030,6 +8052,168 @@ input:checked + .toggle-slider:before {
 .dark-theme .notif-tab-btn.active {
   background: #2563EB !important;
   color: white !important;
+}
+
+.dark-theme .notif-card-item .btn-secondary {
+  background: #1F2937 !important;
+  color: #E2E8F0 !important;
+  border: 1px solid #374151 !important;
+}
+
+.dark-theme .notif-card-item .btn-secondary:hover {
+  background: #374151 !important;
+  color: #FFFFFF !important;
+}
+
+.dark-theme .notif-icon-opt {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .notif-icon-opt:hover {
+  background: #1F2937 !important;
+  color: #F8FAFC !important;
+}
+
+/* 2. Messages & Chat Page Dark Theme */
+.dark-theme .messages-layout {
+  background: #0B132B !important;
+}
+
+.dark-theme .messages-sidebar {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark-theme .messages-sidebar h2 {
+  color: #FFFFFF !important;
+}
+
+.dark-theme .messages-sidebar input {
+  background: #1F2937 !important;
+  border-color: #374151 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .messages-sidebar input::placeholder {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .messages-chat-pane {
+  background: #0B132B !important;
+}
+
+.dark-theme .messages-chat-pane > div:first-child {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark-theme .messages-chat-pane h3 {
+  color: #FFFFFF !important;
+}
+
+.dark-theme .messages-chat-pane form {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark-theme .messages-chat-pane form input {
+  background: #1F2937 !important;
+  border-color: #374151 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .messages-chat-pane form input::placeholder {
+  color: #9CA3AF !important;
+}
+
+.dark-theme .msg-bubble-them {
+  background: #1E293B !important;
+  color: #F8FAFC !important;
+  border: 1px solid #334155 !important;
+}
+
+.dark-theme .conversation-item:hover {
+  background: #1F2937 !important;
+}
+
+/* 3. Workspace & Kanban Page Dark Theme */
+.dark-theme .workspace-header-card {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .workspace-header-card .ws-subtitle,
+.dark-theme .workspace-header-card p {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .kanban-col {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark-theme .col-header h4 {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .col-header .task-count {
+  background: #1F2937 !important;
+  color: #93C5FD !important;
+  border: 1px solid #374151 !important;
+}
+
+.dark-theme .task-card {
+  background: #1F2937 !important;
+  border-color: #374151 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark-theme .task-card:hover {
+  border-color: #3B82F6 !important;
+}
+
+.dark-theme .task-title {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .task-desc {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .task-meta {
+  color: #64748B !important;
+  border-top-color: #374151 !important;
+}
+
+.dark-theme .btn-add-task-full {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border: 1.5px dashed #3B82F6 !important;
+  color: #93C5FD !important;
+  font-weight: 700 !important;
+}
+
+.dark-theme .btn-add-task-full:hover {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-style: solid !important;
+}
+
+.dark-theme .icon-btn-micro {
+  background: #111827 !important;
+  border: 1px solid #374151 !important;
+  color: #94A3B8 !important;
+}
+
+.dark-theme .icon-btn-micro:hover {
+  background: #374151 !important;
+  color: #60A5FA !important;
+}
+
+.dark-theme .icon-btn-micro.text-danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #F87171 !important;
+  border-color: #EF4444 !important;
 }
 
 /* AI Chat Feed Match Cards */
