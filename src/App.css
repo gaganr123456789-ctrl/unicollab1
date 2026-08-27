@@ -707,13 +707,15 @@
 }
 
 .header-search-bar input {
-  padding: 9px 16px 9px 38px;
+  padding: 10px 18px 10px 42px;
+  height: 42px;
   border-radius: 9999px;
   border: 1px solid #E2E8F0;
   background: #F8FAFC;
-  font-size: 13px;
-  width: 260px;
+  font-size: 13.5px;
+  width: 350px;
   outline: none;
+  box-sizing: border-box;
   transition: all 0.2s ease;
 }
 
@@ -725,7 +727,7 @@
 
 .header-search-bar .search-icon {
   position: absolute;
-  left: 14px;
+  left: 15px;
   color: #94A3B8;
   pointer-events: none;
 }
@@ -8661,8 +8663,9 @@ input:checked + .toggle-slider:before {
   }
 
   .header-search-bar input {
-    width: 140px !important;
-    font-size: 12px !important;
+    width: 220px !important;
+    height: 40px !important;
+    font-size: 12.5px !important;
   }
 
   .user-info {
