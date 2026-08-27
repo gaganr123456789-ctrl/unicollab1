@@ -83,11 +83,67 @@ export const getProjectById = async (req, res) => {
   return res.status(200).json({ success: true, project });
 };
 
+// GET /api/projects/user/me - Scoped to logged in user (Owner or Team Member)
+export const getMyProjects = async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  const userEmail = (req.user?.email || '').trim().toLowerCase();
+  const userName = (req.user?.name || '').trim().toLowerCase();
+
+  try {
+    const prisma = await getPrisma();
+    if (prisma && userId) {
+      const userProjects = await prisma.project.findMany({
+        where: {
+          OR: [
+            { ownerId: userId },
+            ...(userEmail ? [{ owner: { email: { equals: userEmail, mode: 'insensitive' } } }] : []),
+            { team: { members: { some: { userId: userId } } } },
+            ...(userEmail ? [{ team: { members: { some: { user: { email: { equals: userEmail, mode: 'insensitive' } } } } } }] : [])
+          ]
+        },
+        include: {
+          owner: { select: { id: true, name: true, email: true, university: true, major: true, avatarBg: true } },
+          team: {
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, name: true, email: true, university: true, major: true, role: true, avatarBg: true } }
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (userProjects) {
+        return res.status(200).json({ success: true, count: userProjects.length, projects: userProjects });
+      }
+    }
+  } catch (err) {
+    console.warn('Prisma getMyProjects fallback:', err.message);
+  }
+
+  // In-memory fallback scoped strictly to user
+  const userScoped = projectsDB.filter(p => {
+    const isOwnerId = p.ownerId && p.ownerId === userId;
+    const isOwnerEmail = p.ownerEmail && p.ownerEmail.toLowerCase() === userEmail;
+    const isLeadName = p.lead && userName && p.lead.toLowerCase() === userName;
+    const isMember = Array.isArray(p.teamMembers) && (p.teamMembers.includes(userId) || p.teamMembers.includes(userEmail));
+    return isOwnerId || isOwnerEmail || isLeadName || isMember;
+  }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  return res.status(200).json({ success: true, count: userScoped.length, projects: userScoped });
+};
+
 // POST /api/projects
 export const createProject = async (req, res) => {
   const { title, description, desc, category, level, tags, commitment, spots, lead, author } = req.body;
   const projectTitle = (title || 'New Collaborative Project').trim();
   const projectDesc = (description || desc || 'A new university student team project focused on innovation and collaboration.').trim();
+  const userId = req.user?.id || req.user?.userId;
+  const userEmail = req.user?.email;
+  const userName = req.user?.name || lead || author || 'Alex Rivera';
 
   const formattedTags = Array.isArray(tags) 
     ? tags 
@@ -95,8 +151,58 @@ export const createProject = async (req, res) => {
       ? tags.split(',').map(s => s.trim()).filter(Boolean) 
       : ['React', 'Node.js', 'Engineering'];
 
-  const newProject = {
-    id: `proj_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+  let createdProject = null;
+
+  try {
+    const prisma = await getPrisma();
+    if (prisma && userId) {
+      // 1. Create default team for this project with owner as first member
+      let team = null;
+      try {
+        team = await prisma.team.create({
+          data: {
+            name: `${projectTitle} Team`,
+            members: {
+              create: {
+                userId: userId,
+                role: 'Owner'
+              }
+            }
+          }
+        });
+      } catch (teamErr) {
+        console.warn('Prisma team create notice:', teamErr.message);
+      }
+
+      // 2. Create Project in Postgres DB
+      createdProject = await prisma.project.create({
+        data: {
+          title: projectTitle,
+          description: projectDesc,
+          category: category || 'SOFTWARE',
+          ownerId: userId,
+          ...(team ? { teamId: team.id } : {})
+        },
+        include: {
+          owner: { select: { id: true, name: true, email: true, university: true, major: true, avatarBg: true } },
+          team: {
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, name: true, email: true, university: true, major: true, role: true, avatarBg: true } }
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Prisma createProject fallback:', err.message);
+  }
+
+  const fallbackProj = {
+    id: createdProject?.id || `proj_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
     title: projectTitle,
     description: projectDesc,
     desc: projectDesc,
@@ -106,39 +212,29 @@ export const createProject = async (req, res) => {
     tags: formattedTags,
     commitment: commitment || '6-8 hrs/week',
     spots: spots || '3 spots left',
-    lead: lead || author || req.user?.name || 'Alex Rivera',
+    lead: userName,
+    ownerId: userId,
+    ownerEmail: userEmail,
     createdAt: new Date().toISOString()
   };
 
-  try {
-    const prisma = await getPrisma();
-    if (prisma && req.user?.id) {
-      await prisma.project.create({
-        data: {
-          title: projectTitle,
-          description: projectDesc,
-          category: category || 'SOFTWARE',
-          ownerId: req.user.id
-        }
-      }).catch(e => console.warn('Prisma project create notice:', e.message));
-    }
-  } catch (err) {
-    console.warn('Prisma createProject fallback:', err.message);
-  }
-
-  projectsDB.unshift(newProject);
+  const finalProject = createdProject || fallbackProj;
+  projectsDB.unshift(finalProject);
 
   // Broadcast Socket.io event for live real-time UI updates across all clients
   try {
     const io = req.app?.get('io') || global.io;
     if (io) {
-      io.emit('project:created', newProject);
+      io.emit('project:created', finalProject);
+      if (userId) {
+        io.emit(`project:created:${userId}`, finalProject);
+      }
     }
   } catch (e) {
     console.warn('Socket broadcast warning:', e.message);
   }
 
-  return res.status(201).json({ success: true, message: 'Project created successfully.', project: newProject });
+  return res.status(201).json({ success: true, message: 'Project created successfully.', project: finalProject });
 };
 
 // PUT /api/projects/:id

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
 import { io } from 'socket.io-client';
 import InviteTeammateModal from '../components/InviteTeammateModal';
+import CreateProjectModal from '../components/CreateProjectModal';
 import { 
   Share2, 
   Video, 
@@ -15,7 +16,11 @@ import {
   Trash2,
   Plus,
   UserPlus,
-  Users
+  Users,
+  ChevronDown,
+  FolderPlus,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 
 const getDynamicDate = (daysAgo = 0) => {
@@ -81,10 +86,18 @@ const getInitialTasks = () => [
   }
 ];
 
-export default function WorkspacePage({ userProfile, onOpenChat }) {
+export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage }) {
   const [activeTab, setActiveTab] = useState('Kanban Board');
   const [searchQuery, setSearchQuery] = useState('');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  
+  // Real User Projects state scoped to logged-in user
+  const [userProjects, setUserProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
   const [teamMembers, setTeamMembers] = useState([
     { id: 'tm_3', name: 'Alex Thompson', role: 'Project Lead & Full Stack', email: 'alex.thompson@stanford.edu', dept: 'Computer Science • Senior', avatarBg: 'blue', initials: 'AT' },
     { id: 'tm_4', name: 'Sarah Chen', role: 'Backend Engineer', email: 'sarah.chen@stanford.edu', dept: 'Computer Science • Junior', avatarBg: 'green', initials: 'SC' },
@@ -119,7 +132,58 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
     }
   }, [tasks]);
 
-  // Load from Backend API and Listen for newly joined team members
+  // Load real projects belonging to the logged-in user (as Owner or Member)
+  const loadUserProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const res = await apiClient.getMyProjects();
+      console.log('[Workspace] Fetched user projects:', res?.projects);
+      if (res.success && Array.isArray(res.projects)) {
+        setUserProjects(res.projects);
+        if (res.projects.length > 0) {
+          setSelectedProject(prev => {
+            if (prev && res.projects.some(p => p.id === prev.id)) {
+              return res.projects.find(p => p.id === prev.id);
+            }
+            return res.projects[0];
+          });
+        } else {
+          // If no custom projects created yet, fallback to default starter project
+          const starterProject = {
+            id: 'proj_starter_fintrack',
+            title: 'FinTrack Mobile',
+            description: 'Internal FinTech collaboration platform for senior capstone project.',
+            desc: 'Internal FinTech collaboration platform for senior capstone project.',
+            category: 'FINTECH / MOBILE',
+            status: 'Active Phase'
+          };
+          setUserProjects([starterProject]);
+          setSelectedProject(starterProject);
+        }
+      } else {
+        const starterProject = {
+          id: 'proj_starter_fintrack',
+          title: 'FinTrack Mobile',
+          description: 'Internal FinTech collaboration platform for senior capstone project.',
+          desc: 'Internal FinTech collaboration platform for senior capstone project.',
+          category: 'FINTECH / MOBILE',
+          status: 'Active Phase'
+        };
+        setUserProjects([starterProject]);
+        setSelectedProject(starterProject);
+      }
+    } catch (err) {
+      console.warn('[Workspace] Error loading projects:', err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUserProjects();
+  }, [userProfile?.id, userProfile?.email]);
+
+  // Load from Backend API and Listen for newly joined team members and projects
   useEffect(() => {
     const fetchServerTasks = async () => {
       try {
@@ -164,7 +228,7 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
     };
     fetchTeamRoster();
 
-    // Socket listener for new team members
+    // Socket listener for new team members and newly created projects
     try {
       const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
         ? 'http://localhost:5000'
@@ -190,9 +254,25 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
         }
       });
 
+      socket.on('project:created', (newProj) => {
+        if (newProj) {
+          setUserProjects(prev => {
+            if (prev.some(p => p.id === newProj.id)) return prev;
+            return [newProj, ...prev];
+          });
+        }
+      });
+
       return () => socket.disconnect();
     } catch (e) {}
   }, []);
+
+  const handleProjectCreated = (newProj) => {
+    console.log('[Workspace] Project created callback:', newProj);
+    setUserProjects(prev => [newProj, ...prev.filter(p => p.id !== newProj.id)]);
+    setSelectedProject(newProj);
+    setIsProjectDropdownOpen(false);
+  };
 
   const moveTask = (taskId, newCol) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, column: newCol } : t));
@@ -211,7 +291,7 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
       desc: desc.trim(),
       priority: ['HIGH', 'MEDIUM', 'LOW'].includes(priority) ? priority : 'MEDIUM',
       comments: 0,
-      date: 'Today'
+      date: getDynamicDate(0)
     };
 
     setTasks(prev => [...prev, newTask]);
@@ -255,7 +335,7 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'unicollab_workspace_tasks.csv';
+    a.download = `${(selectedProject?.title || 'workspace').replace(/\s+/g, '_').toLowerCase()}_tasks.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -268,23 +348,140 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
 
   return (
     <div className="page-container animate-fade-in">
-      {/* Workspace Header */}
+      {/* Workspace Header with Project Selector */}
       <div className="workspace-header-card">
-        <div className="ws-title-row">
-          <div className="ws-title-group">
-            <div className="ws-logo-box">
-              <Layers size={20} />
+        <div className="ws-title-row flex justify-between align-center" style={{ flexWrap: 'wrap', gap: '16px' }}>
+          <div className="ws-title-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1, minWidth: '300px' }}>
+            <div className="ws-logo-box" style={{ background: '#EFF6FF', color: '#2563EB', borderRadius: '14px', width: '46px', height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Layers size={22} />
             </div>
-            <div>
-              <div className="ws-title-flex">
-                <h2>Project: FinTrack Mobile</h2>
-                <span className="phase-badge green">Active Phase</span>
+            
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="ws-title-flex" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {/* Project Selector Dropdown */}
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                    style={{ 
+                      background: 'transparent', 
+                      border: '1px solid var(--border-color, #CBD5E1)', 
+                      padding: '6px 14px', 
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '18px',
+                      fontWeight: 800,
+                      color: 'inherit'
+                    }}
+                    title="Click to switch between your projects"
+                  >
+                    <span>Project: {selectedProject?.title || 'FinTrack Mobile'}</span>
+                    <ChevronDown size={16} style={{ transition: 'transform 0.2s', transform: isProjectDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isProjectDropdownOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '6px',
+                      width: '320px',
+                      background: 'var(--surface-color, #FFFFFF)',
+                      border: '1px solid var(--border-color, #E2E8F0)',
+                      borderRadius: '14px',
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                      zIndex: 100,
+                      padding: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div style={{ padding: '6px 10px', fontSize: '11.5px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Your Workspace Projects ({userProjects.length})
+                      </div>
+
+                      {userProjects.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            setSelectedProject(p);
+                            setIsProjectDropdownOpen(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            background: selectedProject?.id === p.id ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                            color: selectedProject?.id === p.id ? '#2563EB' : 'inherit',
+                            fontWeight: selectedProject?.id === p.id ? 800 : 600,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.title}
+                          </span>
+                          {selectedProject?.id === p.id && (
+                            <span style={{ fontSize: '11px', background: '#2563EB', color: 'white', padding: '2px 6px', borderRadius: '6px' }}>Active</span>
+                          )}
+                        </button>
+                      ))}
+
+                      <div style={{ borderTop: '1px solid var(--border-color, #E2E8F0)', marginTop: '4px', paddingTop: '6px' }}>
+                        <button
+                          onClick={() => {
+                            setIsProjectDropdownOpen(false);
+                            setIsCreateProjectOpen(true);
+                          }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '9px 12px',
+                            borderRadius: '10px',
+                            border: '1px dashed #2563EB',
+                            background: 'rgba(37, 99, 235, 0.04)',
+                            color: '#2563EB',
+                            fontWeight: 800,
+                            fontSize: '12.5px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <FolderPlus size={15} /> + Create New Project
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <span className="phase-badge green" style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11.5px', fontWeight: 800 }}>
+                  {selectedProject?.status || 'Active Phase'}
+                </span>
+
+                <span style={{ fontSize: '11px', background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '4px 8px', borderRadius: '8px', fontWeight: 700 }}>
+                  {selectedProject?.category || 'SOFTWARE'}
+                </span>
               </div>
-              <p className="ws-subtitle">Internal FinTech collaboration platform for senior capstone project.</p>
+
+              <p className="ws-subtitle" style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#64748B' }}>
+                {selectedProject?.description || selectedProject?.desc || 'Internal university team collaboration platform for senior capstone project.'}
+              </p>
             </div>
           </div>
 
-          <div className="ws-actions flex gap-2">
+          <div className="ws-actions flex gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button className="btn-secondary" onClick={() => setIsCreateProjectOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700 }}>
+              <FolderPlus size={15} /> + New Project
+            </button>
             <button className="btn-secondary" onClick={handleExportCSV} title="Download CSV task report">
               📊 Export CSV
             </button>
@@ -547,10 +744,21 @@ export default function WorkspacePage({ userProfile, onOpenChat }) {
           isOpen={isInviteModalOpen}
           onClose={() => setIsInviteModalOpen(false)}
           userProfile={userProfile}
-          defaultTeamName="FinTrack Mobile"
+          defaultTeamName={selectedProject?.title || "FinTrack Mobile"}
           onInviteSent={(inv) => {
-            alert(`Team invitation sent for FinTrack Mobile!`);
+            alert(`Team invitation sent for ${selectedProject?.title || 'project'}!`);
           }}
+        />
+      )}
+
+      {/* Create Project Modal */}
+      {isCreateProjectOpen && (
+        <CreateProjectModal
+          isOpen={isCreateProjectOpen}
+          onClose={() => setIsCreateProjectOpen(false)}
+          userProfile={userProfile}
+          onProjectCreated={handleProjectCreated}
+          setCurrentPage={setCurrentPage}
         />
       )}
     </div>

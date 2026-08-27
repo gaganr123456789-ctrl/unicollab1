@@ -489,11 +489,34 @@ export const apiClient = {
     }
   },
 
+  async getMyProjects() {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const res = await fetch(`${BASE_URL}/projects/user/me`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+      return { success: false, projects: [] };
+    } catch (err) {
+      console.error('getMyProjects error:', err);
+      return { success: false, projects: [] };
+    }
+  },
+
   async createProject(projectData) {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
       const res = await fetch(`${BASE_URL}/projects`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(projectData)
       });
       return await res.json();
