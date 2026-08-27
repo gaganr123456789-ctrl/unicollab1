@@ -16,6 +16,7 @@ import SettingsPage from './pages/SettingsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AdminPage from './pages/AdminPage';
 import GlobalAiChatbotWidget from './components/GlobalAiChatbotWidget';
+import BottomNav from './components/BottomNav';
 import Toast from './components/Toast';
 
 import { 
@@ -255,8 +256,14 @@ export default function App() {
           )}
         </div>
 
-        {/* Global Floating AI Chatbot Widget (Hidden on full AI Assistant page to prevent UI overlap) */}
+        {/* Global Floating AI Chatbot Widget */}
         {currentPage !== 'ai-assistant' && <GlobalAiChatbotWidget theme={theme} />}
+
+        {/* Mobile Native Bottom Navigation Bar */}
+        <BottomNav 
+          currentPage={currentPage} 
+          setCurrentPage={setCurrentPage} 
+        />
       </div>
     );
   }

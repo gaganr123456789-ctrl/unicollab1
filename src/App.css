@@ -10781,35 +10781,261 @@ input:checked + .toggle-slider:before {
 }
 
 /* ==========================================================================
-   SECTION 1: RESPONSIVE AUDIT MEDIA QUERIES (375px Mobile, 768px Tablet, 1440px Desktop)
+   MOBILE BOTTOM NAVIGATION BAR
+   ========================================================================== */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid #E2E8F0;
+  z-index: 999;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 4px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #64748B;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-icon-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-nav-icon {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.mobile-nav-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-top: 3px;
+  transition: color 0.2s ease;
+}
+
+.mobile-nav-badge-dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  background: #2563EB;
+  border-radius: 50%;
+  border: 1.5px solid #FFFFFF;
+}
+
+.mobile-bottom-nav-item.active {
+  color: #2563EB;
+}
+
+.mobile-bottom-nav-item.active .mobile-nav-icon {
+  transform: translateY(-2px);
+  color: #2563EB;
+}
+
+.mobile-bottom-nav-item.active .mobile-nav-label {
+  color: #2563EB;
+  font-weight: 800;
+}
+
+/* Dark theme bottom nav */
+.dark-theme .mobile-bottom-nav {
+  background: rgba(15, 23, 42, 0.96) !important;
+  border-top-color: #1E293B !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark-theme .mobile-bottom-nav-item {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .mobile-bottom-nav-item.active {
+  color: #60A5FA !important;
+}
+
+.dark-theme .mobile-bottom-nav-item.active .mobile-nav-icon,
+.dark-theme .mobile-bottom-nav-item.active .mobile-nav-label {
+  color: #60A5FA !important;
+}
+
+.dark-theme .mobile-nav-badge-dot {
+  border-color: #0F172A !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE AUDIT & MOBILE VIEW OVERHAUL (375px - 768px Mobile & Tablet)
    ========================================================================== */
 
-/* 1. Touch Targets & Standard Interactive Element Sizing */
 @media (max-width: 768px) {
+  /* 1. Show Mobile Bottom Navigation */
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+
+  /* 2. Responsive App Shell */
+  .app-shell {
+    flex-direction: column !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  .dash-layout-main {
+    padding-bottom: 68px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    height: calc(100vh - 58px) !important;
+  }
+
+  .page-container {
+    padding: 14px 12px 24px !important;
+  }
+
+  /* 3. Header on Mobile */
+  .dash-header {
+    height: 58px !important;
+    padding: 0 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .header-time-badge {
+    display: none !important;
+  }
+
+  .header-search-bar {
+    display: none !important;
+  }
+
+  .header-badge-wrapper {
+    display: none !important;
+  }
+
+  .user-role {
+    display: none !important;
+  }
+
+  .user-profile-badge {
+    padding: 4px 6px !important;
+    gap: 4px !important;
+  }
+
+  .user-name {
+    font-size: 13px !important;
+    max-width: 85px !important;
+  }
+
+  /* 4. AI Floating Chatbot Widget on Mobile */
+  .ai-chatbot-floating-trigger {
+    bottom: 72px !important;
+    right: 14px !important;
+  }
+
+  .ai-chatbot-window {
+    bottom: 72px !important;
+    right: 10px !important;
+    width: calc(100vw - 20px) !important;
+    max-width: 380px !important;
+    height: calc(100vh - 150px) !important;
+    max-height: 520px !important;
+  }
+
+  /* 5. Messages Page on Mobile */
+  .messages-layout {
+    height: calc(100vh - 58px - 62px) !important;
+    flex-direction: column !important;
+  }
+
+  .messages-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-right: none !important;
+  }
+
+  .messages-sidebar.hidden-on-mobile {
+    display: none !important;
+  }
+
+  .messages-chat-pane.hidden-on-mobile {
+    display: none !important;
+  }
+
+  .messages-chat-pane {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .chat-pane-header {
+    height: 60px !important;
+    padding: 0 14px !important;
+  }
+
+  .chat-partner-name {
+    font-size: 14.5px !important;
+  }
+
+  .partner-role-text {
+    display: none !important;
+  }
+
+  .chat-history-feed {
+    padding: 12px 14px !important;
+  }
+
+  .chat-msg-bubble {
+    max-width: 85% !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+  }
+
+  .chat-input-bar-form {
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+
+  .chat-input-field {
+    height: 42px !important;
+    padding: 0 14px !important;
+    font-size: 14px !important;
+  }
+
+  .chat-send-btn {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  /* 6. Touch Targets & Standard Interactive Element Sizing */
   button, 
   .btn-primary, 
   .btn-secondary, 
   .icon-btn, 
-  .nav-item, 
-  .close-btn, 
-  .btn-admin-nav, 
-  .text-link-sm {
-    min-height: 44px !important;
-    min-width: 44px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+  .close-btn {
+    min-height: 40px !important;
     touch-action: manipulation;
   }
 
-  /* Page Padding for 375px Mobile */
-  .page-container, 
-  .dash-layout-main, 
-  .standalone-admin-wrapper main {
-    padding: 16px 12px !important;
-  }
-
-  /* 2. Grid & Card Multi-Column Layout Collapsing */
+  /* 7. Grid & Card Multi-Column Layout Collapsing */
   .grid-3-col, 
   .grid-4-col, 
   .grid-2-col, 
@@ -10818,10 +11044,10 @@ input:checked + .toggle-slider:before {
   .mentor-grid, 
   .hackathon-grid {
     grid-template-columns: 1fr !important;
-    gap: 16px !important;
+    gap: 14px !important;
   }
 
-  /* 3. Team Workspace Kanban Board Horizontal Scroll Snap */
+  /* 8. Team Workspace Kanban Board Horizontal Scroll Snap */
   .kanban-board-container, 
   .workspace-kanban-row {
     display: flex !important;
@@ -10829,60 +11055,64 @@ input:checked + .toggle-slider:before {
     overflow-x: auto !important;
     scroll-snap-type: x mandatory !important;
     -webkit-overflow-scrolling: touch !important;
-    gap: 16px !important;
+    gap: 14px !important;
     padding-bottom: 16px !important;
   }
 
-  .kanban-column {
-    min-width: 285px !important;
-    max-width: 320px !important;
-    flex: 0 0 85% !important;
-    scroll-snap-align: start !important;
-  }
-
-  /* 4. Responsive Tables Wrapper */
-  .table-responsive {
-    overflow-x: auto !important;
-    width: 100% !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  .admin-table {
-    min-width: 650px !important;
-  }
-
-  /* 5. Messages Mobile View (Full Screen Chat / Thread Switcher) */
-  .messages-layout-container {
-    flex-direction: column !important;
-  }
-
-  .messages-sidebar-panel {
-    width: 100% !important;
-  }
-
-  .messages-chat-panel {
-    width: 100% !important;
-  }
-
-  /* 6. Header & Navbar Adjustments */
-  .header-actions {
-    gap: 6px !important;
-  }
-
-  .logo-text-group h1 {
-    font-size: 16px !important;
+  .kanban-column, .kanban-col {
+    min-width: 280px !important;
+    max-width: 86vw !important;
+    flex: 0 0 86vw !important;
+    scroll-snap-align: center !important;
   }
 
   .ws-title-row {
     flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 14px !important;
+    align-items: stretch !important;
+    gap: 12px !important;
   }
 
   .ws-actions {
     width: 100% !important;
-    justify-content: flex-start !important;
+    justify-content: space-between !important;
     flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .ws-actions button {
+    flex: 1 1 auto !important;
+  }
+
+  /* 9. Dashboard Stats Grid */
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .dash-welcome-card {
+    padding: 20px 16px !important;
+  }
+
+  .dash-welcome-title {
+    font-size: 20px !important;
+  }
+
+  /* 10. Modals on Mobile View */
+  .modal-overlay, .modal-backdrop {
+    padding: 10px !important;
+    align-items: flex-end !important;
+  }
+
+  .modal-container, 
+  .task-modal-content, 
+  .invite-modal-card,
+  .create-proj-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 88vh !important;
+    border-radius: 20px 20px 12px 12px !important;
+    padding: 18px 16px !important;
+    overflow-y: auto !important;
   }
 }
 
@@ -10896,7 +11126,7 @@ input:checked + .toggle-slider:before {
     gap: 20px !important;
   }
 
-  .kanban-column {
+  .kanban-column, .kanban-col {
     min-width: 260px !important;
   }
 }
