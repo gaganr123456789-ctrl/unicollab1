@@ -24,9 +24,9 @@ export const sendConnectionRequest = async (req, res) => {
   const senderEmail = normalizeEmail(req.user?.email || req.body.senderEmail);
   const senderName = req.user?.name || req.body.senderName || 'Student';
   
-  const receiverId = req.body.receiverId;
-  const receiverEmail = normalizeEmail(req.body.receiverEmail);
-  const receiverName = req.body.receiverName || 'Student Peer';
+  const receiverId = req.body.receiverId || req.body.recipientId;
+  const receiverEmail = normalizeEmail(req.body.receiverEmail || req.body.recipientEmail);
+  const receiverName = req.body.receiverName || req.body.recipientName || 'Student Peer';
   const message = req.body.message || `Hi ${receiverName}, I'd love to connect with you on UniCollab!`;
 
   if (!receiverEmail && !receiverId) {
@@ -179,27 +179,22 @@ export const getConnections = async (req, res) => {
 // 3. POST /api/connections/:id/accept - Accept connection request
 export const acceptConnection = async (req, res) => {
   const connId = req.params.id;
-  const userEmail = normalizeEmail(req.user?.email || req.body.userEmail);
-  const userId = req.user?.id || req.body.userId;
+  const userEmail = normalizeEmail(req.user?.email || req.body.userEmail || req.body.userBEmail || req.body.receiverEmail);
+  const targetEmail = normalizeEmail(req.body.targetEmail || req.body.userAEmail || req.body.senderEmail);
+  const userId = req.user?.id || req.body.userId || req.body.userBId;
+  const targetId = req.body.targetId || req.body.userAId;
 
   let conn = connectionsDB.find(c => 
     c.id === connId || 
+    (targetEmail && userEmail && (
+      (normalizeEmail(c.senderEmail) === targetEmail && normalizeEmail(c.receiverEmail) === userEmail) ||
+      (normalizeEmail(c.senderEmail) === userEmail && normalizeEmail(c.receiverEmail) === targetEmail)
+    )) ||
     (c.status === 'PENDING' && (
       (userEmail && (normalizeEmail(c.receiverEmail) === userEmail || normalizeEmail(c.senderEmail) === userEmail)) ||
       (userId && (c.receiverId === userId || c.senderId === userId))
     ))
   );
-
-  if (!conn) {
-    // If not found by ID, look by target emails provided in body
-    const targetEmail = normalizeEmail(req.body.targetEmail);
-    if (targetEmail && userEmail) {
-      conn = connectionsDB.find(c => 
-        (normalizeEmail(c.senderEmail) === targetEmail && normalizeEmail(c.receiverEmail) === userEmail) ||
-        (normalizeEmail(c.senderEmail) === userEmail && normalizeEmail(c.receiverEmail) === targetEmail)
-      );
-    }
-  }
 
   if (!conn) {
     // Create pre-accepted connection if explicitly accepted
@@ -327,12 +322,12 @@ export const rejectConnection = async (req, res) => {
 
 // 5. GET /api/connections/status - Check connection status with a specific user
 export const getConnectionStatus = async (req, res) => {
-  const myEmail = normalizeEmail(req.query.myEmail || req.user?.email);
+  const myEmail = normalizeEmail(req.query.myEmail || req.query.user1 || req.user?.email);
   const myId = req.query.myId || req.user?.id;
-  const targetEmail = normalizeEmail(req.query.targetEmail);
+  const targetEmail = normalizeEmail(req.query.targetEmail || req.query.user2);
   const targetId = req.query.targetId;
 
-  if (!targetEmail && !targetId) {
+  if (!targetEmail && !targetId && !myEmail) {
     return res.status(400).json({ success: false, message: 'Target user email or ID required.' });
   }
 
@@ -356,7 +351,7 @@ export const getConnectionStatus = async (req, res) => {
   }
 
   if (conn.status === 'PENDING') {
-    const isSender = (myEmail && normalizeEmail(c.senderEmail) === myEmail) || (myId && c.senderId === myId);
+    const isSender = (myEmail && normalizeEmail(conn.senderEmail) === myEmail) || (myId && conn.senderId === myId);
     return res.status(200).json({
       success: true,
       status: isSender ? 'PENDING_SENT' : 'PENDING_RECEIVED',

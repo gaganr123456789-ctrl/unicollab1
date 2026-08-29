@@ -18,12 +18,12 @@ const getPrisma = async () => {
 
 // POST /api/ai/chat
 export const processAiChat = async (req, res) => {
-  const { query, conversationId } = req.body;
-  if (!query || !query.trim()) {
+  const queryText = req.body.query || req.body.message || req.body.prompt || req.body.text;
+  if (!queryText || !String(queryText).trim()) {
     return res.status(400).json({ success: false, message: 'Chat query is required.' });
   }
 
-  const prompt = query.trim();
+  const prompt = String(queryText).trim();
   const lower = prompt.toLowerCase();
 
   try {
@@ -103,6 +103,8 @@ export const processAiChat = async (req, res) => {
       success: true,
       sender: 'ai',
       text: responseText,
+      reply: responseText,
+      response: responseText,
       matches,
       suggestions,
       timestamp: new Date().toISOString()

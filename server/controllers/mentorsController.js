@@ -144,6 +144,7 @@ export const bookMentorSession = async (req, res) => {
   const bookingId = `BK-${Math.floor(100000 + Math.random() * 900000)}`;
 
   try {
+    const prisma = await getPrisma();
     if (prisma && process.env.DATABASE_URL) {
       const session = await prisma.mentorSession.create({
         data: {
