@@ -15,6 +15,7 @@ import {
   GitCommit,
   Bot
 } from 'lucide-react';
+import { apiClient } from '../services/apiClient';
 
 export default function DashboardPage({ setCurrentPage, userProfile }) {
   const firstName = userProfile?.name 
@@ -26,11 +27,52 @@ export default function DashboardPage({ setCurrentPage, userProfile }) {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [registeredHackathons, setRegisteredHackathons] = useState({});
 
+  const [loading, setLoading] = useState(true);
+  const [isColdStart, setIsColdStart] = useState(false);
+  const [activeProjectCount, setActiveProjectCount] = useState(4);
+
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Fetch Dashboard initial metrics with cold start timer
+  useEffect(() => {
+    let isMounted = true;
+    const coldTimer = setTimeout(() => {
+      if (isMounted) setIsColdStart(true);
+    }, 2500);
+
+    const initDashboard = async () => {
+      try {
+        const [projRes, tasksRes] = await Promise.allSettled([
+          apiClient.getMyProjects(),
+          apiClient.getTasks()
+        ]);
+
+        if (isMounted) {
+          if (projRes.status === 'fulfilled' && projRes.value?.success && Array.isArray(projRes.value.projects)) {
+            setActiveProjectCount(Math.max(projRes.value.projects.length, 1));
+          }
+          setLoading(false);
+        }
+      } catch (err) {
+        console.warn('[DashboardPage] API load notice:', err);
+        if (isMounted) setLoading(false);
+      } finally {
+        clearTimeout(coldTimer);
+        if (isMounted) setIsColdStart(false);
+      }
+    };
+
+    initDashboard();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(coldTimer);
+    };
   }, []);
 
   const formattedDate = currentDateTime.toLocaleDateString('en-US', {
@@ -57,6 +99,41 @@ export default function DashboardPage({ setCurrentPage, userProfile }) {
       [data.hackathonTitle]: data
     }));
   };
+
+  // Modern Loading Spinner with Cold-Start Progress Indicator
+  if (loading) {
+    return (
+      <div className="page-container animate-fade-in" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh',
+        gap: '20px',
+        textAlign: 'center',
+        padding: '40px 20px'
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          borderRadius: '50%',
+          border: '4px solid rgba(37, 99, 235, 0.15)',
+          borderTopColor: '#2563EB',
+          animation: 'spin 0.8s linear infinite'
+        }}></div>
+        <div>
+          <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1E293B', marginBottom: '6px' }}>
+            Loading Your Dashboard...
+          </h3>
+          <p style={{ fontSize: '13.5px', color: '#64748B', maxWidth: '420px', margin: '0 auto', lineHeight: 1.5 }}>
+            {isColdStart 
+              ? '⚡ Cloud server is waking up on Render (takes 30-50s on free tier)... Your workspace will appear momentarily!'
+              : 'Syncing active projects, team deadlines, and AI recommendations...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container animate-fade-in">

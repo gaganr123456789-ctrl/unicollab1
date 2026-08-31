@@ -183,6 +183,21 @@ export default function App() {
     'messages', 'profile', 'settings', 'notifications'
   ].includes(currentPage);
 
+  // Authentication Guard:
+  // If accessing an inner app page without an active user session, show LoginPage
+  if (isInnerPage && !userProfile) {
+    return (
+      <LoginPage 
+        setCurrentPage={setCurrentPage} 
+        userProfile={userProfile}
+        setUserProfile={setUserProfile}
+        initialTab="login"
+        theme={theme}
+        setTheme={setTheme}
+      />
+    );
+  }
+
   if (isInnerPage) {
     return (
       <div className={`app-shell ${theme === 'dark' ? 'dark-theme' : ''}`}>

@@ -28,7 +28,7 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
   };
 
   const name = userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Student Member');
-  const initials = userProfile?.initials || name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'ST';
+  const initials = userProfile?.initials || (name ? name.split(' ').filter(Boolean).map(n => n[0] || '').join('').toUpperCase().slice(0, 2) : 'ST') || 'ST';
   const major = userProfile?.major || userProfile?.degree || 'Engineering';
   const uni = userProfile?.university || 'Campus Network';
 
