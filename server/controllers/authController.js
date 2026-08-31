@@ -32,7 +32,7 @@ const checkForgotPasswordRateLimit = (email) => {
 
 // PUT /auth/profile - Update user profile across database & platforms
 export const updateProfile = async (req, res) => {
-  const { email, name, age, phone, gender, major, degree, university, bio, skills, avatarUrl } = req.body;
+  const { email, name, age, phone, gender, major, degree, university, bio, skills, avatarUrl, linkedIn, linkedin, website, github, twitter } = req.body;
   if (!email) {
     return res.status(400).json({ success: false, message: 'User email is required to update profile.' });
   }
@@ -52,7 +52,8 @@ export const updateProfile = async (req, res) => {
           ...(major && { major }),
           ...(degree && { degree }),
           ...(university && { university }),
-          ...(bio && { bio }),
+          ...(bio !== undefined && { bio }),
+          ...((linkedIn || linkedin) && { linkedIn: linkedIn || linkedin }),
           ...(skills && Array.isArray(skills) && { skills }),
           ...(avatarUrl && { avatarUrl })
         }
@@ -71,7 +72,12 @@ export const updateProfile = async (req, res) => {
       ...req.body,
       name: name || usersDB[storeUserIdx].name,
       major: major || usersDB[storeUserIdx].major,
-      degree: degree || usersDB[storeUserIdx].degree
+      degree: degree || usersDB[storeUserIdx].degree,
+      bio: bio !== undefined ? bio : usersDB[storeUserIdx].bio,
+      website: website !== undefined ? website : usersDB[storeUserIdx].website,
+      github: github !== undefined ? github : usersDB[storeUserIdx].github,
+      linkedIn: (linkedIn || linkedin) || usersDB[storeUserIdx].linkedIn,
+      twitter: twitter !== undefined ? twitter : usersDB[storeUserIdx].twitter
     };
     return res.status(200).json({ success: true, message: 'Profile updated in session.', user: usersDB[storeUserIdx] });
   }

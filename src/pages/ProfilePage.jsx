@@ -48,18 +48,34 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
   const [isEditingAbout, setIsEditingAbout] = useState(false);
 
   // Edit modal local states
-  const [editName, setEditName] = useState(userProfile?.name || 'Alex Rivera');
-  const [editAge, setEditAge] = useState(userProfile?.age || '21');
-  const [editPhone, setEditPhone] = useState(userProfile?.phone || '+91 98765 43210');
+  const [editName, setEditName] = useState(userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : ''));
+  const [editAge, setEditAge] = useState(userProfile?.age || '');
+  const [editPhone, setEditPhone] = useState(userProfile?.phone || '');
   const [editGender, setEditGender] = useState(userProfile?.gender || 'Male');
-  const [editMajor, setEditMajor] = useState(userProfile?.major || 'Computer Science');
+  const [editMajor, setEditMajor] = useState(userProfile?.major || userProfile?.degree || 'Computer Science');
 
-  // About Section local states
-  const [aboutBio, setAboutBio] = useState('Senior Computer Science student at Stanford with a passion for building scalable web applications and AI-driven tools. I love working in collaborative environments and contributing to open-source projects. Currently focused on UniCollab to help students find perfect project teammates.');
-  const [website, setWebsite] = useState('alexrivera.dev');
-  const [github, setGithub] = useState('github.com/arivera');
-  const [linkedin, setLinkedin] = useState('linkedin.com/in/alex-rivera');
-  const [twitter, setTwitter] = useState('@arivera_codes');
+  // About Section local states - blank by default after login
+  const [aboutBio, setAboutBio] = useState(userProfile?.bio || '');
+  const [website, setWebsite] = useState(userProfile?.website || '');
+  const [github, setGithub] = useState(userProfile?.github || '');
+  const [linkedin, setLinkedin] = useState(userProfile?.linkedIn || userProfile?.linkedin || '');
+  const [twitter, setTwitter] = useState(userProfile?.twitter || '');
+
+  // Keep states in sync when userProfile updates
+  React.useEffect(() => {
+    if (userProfile) {
+      setEditName(userProfile.name || (userProfile.email ? userProfile.email.split('@')[0] : ''));
+      setEditAge(userProfile.age || '');
+      setEditPhone(userProfile.phone || '');
+      setEditGender(userProfile.gender || 'Male');
+      setEditMajor(userProfile.major || userProfile.degree || 'Computer Science');
+      setAboutBio(userProfile.bio || '');
+      setWebsite(userProfile.website || '');
+      setGithub(userProfile.github || '');
+      setLinkedin(userProfile.linkedIn || userProfile.linkedin || '');
+      setTwitter(userProfile.twitter || '');
+    }
+  }, [userProfile]);
 
   // Live GitHub Repos Fetcher State
   const [ghUsername, setGhUsername] = useState('vercel');
@@ -104,10 +120,47 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
     }
   };
 
-  const handleSaveAbout = (e) => {
+  const handleSaveAbout = async (e) => {
     e.preventDefault();
+    const updatedUser = {
+      ...userProfile,
+      bio: aboutBio,
+      website: website,
+      github: github,
+      linkedIn: linkedin,
+      linkedin: linkedin,
+      twitter: twitter
+    };
+
+    // 1. Update React app state
+    if (setUserProfile) {
+      setUserProfile(updatedUser);
+    }
+
+    // 2. Persist locally
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('unicollab_user', JSON.stringify(updatedUser));
+
+      const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+      const targetEmail = (userProfile?.email || '').toLowerCase().trim();
+      const updatedCache = cachedUsers.map(u => {
+        if ((targetEmail && u.email?.toLowerCase().trim() === targetEmail) || (userProfile?.id && String(u.id) === String(userProfile.id))) {
+          return { ...u, ...updatedUser };
+        }
+        return u;
+      });
+      localStorage.setItem('unicollab_registered_users', JSON.stringify(updatedCache));
+    }
+
+    // 3. Update Backend API / Cloud Database
+    try {
+      await apiClient.updateProfile(updatedUser);
+    } catch (err) {
+      console.warn('Backend profile sync info:', err);
+    }
+
     setIsEditingAbout(false);
-    alert('About section updated successfully!');
+    alert('🎉 About section updated successfully!');
   };
 
   const selectedProjects = [
@@ -261,7 +314,7 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
           <div className="profile-name-details">
             <h2>{name}</h2>
             <p className="profile-subtitle">
-              <span><Code size={14} /> {major} Major</span> • <span><MapPin size={14} /> San Francisco, CA</span> • <span><Calendar size={14} /> Age {age}</span>
+              <span><Code size={14} /> {major}</span> • <span><MapPin size={14} /> {userProfile?.university || 'University Campus'}</span>{age ? <span> • <Calendar size={14} /> Age {age}</span> : null}
             </p>
           </div>
 
@@ -463,16 +516,58 @@ export default function ProfilePage({ userProfile, setUserProfile }) {
               </button>
             </div>
 
-            <p className="about-text mt-2">
-              {aboutBio}
-            </p>
+            {aboutBio && aboutBio.trim() ? (
+              <p className="about-text mt-2">
+                {aboutBio}
+              </p>
+            ) : (
+              <div 
+                className="about-empty-prompt mt-3"
+                onClick={() => setIsEditingAbout(true)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  border: '1px dashed #CBD5E1',
+                  backgroundColor: 'rgba(241, 245, 249, 0.6)',
+                  color: '#64748B',
+                  fontSize: '13.5px',
+                  lineHeight: '1.5'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', color: '#2563EB', marginBottom: '4px' }}>
+                  <Edit3 size={13} /> Add your bio
+                </div>
+                <div style={{ fontSize: '13px' }}>
+                  Your about section is currently blank. Click here or the edit icon to write a bio and add your portfolio links.
+                </div>
+              </div>
+            )}
 
-            <div className="social-links-list mt-4">
-              <div className="social-item"><Globe size={15} /> <span>{website}</span></div>
-              <div className="social-item"><Github size={15} /> <span>{github}</span></div>
-              <div className="social-item"><Linkedin size={15} /> <span>{linkedin}</span></div>
-              <div className="social-item"><Twitter size={15} /> <span>{twitter}</span></div>
-            </div>
+            {(website || github || linkedin || twitter) ? (
+              <div className="social-links-list mt-4">
+                {website && (
+                  <a href={website.startsWith('http') ? website : `https://${website}`} target="_blank" rel="noreferrer" className="social-item" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Globe size={15} /> <span>{website}</span>
+                  </a>
+                )}
+                {github && (
+                  <a href={github.startsWith('http') ? github : `https://${github.startsWith('github.com') ? github : `github.com/${github}`}`} target="_blank" rel="noreferrer" className="social-item" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Github size={15} /> <span>{github}</span>
+                  </a>
+                )}
+                {linkedin && (
+                  <a href={linkedin.startsWith('http') ? linkedin : `https://${linkedin.startsWith('linkedin.com') ? linkedin : `linkedin.com/in/${linkedin}`}`} target="_blank" rel="noreferrer" className="social-item" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Linkedin size={15} /> <span>{linkedin}</span>
+                  </a>
+                )}
+                {twitter && (
+                  <a href={twitter.startsWith('http') ? twitter : `https://twitter.com/${twitter.replace('@', '')}`} target="_blank" rel="noreferrer" className="social-item" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Twitter size={15} /> <span>{twitter}</span>
+                  </a>
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* Skills Section */}

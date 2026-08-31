@@ -47,6 +47,21 @@ export default function SettingsPage({ userProfile, setUserProfile, setCurrentPa
   const [showOnlineStatus, setShowOnlineStatus] = useState(true);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
 
+  React.useEffect(() => {
+    if (userProfile) {
+      setName(userProfile.name || (userProfile.email ? userProfile.email.split('@')[0] : ''));
+      setEmail(userProfile.email || '');
+      setPhone(userProfile.phone || '');
+      setGender(userProfile.gender || 'Student');
+      setAge(userProfile.age || '');
+      setUniversity(userProfile.university || '');
+      setMajor(userProfile.major || userProfile.degree || '');
+      if (Array.isArray(userProfile.skills) && userProfile.skills.length > 0) {
+        setSkills(userProfile.skills);
+      }
+    }
+  }, [userProfile]);
+
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'ST';
