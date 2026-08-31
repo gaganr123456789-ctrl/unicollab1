@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock, Trash2, Trophy, Phone, Building2, IdCard, FileText } from 'lucide-react';
+import { 
+  Users, Download, Search, ShieldCheck, Database, CheckCircle2, RefreshCw, Key, Lock, Unlock, 
+  AlertCircle, Mail, CheckCircle, Layers, ArrowLeft, Sun, Moon, Clock, Trash2, Trophy, Phone, 
+  Building2, IdCard, FileText, Plus, Edit3, Eye, EyeOff, Image as ImageIcon, ExternalLink, 
+  Sparkles, Calendar, MapPin, Tag, Globe, Check, X 
+} from 'lucide-react';
 import { apiClient } from '../services/apiClient';
 
 const formatDateTime = (rawTime) => {
@@ -32,6 +37,32 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
   const [loading, setLoading] = useState(false);
   const [adminTab, setAdminTab] = useState('ALL'); // 'ALL' | 'STUDENT' | 'MENTOR' | 'HACKATHON'
   
+  // Hackathon Management States
+  const [hackathonsList, setHackathonsList] = useState([]);
+  const [hackathonSubTab, setHackathonSubTab] = useState('LISTINGS'); // 'LISTINGS' | 'REGISTRATIONS'
+  const [isAddHackathonModalOpen, setIsAddHackathonModalOpen] = useState(false);
+  const [editingHackathon, setEditingHackathon] = useState(null);
+  const [hackathonFilter, setHackathonFilter] = useState('ALL'); // 'ALL' | 'PUBLISHED' | 'DRAFT'
+  
+  // Hackathon Form States
+  const [formTitle, setFormTitle] = useState('');
+  const [formOrganizer, setFormOrganizer] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formDate, setFormDate] = useState('');
+  const [formDeadline, setFormDeadline] = useState('');
+  const [formLocation, setFormLocation] = useState('Online (Global)');
+  const [formRegistrationLink, setFormRegistrationLink] = useState('');
+  const [formEligibility, setFormEligibility] = useState('Open to all university students');
+  const [formTeamSize, setFormTeamSize] = useState('1 - 4 Members');
+  const [formPrizePool, setFormPrizePool] = useState('$10,000 USD');
+  const [formTechnologies, setFormTechnologies] = useState('AI/ML, React, Cloud');
+  const [formBannerUrl, setFormBannerUrl] = useState('');
+  const [formBannerPreview, setFormBannerPreview] = useState('');
+  const [formAdditionalInfo, setFormAdditionalInfo] = useState('');
+  const [formStatus, setFormStatus] = useState('published');
+  const [formError, setFormError] = useState('');
+  const [formSuccessMessage, setFormSuccessMessage] = useState('');
+
   // Admin Security Auth State
   const [adminKeyInput, setAdminKeyInput] = useState('');
   const [authError, setAuthError] = useState('');
@@ -56,6 +87,166 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
       return localStorage.getItem('unicollab_custom_admin_key') || '';
     }
     return '';
+  };
+
+  const fetchAdminHackathons = async () => {
+    try {
+      const res = await apiClient.getHackathons('all');
+      if (res && res.success && Array.isArray(res.hackathons)) {
+        setHackathonsList(res.hackathons);
+      }
+    } catch (e) {
+      console.warn('Failed to load admin hackathons', e);
+    }
+  };
+
+  const openCreateHackathonModal = () => {
+    setEditingHackathon(null);
+    setFormTitle('');
+    setFormOrganizer('');
+    setFormDescription('');
+    setFormDate('');
+    setFormDeadline('');
+    setFormLocation('Online (Global)');
+    setFormRegistrationLink('');
+    setFormEligibility('Open to all university students');
+    setFormTeamSize('1 - 4 Members');
+    setFormPrizePool('$10,000 USD');
+    setFormTechnologies('AI/ML, React, Cloud');
+    const defaultBanner = 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80';
+    setFormBannerUrl(defaultBanner);
+    setFormBannerPreview(defaultBanner);
+    setFormAdditionalInfo('');
+    setFormStatus('published');
+    setFormError('');
+    setIsAddHackathonModalOpen(true);
+  };
+
+  const openEditHackathonModal = (h) => {
+    setEditingHackathon(h);
+    setFormTitle(h.title || h.name || '');
+    setFormOrganizer(h.organizer || '');
+    setFormDescription(h.description || '');
+    setFormDate(h.dateDisplay || '');
+    setFormDeadline(h.deadlineDisplay || '');
+    setFormLocation(h.location || 'Online (Global)');
+    setFormRegistrationLink(h.registrationLink || '');
+    setFormEligibility(h.eligibility || 'Open to all university students');
+    setFormTeamSize(h.teamSize || '1 - 4 Members');
+    setFormPrizePool(h.prizePool || '$10,000 USD');
+    setFormTechnologies(Array.isArray(h.technologies) ? h.technologies.join(', ') : (h.technologies || ''));
+    setFormBannerUrl(h.bannerUrl || '');
+    setFormBannerPreview(h.bannerUrl || '');
+    setFormAdditionalInfo(h.additionalInfo || '');
+    setFormStatus(h.status || 'published');
+    setFormError('');
+    setIsAddHackathonModalOpen(true);
+  };
+
+  const handleBannerFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setFormError('⚠️ Image file size exceeds 5MB limit.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormBannerUrl(reader.result);
+        setFormBannerPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveHackathon = async (overrideStatus) => {
+    const statusToSave = overrideStatus || formStatus;
+    if (!formTitle.trim()) {
+      setFormError('⚠️ Hackathon Name is required.');
+      return;
+    }
+    if (!formOrganizer.trim()) {
+      setFormError('⚠️ Organizer Name is required.');
+      return;
+    }
+    if (!formDescription.trim()) {
+      setFormError('⚠️ Description is required.');
+      return;
+    }
+
+    const payload = {
+      title: formTitle.trim(),
+      name: formTitle.trim(),
+      organizer: formOrganizer.trim(),
+      description: formDescription.trim(),
+      dateDisplay: formDate.trim() || 'Upcoming',
+      deadlineDisplay: formDeadline.trim() || 'Open',
+      location: formLocation.trim() || 'Online (Global)',
+      registrationLink: formRegistrationLink.trim(),
+      eligibility: formEligibility.trim() || 'Open to all university students',
+      teamSize: formTeamSize.trim() || '1 - 4 Members',
+      prizePool: formPrizePool.trim() || '$10,000 USD',
+      technologies: formTechnologies.split(',').map(t => t.trim()).filter(Boolean),
+      bannerUrl: formBannerUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
+      additionalInfo: formAdditionalInfo.trim(),
+      status: statusToSave
+    };
+
+    try {
+      if (editingHackathon) {
+        const res = await apiClient.updateHackathon(editingHackathon.id, payload);
+        if (res.success) {
+          setFormSuccessMessage(`🎉 Hackathon "${payload.title}" updated successfully!`);
+          setTimeout(() => setFormSuccessMessage(''), 4000);
+          setIsAddHackathonModalOpen(false);
+          await fetchAdminHackathons();
+        } else {
+          setFormError(res.message || 'Failed to update hackathon.');
+        }
+      } else {
+        const res = await apiClient.createHackathon(payload);
+        if (res.success) {
+          setFormSuccessMessage(`🎉 Hackathon "${payload.title}" successfully ${statusToSave === 'published' ? 'published' : 'saved as draft'}!`);
+          setTimeout(() => setFormSuccessMessage(''), 4000);
+          setIsAddHackathonModalOpen(false);
+          await fetchAdminHackathons();
+        } else {
+          setFormError(res.message || 'Failed to create hackathon.');
+        }
+      }
+    } catch (err) {
+      setFormError('An unexpected error occurred while saving.');
+    }
+  };
+
+  const handleDeleteHackathon = async (id, title) => {
+    if (!window.confirm(`Are you sure you want to delete the hackathon "${title}"? This will remove it from the user portal.`)) {
+      return;
+    }
+    try {
+      const res = await apiClient.deleteHackathon(id);
+      if (res.success) {
+        setFormSuccessMessage(`🗑️ Hackathon "${title}" was successfully removed.`);
+        setTimeout(() => setFormSuccessMessage(''), 4000);
+        await fetchAdminHackathons();
+      }
+    } catch (e) {
+      alert('Failed to delete hackathon.');
+    }
+  };
+
+  const handleToggleStatus = async (hackathon) => {
+    const nextStatus = hackathon.status === 'published' ? 'draft' : 'published';
+    try {
+      const res = await apiClient.updateHackathon(hackathon.id, { status: nextStatus });
+      if (res.success) {
+        setFormSuccessMessage(`⚡ Status changed to ${nextStatus.toUpperCase()} for "${hackathon.title}".`);
+        setTimeout(() => setFormSuccessMessage(''), 4000);
+        await fetchAdminHackathons();
+      }
+    } catch (e) {
+      alert('Failed to update status.');
+    }
   };
 
   const fetchHackathonRegistrations = async () => {
@@ -106,6 +297,7 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
     if (isAdminAuthenticated) {
       fetchRegisteredUsers();
       fetchHackathonRegistrations();
+      fetchAdminHackathons();
 
       // Connect to Socket.io for real-time live admin user registration & hackathon updates
       let socketInstance = null;
@@ -140,6 +332,21 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
               if (!newReg) return;
               setHackathonRegistrations(prev => [newReg, ...prev]);
             });
+
+            socketInstance.on('admin:hackathonCreated', (newHack) => {
+              if (!newHack) return;
+              setHackathonsList(prev => [newHack, ...prev.filter(h => String(h.id) !== String(newHack.id))]);
+            });
+
+            socketInstance.on('admin:hackathonUpdated', (updatedHack) => {
+              if (!updatedHack) return;
+              setHackathonsList(prev => prev.map(h => String(h.id) === String(updatedHack.id) ? updatedHack : h));
+            });
+
+            socketInstance.on('admin:hackathonDeleted', ({ id }) => {
+              if (!id) return;
+              setHackathonsList(prev => prev.filter(h => String(h.id) !== String(id)));
+            });
           }
         }
       } catch (err) {
@@ -150,6 +357,9 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
         if (socketInstance) {
           socketInstance.off('admin:newUser');
           socketInstance.off('admin:newHackathonRegistration');
+          socketInstance.off('admin:hackathonCreated');
+          socketInstance.off('admin:hackathonUpdated');
+          socketInstance.off('admin:hackathonDeleted');
           socketInstance.disconnect();
         }
       };
@@ -928,103 +1138,469 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                 </div>
               </div>
 
+              {/* Success Alert Banner if present */}
+              {formSuccessMessage && (
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  color: '#065F46',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: '700',
+                  fontSize: '13px'
+                }}>
+                  <CheckCircle size={16} color="#059669" />
+                  <span>{formSuccessMessage}</span>
+                </div>
+              )}
+
               {adminTab === 'HACKATHON' ? (
-                /* Hackathon Registrations Table View */
-                <div className="table-responsive" style={{ overflowX: 'auto' }}>
-                  {hackathonRegistrations.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B' }}>
-                      <Trophy size={40} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
-                      <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>No Hackathon Registrations Yet</h4>
-                      <p style={{ fontSize: '13px', margin: '4px 0 0' }}>When students register for hackathons on the Hackathon Hub, their full team details appear here in real-time.</p>
+                <div>
+                  {/* Sub-Tabs: Management vs Team Registrations */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    flexWrap: 'wrap', 
+                    gap: '12px', 
+                    marginBottom: '20px', 
+                    paddingBottom: '14px', 
+                    borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` 
+                  }}>
+                    <div style={{ display: 'flex', gap: '8px', background: theme === 'dark' ? '#1F2937' : '#F1F5F9', padding: '4px', borderRadius: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setHackathonSubTab('LISTINGS')}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          border: 'none',
+                          fontSize: '13px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: hackathonSubTab === 'LISTINGS' ? '#F59E0B' : 'transparent',
+                          color: hackathonSubTab === 'LISTINGS' ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Trophy size={14} />
+                        <span>Manage Hackathon Events ({hackathonsList.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHackathonSubTab('REGISTRATIONS')}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          border: 'none',
+                          fontSize: '13px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: hackathonSubTab === 'REGISTRATIONS' ? '#2563EB' : 'transparent',
+                          color: hackathonSubTab === 'REGISTRATIONS' ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Users size={14} />
+                        <span>Student Team Registrations ({hackathonRegistrations.length})</span>
+                      </button>
+                    </div>
+
+                    {/* Add Hackathon Action Button */}
+                    {hackathonSubTab === 'LISTINGS' && (
+                      <button
+                        type="button"
+                        onClick={openCreateHackathonModal}
+                        style={{
+                          background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          padding: '10px 18px',
+                          borderRadius: '12px',
+                          fontWeight: 800,
+                          fontSize: '13.5px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 14px rgba(245, 158, 11, 0.35)',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <Plus size={16} />
+                        <span>Add Hackathon</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {hackathonSubTab === 'LISTINGS' ? (
+                    /* Hackathon Listings Grid / Cards */
+                    <div>
+                      {/* Filter Pills */}
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        {['ALL', 'PUBLISHED', 'DRAFT'].map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setHackathonFilter(f)}
+                            style={{
+                              padding: '4px 12px',
+                              borderRadius: '20px',
+                              border: `1px solid ${hackathonFilter === f ? '#F59E0B' : (theme === 'dark' ? '#374151' : '#CBD5E1')}`,
+                              background: hackathonFilter === f ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                              color: hackathonFilter === f ? '#F59E0B' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {f === 'ALL' && `All (${hackathonsList.length})`}
+                            {f === 'PUBLISHED' && `Published (${hackathonsList.filter(h => h.status === 'published' || !h.status).length})`}
+                            {f === 'DRAFT' && `Drafts (${hackathonsList.filter(h => h.status === 'draft').length})`}
+                          </button>
+                        ))}
+                      </div>
+
+                      {hackathonsList
+                        .filter(h => {
+                          if (hackathonFilter === 'PUBLISHED') return h.status === 'published' || !h.status;
+                          if (hackathonFilter === 'DRAFT') return h.status === 'draft';
+                          return true;
+                        })
+                        .filter(h => {
+                          if (!searchQuery.trim()) return true;
+                          const q = searchQuery.toLowerCase().trim();
+                          return (
+                            (h.title && h.title.toLowerCase().includes(q)) ||
+                            (h.organizer && h.organizer.toLowerCase().includes(q)) ||
+                            (h.location && h.location.toLowerCase().includes(q)) ||
+                            (h.technologies && (Array.isArray(h.technologies) ? h.technologies.some(t => t.toLowerCase().includes(q)) : String(h.technologies).toLowerCase().includes(q)))
+                          );
+                        }).length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B' }}>
+                          <Trophy size={40} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
+                          <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>No Hackathons Found</h4>
+                          <p style={{ fontSize: '13px', margin: '6px 0 16px' }}>Create and publish your first university hackathon to make it live for all students.</p>
+                          <button
+                            type="button"
+                            onClick={openCreateHackathonModal}
+                            style={{
+                              background: '#2563EB',
+                              color: 'white',
+                              border: 'none',
+                              padding: '8px 18px',
+                              borderRadius: '10px',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            + Create Hackathon Event
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                          {hackathonsList
+                            .filter(h => {
+                              if (hackathonFilter === 'PUBLISHED') return h.status === 'published' || !h.status;
+                              if (hackathonFilter === 'DRAFT') return h.status === 'draft';
+                              return true;
+                            })
+                            .filter(h => {
+                              if (!searchQuery.trim()) return true;
+                              const q = searchQuery.toLowerCase().trim();
+                              return (
+                                (h.title && h.title.toLowerCase().includes(q)) ||
+                                (h.organizer && h.organizer.toLowerCase().includes(q)) ||
+                                (h.location && h.location.toLowerCase().includes(q)) ||
+                                (h.technologies && (Array.isArray(h.technologies) ? h.technologies.some(t => t.toLowerCase().includes(q)) : String(h.technologies).toLowerCase().includes(q)))
+                              );
+                            })
+                            .map((h) => {
+                              const isPublished = h.status === 'published' || !h.status;
+                              return (
+                                <div 
+                                  key={h.id} 
+                                  style={{
+                                    background: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                                    border: `1px solid ${theme === 'dark' ? '#334155' : '#E2E8F0'}`,
+                                    borderRadius: '16px',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                                  }}
+                                >
+                                  {/* Banner Preview */}
+                                  <div style={{ position: 'relative', width: '100%', height: '140px', background: '#0F172A', overflow: 'hidden' }}>
+                                    <img 
+                                      src={h.bannerUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'} 
+                                      alt={h.title}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'; }}
+                                    />
+                                    <div style={{ position: 'absolute', top: '10px', left: '10px' }}>
+                                      <span style={{
+                                        background: isPublished ? '#DEF7EC' : '#FEF3C7',
+                                        color: isPublished ? '#03543F' : '#92400E',
+                                        border: `1px solid ${isPublished ? '#BCF0DA' : '#FDE68A'}`,
+                                        padding: '3px 8px',
+                                        borderRadius: '6px',
+                                        fontSize: '11px',
+                                        fontWeight: 800,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                      }}>
+                                        {isPublished ? '🟢 Published' : '🟡 Draft'}
+                                      </span>
+                                    </div>
+                                    <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                                      <span style={{
+                                        background: 'rgba(15, 23, 42, 0.85)',
+                                        color: '#F59E0B',
+                                        backdropFilter: 'blur(4px)',
+                                        padding: '3px 8px',
+                                        borderRadius: '6px',
+                                        fontSize: '11px',
+                                        fontWeight: 800
+                                      }}>
+                                        🏆 {h.prizePool || '$10,000'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Body */}
+                                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                      {h.organizer}
+                                    </div>
+                                    <h4 style={{ fontSize: '16px', fontWeight: 800, margin: '4px 0 8px', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', lineHeight: 1.3 }}>
+                                      {h.title}
+                                    </h4>
+                                    <p style={{ fontSize: '12.5px', color: theme === 'dark' ? '#94A3B8' : '#64748B', margin: '0 0 12px', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                      {h.description}
+                                    </p>
+
+                                    {/* Metrics */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569', marginBottom: '14px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Calendar size={13} style={{ color: '#2563EB' }} />
+                                        <span><strong>Date:</strong> {h.dateDisplay || 'Upcoming'}</span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Clock size={13} style={{ color: '#F59E0B' }} />
+                                        <span><strong>Deadline:</strong> {h.deadlineDisplay || 'Open'}</span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <MapPin size={13} style={{ color: '#10B981' }} />
+                                        <span><strong>Mode:</strong> {h.location || 'Online (Global)'}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Tech Tags */}
+                                    {h.technologies && (
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '16px' }}>
+                                        {(Array.isArray(h.technologies) ? h.technologies : String(h.technologies).split(',')).slice(0, 4).map((tech, i) => (
+                                          <span 
+                                            key={i} 
+                                            style={{
+                                              background: theme === 'dark' ? '#0F172A' : '#F1F5F9',
+                                              color: theme === 'dark' ? '#93C5FD' : '#2563EB',
+                                              fontSize: '10.5px',
+                                              fontWeight: 700,
+                                              padding: '2px 8px',
+                                              borderRadius: '6px'
+                                            }}
+                                          >
+                                            {typeof tech === 'string' ? tech.trim() : tech}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: `1px solid ${theme === 'dark' ? '#334155' : '#F1F5F9'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditHackathonModal(h)}
+                                        style={{
+                                          background: theme === 'dark' ? '#334155' : '#F1F5F9',
+                                          color: theme === 'dark' ? '#F8FAFC' : '#1E293B',
+                                          border: 'none',
+                                          padding: '6px 12px',
+                                          borderRadius: '8px',
+                                          fontSize: '12px',
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px'
+                                        }}
+                                      >
+                                        <Edit3 size={13} /> Edit
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleStatus(h)}
+                                        title={isPublished ? 'Move to Draft' : 'Publish to Students'}
+                                        style={{
+                                          background: isPublished ? '#FEF3C7' : '#DEF7EC',
+                                          color: isPublished ? '#92400E' : '#03543F',
+                                          border: 'none',
+                                          padding: '6px 10px',
+                                          borderRadius: '8px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px'
+                                        }}
+                                      >
+                                        {isPublished ? <EyeOff size={13} /> : <Eye size={13} />}
+                                        {isPublished ? 'Unpublish' : 'Publish'}
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteHackathon(h.id, h.title)}
+                                        title="Delete Hackathon"
+                                        style={{
+                                          background: '#FEF2F2',
+                                          color: '#DC2626',
+                                          border: 'none',
+                                          padding: '6px 10px',
+                                          borderRadius: '8px',
+                                          fontSize: '12px',
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center'
+                                        }}
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                      <thead>
-                        <tr style={{ borderBottom: `2px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`, textAlign: 'left', background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#E2E8F0' : '#475569' }}>
-                          <th style={{ padding: '12px' }}>Reg ID</th>
-                          <th style={{ padding: '12px' }}>Hackathon Event</th>
-                          <th style={{ padding: '12px' }}>Team Name & Details</th>
-                          <th style={{ padding: '12px' }}>Team Lead / Student</th>
-                          <th style={{ padding: '12px' }}>College / University</th>
-                          <th style={{ padding: '12px' }}>USN / Student ID</th>
-                          <th style={{ padding: '12px' }}>Mobile Contact</th>
-                          <th style={{ padding: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <Clock size={14} style={{ color: '#F59E0B' }} />
-                              <span>Registered Time</span>
-                            </div>
-                          </th>
-                          <th style={{ padding: '12px' }}>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {hackathonRegistrations
-                          .filter(r => {
-                            if (!searchQuery.trim()) return true;
-                            const q = searchQuery.toLowerCase().trim();
-                            return (
-                              (r.hackathonTitle && r.hackathonTitle.toLowerCase().includes(q)) ||
-                              (r.teamName && r.teamName.toLowerCase().includes(q)) ||
-                              (r.studentName && r.studentName.toLowerCase().includes(q)) ||
-                              (r.email && r.email.toLowerCase().includes(q)) ||
-                              (r.collegeName && r.collegeName.toLowerCase().includes(q)) ||
-                              (r.usn && r.usn.toLowerCase().includes(q))
-                            );
-                          })
-                          .map((r, idx) => {
-                            const dt = formatDateTime(r.registeredAt || r.createdAt);
-                            return (
-                              <tr key={r.id || idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
-                                <td style={{ padding: '12px', fontWeight: 800, color: '#F59E0B' }}>
-                                  {r.registrationId || r.id || `#HACK-${idx + 1}`}
-                                </td>
-                                <td style={{ padding: '12px', fontWeight: 700 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Trophy size={14} />
-                                    </div>
-                                    <span>{r.hackathonTitle || 'Global Innovation Hackathon'}</span>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '12px' }}>
-                                  <div style={{ fontWeight: 800, color: theme === 'dark' ? '#F3F4F6' : '#1E293B' }}>{r.teamName || 'Code Morphicx'}</div>
-                                  <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>{r.teamDetails || '4 members'}</div>
-                                </td>
-                                <td style={{ padding: '12px' }}>
-                                  <div style={{ fontWeight: 700 }}>{r.studentName || 'Student Lead'}</div>
-                                  <div style={{ fontSize: '11.5px', color: '#60A5FA' }}>{r.email}</div>
-                                </td>
-                                <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569' }}>
-                                  {r.collegeName || 'The National Institute of Engineering (NIE)'}
-                                </td>
-                                <td style={{ padding: '12px', fontWeight: 700, color: '#7C3AED' }}>
-                                  {r.usn || '4NI21CS042'}
-                                </td>
-                                <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569' }}>
-                                  {r.mobileNumber || '+91 98765 43210'}
-                                </td>
-                                <td style={{ padding: '12px' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <div style={{ fontWeight: '700', fontSize: '12px', color: theme === 'dark' ? '#F3F4F6' : '#1E293B' }}>
-                                      <span>{dt.date}</span> <span style={{ color: '#F59E0B' }}>{dt.time}</span>
-                                    </div>
-                                    {dt.relative && (
-                                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: '700' }}>
-                                        {dt.relative}
+                    /* Existing Registrations Table */
+                    <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                      {hackathonRegistrations.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B' }}>
+                          <Trophy size={40} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
+                          <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>No Hackathon Registrations Yet</h4>
+                          <p style={{ fontSize: '13px', margin: '4px 0 0' }}>When students register for hackathons on the Hackathon Hub, their full team details appear here in real-time.</p>
+                        </div>
+                      ) : (
+                        <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                          <thead>
+                            <tr style={{ borderBottom: `2px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`, textAlign: 'left', background: theme === 'dark' ? '#1F2937' : '#F8FAFC', color: theme === 'dark' ? '#E2E8F0' : '#475569' }}>
+                              <th style={{ padding: '12px' }}>Reg ID</th>
+                              <th style={{ padding: '12px' }}>Hackathon Event</th>
+                              <th style={{ padding: '12px' }}>Team Name & Details</th>
+                              <th style={{ padding: '12px' }}>Team Lead / Student</th>
+                              <th style={{ padding: '12px' }}>College / University</th>
+                              <th style={{ padding: '12px' }}>USN / Student ID</th>
+                              <th style={{ padding: '12px' }}>Mobile Contact</th>
+                              <th style={{ padding: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <Clock size={14} style={{ color: '#F59E0B' }} />
+                                  <span>Registered Time</span>
+                                </div>
+                              </th>
+                              <th style={{ padding: '12px' }}>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {hackathonRegistrations
+                              .filter(r => {
+                                if (!searchQuery.trim()) return true;
+                                const q = searchQuery.toLowerCase().trim();
+                                return (
+                                  (r.hackathonTitle && r.hackathonTitle.toLowerCase().includes(q)) ||
+                                  (r.teamName && r.teamName.toLowerCase().includes(q)) ||
+                                  (r.studentName && r.studentName.toLowerCase().includes(q)) ||
+                                  (r.email && r.email.toLowerCase().includes(q)) ||
+                                  (r.collegeName && r.collegeName.toLowerCase().includes(q)) ||
+                                  (r.usn && r.usn.toLowerCase().includes(q))
+                                );
+                              })
+                              .map((r, idx) => {
+                                const dt = formatDateTime(r.registeredAt || r.createdAt);
+                                return (
+                                  <tr key={r.id || idx} style={{ borderBottom: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, color: theme === 'dark' ? '#F9FAFB' : '#0F172A' }}>
+                                    <td style={{ padding: '12px', fontWeight: 800, color: '#F59E0B' }}>
+                                      {r.registrationId || r.id || `#HACK-${idx + 1}`}
+                                    </td>
+                                    <td style={{ padding: '12px', fontWeight: 700 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                          <Trophy size={14} />
+                                        </div>
+                                        <span>{r.hackathonTitle || 'Global Innovation Hackathon'}</span>
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                      <div style={{ fontWeight: 800, color: theme === 'dark' ? '#F3F4F6' : '#1E293B' }}>{r.teamName || 'Code Morphicx'}</div>
+                                      <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>{r.teamDetails || '4 members'}</div>
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                      <div style={{ fontWeight: 700 }}>{r.studentName || 'Student Lead'}</div>
+                                      <div style={{ fontSize: '11.5px', color: '#60A5FA' }}>{r.email}</div>
+                                    </td>
+                                    <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569' }}>
+                                      {r.collegeName || 'The National Institute of Engineering (NIE)'}
+                                    </td>
+                                    <td style={{ padding: '12px', fontWeight: 700, color: '#7C3AED' }}>
+                                      {r.usn || '4NI21CS042'}
+                                    </td>
+                                    <td style={{ padding: '12px', color: theme === 'dark' ? '#CBD5E1' : '#475569' }}>
+                                      {r.mobileNumber || '+91 98765 43210'}
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <div style={{ fontWeight: '700', fontSize: '12px', color: theme === 'dark' ? '#F3F4F6' : '#1E293B' }}>
+                                          <span>{dt.date}</span> <span style={{ color: '#F59E0B' }}>{dt.time}</span>
+                                        </div>
+                                        {dt.relative && (
+                                          <span style={{ fontSize: '11px', color: '#059669', fontWeight: '700' }}>
+                                            {dt.relative}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                      <span style={{ background: '#DEF7EC', color: '#03543F', padding: '4px 8px', borderRadius: '6px', fontWeight: 800, fontSize: '11px', border: '1px solid #BCF0DA' }}>
+                                        ✓ Confirmed
                                       </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td style={{ padding: '12px' }}>
-                                  <span style={{ background: '#DEF7EC', color: '#03543F', padding: '4px 8px', borderRadius: '6px', fontWeight: 800, fontSize: '11px', border: '1px solid #BCF0DA' }}>
-                                    ✓ Confirmed
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1135,6 +1711,464 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Add / Edit Hackathon Modal */}
+        {isAddHackathonModalOpen && (
+          <div className="modal-backdrop" style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+            overflowY: 'auto'
+          }}>
+            <div 
+              className="modal-card animate-fade-in" 
+              style={{ 
+                maxWidth: '720px', 
+                width: '100%', 
+                background: theme === 'dark' ? '#0F172A' : '#FFFFFF',
+                borderRadius: '24px',
+                border: `1px solid ${theme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                overflow: 'hidden',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px 24px',
+                borderBottom: `1px solid ${theme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: theme === 'dark' ? '#1E293B' : '#F8FAFC'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Trophy size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                      {editingHackathon ? 'Edit Hackathon Event' : 'Create New Hackathon'}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
+                      Publish official hackathons visible to all university students
+                    </p>
+                  </div>
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={() => setIsAddHackathonModalOpen(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '18px',
+                    color: '#94A3B8',
+                    cursor: 'pointer',
+                    padding: '6px 10px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body with Scroll */}
+              <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+                {formError && (
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    color: '#B91C1C',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <AlertCircle size={16} />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveHackathon(formStatus); }} className="auth-form">
+                  {/* Row 1: Name & Organizer */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Hackathon Name <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="e.g. Global Student AI Innovation Challenge 2026"
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13.5px' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Organizer Name <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="e.g. Stanford AI Lab & UniCollab Developer Network"
+                        value={formOrganizer}
+                        onChange={(e) => setFormOrganizer(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13.5px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                      Event Description <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <textarea 
+                      rows={3} 
+                      required
+                      placeholder="Summarize the core themes, challenges, and motivation for participating students..."
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13.5px', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  {/* Row 2: Dates, Deadlines & Mode */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Hackathon Date(s)
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Nov 15 - 17, 2026"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Registration Deadline
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Nov 10, 2026 • 11:59 PM"
+                        value={formDeadline}
+                        onChange={(e) => setFormDeadline(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Location / Mode
+                      </label>
+                      <select
+                        value={formLocation}
+                        onChange={(e) => setFormLocation(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      >
+                        <option value="Online (Global)">🌐 Online (Global / Virtual)</option>
+                        <option value="Hybrid • Campus & Virtual">⚡ Hybrid • Campus & Virtual</option>
+                        <option value="In-Person • Campus Auditorium">🏫 In-Person • Campus Auditorium</option>
+                        <option value="In-Person • Bangalore, India">📍 In-Person • Bangalore, India</option>
+                        <option value="In-Person • San Francisco, CA">📍 In-Person • San Francisco, CA</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Prize Pool, Team Size, Eligibility */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Prize Pool
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. $25,000 USD or ₹2,50,000"
+                        value={formPrizePool}
+                        onChange={(e) => setFormPrizePool(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Team Size
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 1 - 4 Members"
+                        value={formTeamSize}
+                        onChange={(e) => setFormTeamSize(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Eligibility
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Enrolled Undergraduate & Graduate Students"
+                        value={formEligibility}
+                        onChange={(e) => setFormEligibility(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 4: Technologies & Registration Link */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        Technologies / Domains (Comma Separated)
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. AI/ML, PyTorch, React, Cloud, Web3"
+                        value={formTechnologies}
+                        onChange={(e) => setFormTechnologies(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                        External Registration Link (Optional)
+                      </label>
+                      <input 
+                        type="url" 
+                        placeholder="e.g. https://devpost.com/hackathons/xyz (Leave blank for UniCollab direct register)"
+                        value={formRegistrationLink}
+                        onChange={(e) => setFormRegistrationLink(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Banner Image Upload & Preview */}
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Hackathon Banner Image</span>
+                      <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 'normal' }}>Upload JPG, PNG or WebP (Max 5MB)</span>
+                    </label>
+
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '6px' }}>
+                      {/* Image Preview Thumbnail */}
+                      <div style={{
+                        width: '120px',
+                        height: '70px',
+                        borderRadius: '10px',
+                        background: '#1E293B',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`
+                      }}>
+                        <img 
+                          src={formBannerPreview || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'} 
+                          alt="Banner Preview" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'; }}
+                        />
+                      </div>
+
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label 
+                          style={{
+                            background: theme === 'dark' ? '#1E293B' : '#F1F5F9',
+                            color: '#2563EB',
+                            border: `1px dashed ${theme === 'dark' ? '#3B82F6' : '#93C5FD'}`,
+                            padding: '8px 14px',
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            width: 'fit-content'
+                          }}
+                        >
+                          <ImageIcon size={14} /> Upload Banner File
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            style={{ display: 'none' }}
+                            onChange={handleBannerFileUpload}
+                          />
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="Or paste image banner URL here..." 
+                          value={formBannerUrl}
+                          onChange={(e) => {
+                            setFormBannerUrl(e.target.value);
+                            setFormBannerPreview(e.target.value);
+                          }}
+                          style={{ width: '100%', padding: '6px 12px', borderRadius: '8px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Additional Information & Rules */}
+                  <div className="form-group" style={{ marginBottom: '20px' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: theme === 'dark' ? '#E2E8F0' : '#334155' }}>
+                      Additional Information, Schedule & Guidelines
+                    </label>
+                    <textarea 
+                      rows={3} 
+                      placeholder="Include perks, API keys provided, mentor hours, Discord invite link, or hackathon rules..."
+                      value={formAdditionalInfo}
+                      onChange={(e) => setFormAdditionalInfo(e.target.value)}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13.5px', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  {/* Publish Status Toggle Bar */}
+                  <div style={{
+                    background: theme === 'dark' ? '#1E293B' : '#F8FAFC',
+                    padding: '14px 18px',
+                    borderRadius: '14px',
+                    border: `1px solid ${theme === 'dark' ? '#334155' : '#E2E8F0'}`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '20px'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '13.5px', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                        Publish Status
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748B' }}>
+                        {formStatus === 'published' ? '🟢 Published: Visible to all students immediately.' : '🟡 Draft: Saved privately, hidden from student portal.'}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setFormStatus('published')}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: formStatus === 'published' ? '#059669' : 'transparent',
+                          color: formStatus === 'published' ? '#FFFFFF' : '#64748B'
+                        }}
+                      >
+                        Publish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormStatus('draft')}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: formStatus === 'draft' ? '#F59E0B' : 'transparent',
+                          color: formStatus === 'draft' ? '#FFFFFF' : '#64748B'
+                        }}
+                      >
+                        Draft
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddHackathonModalOpen(false)}
+                      style={{
+                        padding: '10px 18px',
+                        borderRadius: '10px',
+                        border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`,
+                        background: 'transparent',
+                        color: theme === 'dark' ? '#CBD5E1' : '#64748B',
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSaveHackathon('draft')}
+                      style={{
+                        padding: '10px 18px',
+                        borderRadius: '10px',
+                        border: '1px solid #FDE68A',
+                        background: '#FEF3C7',
+                        color: '#92400E',
+                        fontSize: '13.5px',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Save as Draft
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSaveHackathon('published')}
+                      style={{
+                        padding: '10px 22px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                        color: '#FFFFFF',
+                        fontSize: '13.5px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                      }}
+                    >
+                      {editingHackathon ? 'Save & Update' : 'Publish Hackathon 🚀'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}

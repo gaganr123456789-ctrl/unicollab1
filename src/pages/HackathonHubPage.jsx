@@ -13,16 +13,62 @@ import {
   UserPlus,
   Zap,
   ShieldCheck,
-  User
+  User,
+  Search,
+  ExternalLink,
+  Clock,
+  Sparkles,
+  Info,
+  X,
+  Award
 } from 'lucide-react';
+import { apiClient } from '../services/apiClient';
 
-export default function HackathonHubPage({ setCurrentPage, userProfile }) {
-  const [activeTab, setActiveTab] = useState('About Event');
-  const [countdown, setCountdown] = useState({ days: 4, hours: 12, mins: 45, secs: 29 });
+export default function HackathonHubPage({ setCurrentPage, userProfile, theme }) {
+  const [hackathons, setHackathons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState('ALL');
+  
+  // Modals & Active hackathon
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-  const [registeredData, setRegisteredData] = useState(null);
+  const [selectedHackathonForReg, setSelectedHackathonForReg] = useState(null);
+  const [detailsModalHackathon, setDetailsModalHackathon] = useState(null);
+  const [registeredDataMap, setRegisteredDataMap] = useState({});
+
+  // Countdown timer for featured event
+  const [countdown, setCountdown] = useState({ days: 4, hours: 12, mins: 45, secs: 29 });
+
+  const fetchHackathonsList = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.getHackathons();
+      if (res && res.success && Array.isArray(res.hackathons)) {
+        // Filter out drafts or deleted hackathons - only show published
+        const publishedOnly = res.hackathons.filter(h => h.status === 'published' || !h.status);
+        setHackathons(publishedOnly);
+      }
+    } catch (e) {
+      console.warn('Failed to load published hackathons:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
+    fetchHackathonsList();
+
+    // Check cached registrations to show "Registered" badge
+    if (typeof window !== 'undefined') {
+      const cached = JSON.parse(localStorage.getItem('unicollab_hackathon_registrations') || '[]');
+      const regMap = {};
+      cached.forEach(r => {
+        if (r.hackathonTitle) regMap[r.hackathonTitle] = r;
+        if (r.hackathonId) regMap[r.hackathonId] = r;
+      });
+      setRegisteredDataMap(regMap);
+    }
+
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev.secs > 0) return { ...prev, secs: prev.secs - 1 };
@@ -32,348 +78,653 @@ export default function HackathonHubPage({ setCurrentPage, userProfile }) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleRegisterSuccess = (data) => {
-    setRegisteredData(data);
+  const handleRegisterClick = (hackathon) => {
+    if (hackathon.registrationLink && hackathon.registrationLink.startsWith('http')) {
+      window.open(hackathon.registrationLink, '_blank', 'noopener,noreferrer');
+    } else {
+      setSelectedHackathonForReg(hackathon);
+      setIsRegisterModalOpen(true);
+    }
   };
 
-  return (
-    <div className="page-container animate-fade-in">
-      {/* Hackathon Registration Modal */}
-      <HackathonRegisterModal
-        isOpen={isRegisterModalOpen}
-        onClose={() => setIsRegisterModalOpen(false)}
-        hackathonTitle="Global Innovation Hackathon 2026"
-        userProfile={userProfile}
-        onSuccess={handleRegisterSuccess}
-      />
+  const handleRegisterSuccess = (data) => {
+    if (selectedHackathonForReg) {
+      setRegisteredDataMap(prev => ({
+        ...prev,
+        [selectedHackathonForReg.title || selectedHackathonForReg.name]: data,
+        [selectedHackathonForReg.id]: data
+      }));
+    }
+  };
 
-      {/* Main Hackathon Event Banner */}
-      <div className="hackathon-hero-banner">
-        <div className="hero-banner-content">
-          <div className="hero-tags">
-            <span className="h-badge blue">REGISTRATION OPEN</span>
-            <span className="h-badge purple">HYBRID EVENT</span>
-            {registeredData && (
-              <span className="h-badge green flex align-center gap-1">
-                <CheckCircle2 size={13} /> REGISTERED ({registeredData.teamName})
+  // Filtered Hackathons
+  const filteredHackathons = hackathons.filter(h => {
+    if (selectedDomain !== 'ALL') {
+      const techArr = Array.isArray(h.technologies) ? h.technologies : String(h.technologies || '').split(',');
+      const match = techArr.some(t => t.toLowerCase().includes(selectedDomain.toLowerCase()));
+      if (!match) return false;
+    }
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      (h.title && h.title.toLowerCase().includes(q)) ||
+      (h.organizer && h.organizer.toLowerCase().includes(q)) ||
+      (h.description && h.description.toLowerCase().includes(q)) ||
+      (h.location && h.location.toLowerCase().includes(q))
+    );
+  });
+
+  const featuredHackathon = hackathons[0] || {
+    id: '301',
+    title: 'Global Student AI Innovation Hackathon 2026',
+    organizer: 'Stanford AI Lab & UniCollab Developer Network',
+    description: 'Join 1,000+ top developers, designers, and students worldwide to build breakthrough generative AI applications.',
+    dateDisplay: 'Nov 15 - 17, 2026',
+    deadlineDisplay: 'Nov 10, 2026',
+    location: 'Online (Global Virtual)',
+    prizePool: '$25,000 USD',
+    technologies: ['AI/ML', 'PyTorch', 'React', 'Cloud'],
+    bannerUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'
+  };
+
+  const isFeaturedRegistered = !!(registeredDataMap[featuredHackathon.title] || registeredDataMap[featuredHackathon.id]);
+
+  return (
+    <div className="page-container animate-fade-in" style={{ paddingBottom: '60px' }}>
+      {/* Hackathon Registration Modal */}
+      {selectedHackathonForReg && (
+        <HackathonRegisterModal
+          isOpen={isRegisterModalOpen}
+          onClose={() => {
+            setIsRegisterModalOpen(false);
+            setSelectedHackathonForReg(null);
+          }}
+          hackathonId={selectedHackathonForReg.id}
+          hackathonTitle={selectedHackathonForReg.title || selectedHackathonForReg.name}
+          userProfile={userProfile}
+          onSuccess={handleRegisterSuccess}
+        />
+      )}
+
+      {/* Featured Spotlight Banner */}
+      <div 
+        className="hackathon-hero-banner" 
+        style={{
+          backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.92)), url(${featuredHackathon.bannerUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderRadius: '24px',
+          padding: '36px',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+        }}
+      >
+        <div className="hero-banner-content" style={{ maxWidth: '640px' }}>
+          <div className="hero-tags" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <span className="h-badge blue" style={{ background: '#2563EB', color: '#FFFFFF', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
+              🏆 FEATURED CHALLENGE
+            </span>
+            <span className="h-badge purple" style={{ background: '#7C3AED', color: '#FFFFFF', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
+              {featuredHackathon.location || 'Online (Global)'}
+            </span>
+            {isFeaturedRegistered && (
+              <span className="h-badge green flex align-center gap-1" style={{ background: '#059669', color: '#FFFFFF', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <CheckCircle2 size={13} /> REGISTERED
               </span>
             )}
           </div>
 
-          <h1 className="h-title">Global Innovation Hackathon 2026</h1>
-          <p className="h-desc">
-            Join 500+ developers, designers, and entrepreneurs to solve real-world challenges in AI, Sustainability, and FinTech.
+          <div style={{ fontSize: '12px', color: '#93C5FD', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
+            {featuredHackathon.organizer}
+          </div>
+
+          <h1 className="h-title" style={{ fontSize: '30px', fontWeight: 900, color: '#FFFFFF', margin: '0 0 12px', lineHeight: 1.25 }}>
+            {featuredHackathon.title}
+          </h1>
+
+          <p className="h-desc" style={{ fontSize: '14px', color: '#CBD5E1', margin: '0 0 20px', lineHeight: 1.5 }}>
+            {featuredHackathon.description}
           </p>
 
-          {registeredData && (
-            <div className="registration-success-banner-inline mt-4">
-              <CheckCircle2 size={18} className="text-emerald" />
-              <div>
-                <strong>Registered Team: {registeredData.teamName}</strong> • USN: {registeredData.usn} • ID: {registeredData.registrationId}
-              </div>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button 
+              type="button"
+              className={`btn-primary ${isFeaturedRegistered ? 'btn-success-active' : ''}`}
+              onClick={() => handleRegisterClick(featuredHackathon)}
+              style={{
+                background: isFeaturedRegistered ? '#059669' : 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: 800,
+                fontSize: '14px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              {isFeaturedRegistered ? '✓ Registered (Manage Team)' : 'Register for Hackathon 🚀'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDetailsModalHackathon(featuredHackathon)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                backdropFilter: 'blur(8px)',
+                color: '#FFFFFF',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '14px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Info size={16} /> View Details
+            </button>
+          </div>
         </div>
 
-        {/* Floating Countdown Registration Box */}
-        <div className="countdown-box">
-          <span className="countdown-label">REGISTRATION ENDS IN</span>
-          <div className="countdown-digits">
-            <div className="digit-unit">
-              <span className="num">{String(countdown.days).padStart(2, '0')}</span>
-              <span className="label">DAYS</span>
+        {/* Floating Countdown Box */}
+        <div className="countdown-box" style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '18px', padding: '20px' }}>
+          <span className="countdown-label" style={{ color: '#F59E0B', fontWeight: 800, fontSize: '11px', letterSpacing: '1px' }}>
+            REGISTRATION CLOSES IN
+          </span>
+          <div className="countdown-digits" style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
+              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.days).padStart(2, '0')}</span>
+              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>DAYS</span>
             </div>
-            <div className="digit-unit">
-              <span className="num">{String(countdown.hours).padStart(2, '0')}</span>
-              <span className="label">HOURS</span>
+            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
+              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.hours).padStart(2, '0')}</span>
+              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>HOURS</span>
             </div>
-            <div className="digit-unit">
-              <span className="num">{String(countdown.mins).padStart(2, '0')}</span>
-              <span className="label">MINS</span>
+            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
+              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.mins).padStart(2, '0')}</span>
+              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>MINS</span>
             </div>
-            <div className="digit-unit">
-              <span className="num">{String(countdown.secs).padStart(2, '0')}</span>
-              <span className="label">SECS</span>
+            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
+              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.secs).padStart(2, '0')}</span>
+              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>SECS</span>
             </div>
           </div>
 
-          <button 
-            className={`btn-primary full-width mt-4 ${registeredData ? 'btn-success-active' : ''}`} 
-            onClick={() => setIsRegisterModalOpen(true)}
+          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#CBD5E1' }}>
+            <span>Prize Pool:</span>
+            <strong style={{ color: '#F59E0B' }}>{featuredHackathon.prizePool || '$25,000 USD'}</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Domain Filter Bar */}
+      <div style={{ marginTop: '36px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: 900, margin: 0, color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+            🏆 University & Global Hackathons
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0' }}>
+            Compete, build innovative software, win prizes, and connect with fellow student engineers
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div style={{ position: 'relative', width: '280px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: '#94A3B8' }} />
+          <input 
+            type="text" 
+            placeholder="Search hackathons, organizer, tech..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '9px 14px 9px 38px', borderRadius: '9999px', border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`, background: theme === 'dark' ? '#1E293B' : '#FFFFFF', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', fontSize: '13px' }}
+          />
+        </div>
+      </div>
+
+      {/* Domain Pills */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '20px' }}>
+        {['ALL', 'AI/ML', 'React', 'Cloud', 'Web3', 'Mobile', 'Full-Stack', 'Cybersecurity'].map(dom => (
+          <button
+            key={dom}
+            type="button"
+            onClick={() => setSelectedDomain(dom)}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '20px',
+              border: `1px solid ${selectedDomain === dom ? '#2563EB' : (theme === 'dark' ? '#334155' : '#CBD5E1')}`,
+              background: selectedDomain === dom ? '#2563EB' : (theme === 'dark' ? '#1E293B' : '#F8FAFC'),
+              color: selectedDomain === dom ? '#FFFFFF' : (theme === 'dark' ? '#94A3B8' : '#64748B'),
+              fontWeight: 700,
+              fontSize: '12.5px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s ease'
+            }}
           >
-            {registeredData ? 'View / Edit Registration' : 'Register Now'}
+            {dom === 'ALL' ? '🌟 All Domains' : dom}
           </button>
-        </div>
+        ))}
       </div>
 
-      {/* Key Info Bar (4 Metrics) */}
-      <div className="hackathon-info-bar mt-6">
-        <div className="info-bar-item">
-          <div className="info-icon"><Calendar size={18} /></div>
-          <div>
-            <span className="info-label">DATE</span>
-            <span className="info-val">Nov 15-17, 2024</span>
-          </div>
+      {/* Hackathons Grid */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
+          <Trophy size={40} style={{ color: '#F59E0B', margin: '0 auto 12px', animation: 'bounce 1s infinite' }} />
+          <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>Loading Hackathons...</h4>
         </div>
-
-        <div className="info-bar-item">
-          <div className="info-icon"><MapPin size={18} /></div>
-          <div>
-            <span className="info-label">LOCATION</span>
-            <span className="info-val">Campus Central Hub</span>
-          </div>
+      ) : filteredHackathons.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: theme === 'dark' ? '#111827' : '#F8FAFC', borderRadius: '20px', border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}` }}>
+          <Trophy size={44} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
+          <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>No Hackathons Found</h3>
+          <p style={{ fontSize: '13px', color: '#64748B', margin: '6px 0 0' }}>Try clearing your search query or choosing another domain filter.</p>
         </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '22px' }}>
+          {filteredHackathons.map((h) => {
+            const isReg = !!(registeredDataMap[h.title] || registeredDataMap[h.id]);
+            const techList = Array.isArray(h.technologies) ? h.technologies : String(h.technologies || '').split(',');
 
-        <div className="info-bar-item">
-          <div className="info-icon"><Users size={18} /></div>
-          <div>
-            <span className="info-label">PARTICIPANTS</span>
-            <span className="info-val">450 / 600</span>
-          </div>
-        </div>
-
-        <div className="info-bar-item">
-          <div className="info-icon"><Globe size={18} /></div>
-          <div>
-            <span className="info-label">LANGUAGE</span>
-            <span className="info-val">English / Spanish</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid: Details Left, Sidebar Right */}
-      <div className="hackathon-main-grid mt-6">
-        {/* Left Content Column */}
-        <div className="hackathon-content-col">
-          {/* Tabs */}
-          <div className="h-tabs-bar">
-            {['About Event', 'Schedule', 'Rules & FAQ'].map((t) => (
-              <button 
-                key={t}
-                className={`h-tab ${activeTab === t ? 'active' : ''}`}
-                onClick={() => setActiveTab(t)}
+            return (
+              <div 
+                key={h.id}
+                className="hackathon-card animate-fade-in"
+                style={{
+                  background: theme === 'dark' ? '#111827' : '#FFFFFF',
+                  border: `1px solid ${theme === 'dark' ? '#1F2937' : '#E2E8F0'}`,
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
+                }}
               >
-                {t}
-              </button>
-            ))}
-          </div>
+                {/* Banner Thumbnail */}
+                <div style={{ position: 'relative', width: '100%', height: '170px', background: '#0F172A', overflow: 'hidden' }}>
+                  <img 
+                    src={h.bannerUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'} 
+                    alt={h.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'; }}
+                  />
 
-          {activeTab === 'About Event' && (
-            <div className="h-tab-content mt-6">
-              <h3>Unleash Your Creativity</h3>
-              <p className="mt-2 text-slate leading-relaxed">
-                The Global Innovation Hackathon is UniCollab's flagship annual event, bringing together the brightest minds across multiple disciplines. This year, we're focusing on the intersection of artificial intelligence and social impact.
-              </p>
-              <p className="mt-2 text-slate leading-relaxed">
-                Whether you're a first-time coder or a seasoned software engineer, this event is designed to push your boundaries. We provide the tools, the mentors, and the pizza - you bring the ideas and the grit.
-              </p>
+                  {/* Badges Over Banner */}
+                  <div style={{ position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '6px' }}>
+                    <span style={{
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      backdropFilter: 'blur(6px)',
+                      color: '#FFFFFF',
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: 800
+                    }}>
+                      {h.location || 'Online (Global)'}
+                    </span>
+                    {isReg && (
+                      <span style={{
+                        background: '#059669',
+                        color: '#FFFFFF',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <CheckCircle2 size={12} /> Registered
+                      </span>
+                    )}
+                  </div>
 
-              <div className="h-features-grid mt-6">
-                <div className="h-feature-box">
-                  <div className="h-feat-icon blue"><Zap size={20} /></div>
-                  <div>
-                    <h4>Rapid Prototyping</h4>
-                    <p>Build functional MVPs using our pre-configured development environments.</p>
+                  <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                    <span style={{
+                      background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                      color: '#FFFFFF',
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                    }}>
+                      🏆 {h.prizePool || '$10,000 USD'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="h-feature-box">
-                  <div className="h-feat-icon green"><ShieldCheck size={20} /></div>
-                  <div>
-                    <h4>Expert Mentorship</h4>
-                    <p>Direct access to industry professionals from top-tier tech companies.</p>
+                {/* Card Body */}
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div style={{ fontSize: '11.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {h.organizer}
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: '6px 0 10px', color: theme === 'dark' ? '#FFFFFF' : '#0F172A', lineHeight: 1.35 }}>
+                    {h.title}
+                  </h3>
+
+                  <p style={{ fontSize: '13px', color: theme === 'dark' ? '#94A3B8' : '#64748B', margin: '0 0 16px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {h.description}
+                  </p>
+
+                  {/* Metadata Chips */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px', color: theme === 'dark' ? '#CBD5E1' : '#475569', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Calendar size={14} style={{ color: '#2563EB' }} />
+                      <span><strong>Event:</strong> {h.dateDisplay || 'Upcoming'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={14} style={{ color: '#F59E0B' }} />
+                      <span><strong>Deadline:</strong> {h.deadlineDisplay || 'Open'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Users size={14} style={{ color: '#10B981' }} />
+                      <span><strong>Team Size:</strong> {h.teamSize || '1 - 4 Members'}</span>
+                    </div>
+                  </div>
+
+                  {/* Tech Tags */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
+                    {techList.slice(0, 4).map((t, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          background: theme === 'dark' ? '#1F2937' : '#F1F5F9',
+                          color: theme === 'dark' ? '#93C5FD' : '#2563EB',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: '6px'
+                        }}
+                      >
+                        {typeof t === 'string' ? t.trim() : t}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Buttons Row */}
+                  <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: `1px solid ${theme === 'dark' ? '#1F2937' : '#F1F5F9'}`, display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDetailsModalHackathon(h)}
+                      style={{
+                        background: theme === 'dark' ? '#1F2937' : '#F8FAFC',
+                        color: theme === 'dark' ? '#F8FAFC' : '#1E293B',
+                        border: `1px solid ${theme === 'dark' ? '#374151' : '#CBD5E1'}`,
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Info size={14} /> Details
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRegisterClick(h)}
+                      style={{
+                        background: isReg ? '#059669' : 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                      }}
+                    >
+                      {h.registrationLink && h.registrationLink.startsWith('http') ? (
+                        <><span>Register</span> <ExternalLink size={13} /></>
+                      ) : (
+                        <span>{isReg ? 'Registered' : 'Register 🚀'}</span>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
-
-              {/* Prize Pool Section */}
-              <div className="prize-pool-section mt-8">
-                <div className="section-title-icon">
-                  <Trophy size={20} className="text-blue" />
-                  <h3>Prize Pool</h3>
-                </div>
-
-                <div className="prize-cards-grid mt-4">
-                  {/* 1st Place */}
-                  <div className="prize-card gold">
-                    <div className="prize-trophy-icon"><Trophy size={22} color="#2563EB" /></div>
-                    <span className="place-label">1st Place</span>
-                    <h2 className="prize-amount">$5,000</h2>
-                    <p className="prize-sub">Grand Prize + NVIDIA Jetson Nano Dev Kit</p>
-                  </div>
-
-                  {/* 2nd Place */}
-                  <div className="prize-card silver">
-                    <div className="prize-trophy-icon"><Trophy size={22} color="#7C3AED" /></div>
-                    <span className="place-label">2nd Place</span>
-                    <h2 className="prize-amount">$2,500</h2>
-                    <p className="prize-sub">Secondary Prize + 1yr AWS Credits</p>
-                  </div>
-
-                  {/* 3rd Place */}
-                  <div className="prize-card bronze">
-                    <div className="prize-trophy-icon"><Trophy size={22} color="#0EA5E9" /></div>
-                    <span className="place-label">3rd Place</span>
-                    <h2 className="prize-amount">$1,000</h2>
-                    <p className="prize-sub">Third Prize + UniCollab Pro Life-time</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'Schedule' && (
-            <div className="h-tab-content mt-6">
-              <h3>Hackathon Schedule</h3>
-              <div className="schedule-timeline mt-4">
-                <div className="schedule-item">
-                  <div className="time-badge">Day 1 • 5:00 PM</div>
-                  <div>
-                    <h4>Opening Ceremony & Keynote</h4>
-                    <p>Welcome address, theme reveal, and team formation mixer.</p>
-                  </div>
-                </div>
-
-                <div className="schedule-item">
-                  <div className="time-badge">Day 2 • 10:00 AM</div>
-                  <div>
-                    <h4>Mentorship Office Hours</h4>
-                    <p>Get feedback from industry mentors on architecture and UI.</p>
-                  </div>
-                </div>
-
-                <div className="schedule-item">
-                  <div className="time-badge">Day 3 • 2:00 PM</div>
-                  <div>
-                    <h4>Project Submission & Live Pitches</h4>
-                    <p>Final project submission deadline followed by top 5 live pitches.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'Rules & FAQ' && (
-            <div className="h-tab-content mt-6">
-              <h3>Rules & Frequently Asked Questions</h3>
-              <div className="faq-list mt-4">
-                <div className="faq-item">
-                  <h4>Who can participate?</h4>
-                  <p>All currently enrolled undergraduate and graduate students worldwide with a valid .edu email.</p>
-                </div>
-                <div className="faq-item mt-4">
-                  <h4>What is the max team size?</h4>
-                  <p>Teams can consist of 1 to 4 students. If you don't have a team, use our "Find a Team" feature!</p>
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })}
         </div>
+      )}
 
-        {/* Right Sidebar Column */}
-        <div className="hackathon-sidebar-col">
-          {/* Registration Status Widget */}
-          <div className="widget-card">
-            <div className="widget-header-title flex align-center gap-2">
-              <Target size={18} className="text-blue" />
-              <h4 className="widget-title no-margin">Registration Status</h4>
-            </div>
-            
-            <div className="capacity-bar-group mt-3">
-              <div className="capacity-label">
-                <span>CAPACITY</span>
-                <span className="bold">75% FULL</span>
-              </div>
-              <div className="capacity-track">
-                <div className="capacity-fill" style={{ width: '75%' }}></div>
-              </div>
-            </div>
-
-            <div className="widget-actions mt-4">
+      {/* Hackathon Details Modal */}
+      {detailsModalHackathon && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.8)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px',
+          overflowY: 'auto'
+        }}>
+          <div 
+            className="modal-card animate-fade-in" 
+            style={{ 
+              maxWidth: '680px', 
+              width: '100%', 
+              background: theme === 'dark' ? '#0F172A' : '#FFFFFF',
+              borderRadius: '24px',
+              border: `1px solid ${theme === 'dark' ? '#1E293B' : '#E2E8F0'}`,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              overflow: 'hidden',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Modal Banner */}
+            <div style={{ position: 'relative', width: '100%', height: '200px', background: '#0F172A' }}>
+              <img 
+                src={detailsModalHackathon.bannerUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80'} 
+                alt={detailsModalHackathon.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
               <button 
-                className={`btn-primary full-width ${registeredData ? 'btn-success-active' : ''}`} 
-                onClick={() => setIsRegisterModalOpen(true)}
+                type="button" 
+                onClick={() => setDetailsModalHackathon(null)}
+                style={{
+                  position: 'absolute',
+                  top: '14px',
+                  right: '14px',
+                  background: 'rgba(15, 23, 42, 0.7)',
+                  backdropFilter: 'blur(6px)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
               >
-                {registeredData ? 'View / Edit Registration' : 'Join Competition'}
+                <X size={16} />
               </button>
-              <button className="btn-secondary full-width mt-2" onClick={() => setCurrentPage('find-teammates')}>
-                <UserPlus size={15} /> Find a Team
-              </button>
+
+              <div style={{ position: 'absolute', bottom: '14px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  backdropFilter: 'blur(4px)',
+                  color: '#FFFFFF',
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  fontSize: '11.5px',
+                  fontWeight: 800
+                }}>
+                  📍 {detailsModalHackathon.location || 'Online (Global)'}
+                </span>
+
+                <span style={{
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                  color: '#FFFFFF',
+                  padding: '4px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 800
+                }}>
+                  🏆 {detailsModalHackathon.prizePool || '$10,000 USD'}
+                </span>
+              </div>
             </div>
 
-            <div className="social-share-row mt-4">
-              <button className="btn-icon-text" onClick={() => alert('Event link copied to clipboard!')}>
-                <Share2 size={14} /> SHARE
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Organized by {detailsModalHackathon.organizer}
+              </div>
+
+              <h2 style={{ fontSize: '22px', fontWeight: 900, margin: '6px 0 14px', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                {detailsModalHackathon.title}
+              </h2>
+
+              <p style={{ fontSize: '13.5px', color: theme === 'dark' ? '#CBD5E1' : '#475569', lineHeight: 1.6, margin: '0 0 20px' }}>
+                {detailsModalHackathon.description}
+              </p>
+
+              {/* Grid of Key Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', background: theme === 'dark' ? '#1E293B' : '#F8FAFC', padding: '16px', borderRadius: '14px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>EVENT DATES</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: theme === 'dark' ? '#FFFFFF' : '#0F172A', marginTop: '2px' }}>
+                    {detailsModalHackathon.dateDisplay || 'Upcoming'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>REGISTRATION DEADLINE</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#F59E0B', marginTop: '2px' }}>
+                    {detailsModalHackathon.deadlineDisplay || 'Open'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>TEAM SIZE</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: theme === 'dark' ? '#FFFFFF' : '#0F172A', marginTop: '2px' }}>
+                    {detailsModalHackathon.teamSize || '1 - 4 Members'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>ELIGIBILITY</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: theme === 'dark' ? '#FFFFFF' : '#0F172A', marginTop: '2px' }}>
+                    {detailsModalHackathon.eligibility || 'Open to all students'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Technologies */}
+              {detailsModalHackathon.technologies && (
+                <div style={{ marginBottom: '18px' }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: 800, margin: '0 0 8px', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                    Focus Technologies & Tracks
+                  </h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {(Array.isArray(detailsModalHackathon.technologies) ? detailsModalHackathon.technologies : String(detailsModalHackathon.technologies).split(',')).map((t, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          background: theme === 'dark' ? '#1E293B' : '#EFF6FF',
+                          color: '#2563EB',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        {typeof t === 'string' ? t.trim() : t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Info / Guidelines */}
+              {detailsModalHackathon.additionalInfo && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: 800, margin: '0 0 8px', color: theme === 'dark' ? '#FFFFFF' : '#0F172A' }}>
+                    Rules, Perks & Guidelines
+                  </h4>
+                  <div style={{ fontSize: '13px', color: theme === 'dark' ? '#94A3B8' : '#64748B', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                    {detailsModalHackathon.additionalInfo}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${theme === 'dark' ? '#1E293B' : '#E2E8F0'}`, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setDetailsModalHackathon(null)}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  border: `1px solid ${theme === 'dark' ? '#334155' : '#CBD5E1'}`,
+                  background: 'transparent',
+                  color: theme === 'dark' ? '#CBD5E1' : '#64748B',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
               </button>
-              <button className="btn-icon-text" onClick={() => alert('Event added to your Google/Apple Calendar!')}>
-                <Calendar size={14} /> ADD CALENDAR
+
+              <button
+                type="button"
+                onClick={() => {
+                  const target = detailsModalHackathon;
+                  setDetailsModalHackathon(null);
+                  handleRegisterClick(target);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  padding: '10px 22px',
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {detailsModalHackathon.registrationLink && detailsModalHackathon.registrationLink.startsWith('http') ? (
+                  <><span>Register on Portal</span> <ExternalLink size={14} /></>
+                ) : (
+                  <span>Register Now 🚀</span>
+                )}
               </button>
             </div>
           </div>
-
-          {/* Featured Mentors Widget */}
-          <div className="widget-card mt-6">
-            <div className="widget-header-row">
-              <h4>Featured Mentors</h4>
-              <button className="text-link-blue" onClick={() => setCurrentPage('mentor-portal')}>VIEW ALL</button>
-            </div>
-
-            <div className="mentor-mini-list mt-4">
-              <div className="mentor-mini-item">
-                <div className="avatar-circle blue">
-                  <User size={16} />
-                </div>
-                <div className="mentor-mini-info">
-                  <h5>Dr. Ananya Sharma</h5>
-                  <p>AI RESEARCHER</p>
-                </div>
-                <ChevronRight size={16} className="text-muted" />
-              </div>
-
-              <div className="mentor-mini-item">
-                <div className="avatar-circle blue">
-                  <User size={16} />
-                </div>
-                <div className="mentor-mini-info">
-                  <h5>Prof. Rajesh Verma</h5>
-                  <p>SR. SOFTWARE ENGINEER</p>
-                </div>
-                <ChevronRight size={16} className="text-muted" />
-              </div>
-
-              <div className="mentor-mini-item">
-                <div className="avatar-circle blue">
-                  <User size={16} />
-                </div>
-                <div className="mentor-mini-info">
-                  <h5>Priya Nair</h5>
-                  <p>PRODUCT DESIGNER</p>
-                </div>
-                <ChevronRight size={16} className="text-muted" />
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Footer Bar */}
-      <div className="hackathon-footer-row mt-12">
-        <div className="footer-left">
-          <button className="text-link-grey" onClick={() => setCurrentPage('dashboard')}>
-            &larr; Back to Listings
-          </button>
-          <span className="divider">|</span>
-          <span className="copyright-text">&copy; 2026 UniCollab</span>
-        </div>
-        <div className="footer-right">
-          <button className="btn-footer-secondary" onClick={() => alert('Opening support desk...')}>
-            Contact Support
-          </button>
-          <button className="btn-footer-secondary" onClick={() => alert('Opening sponsorship inquiry form...')}>
-            Sponsorship Inquiry
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

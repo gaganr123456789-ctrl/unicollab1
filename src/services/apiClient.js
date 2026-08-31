@@ -407,12 +407,121 @@ export const apiClient = {
   },
 
   // Hackathons APIs
-  async getHackathons() {
+  async getHackathons(status = '') {
     try {
-      const res = await fetch(`${BASE_URL}/hackathons`);
+      const query = status ? `?status=${status}` : '';
+      const res = await fetch(`${BASE_URL}/hackathons${query}`);
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.hackathons)) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('unicollab_cached_hackathons', JSON.stringify(data.hackathons));
+        }
+        return data;
+      }
+      return data;
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        if (cached.length > 0) {
+          return { success: true, hackathons: cached };
+        }
+      }
+      return { success: false, hackathons: [] };
+    }
+  },
+
+  async getHackathonById(id) {
+    try {
+      const res = await fetch(`${BASE_URL}/hackathons/${id}`);
       return await res.json();
     } catch (err) {
-      return { success: false, hackathons: [] };
+      if (typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        const found = cached.find(h => String(h.id) === String(id));
+        if (found) return { success: true, hackathon: found };
+      }
+      return { success: false, message: 'Hackathon not found.' };
+    }
+  },
+
+  async createHackathon(hackathonData) {
+    try {
+      const res = await fetch(`${BASE_URL}/hackathons`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-token': typeof window !== 'undefined' ? (sessionStorage.getItem('unicollab_admin_token') || 'adm_active') : 'adm_active'
+        },
+        body: JSON.stringify(hackathonData)
+      });
+      const data = await res.json();
+      if (data && data.success && data.hackathon && typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        localStorage.setItem('unicollab_cached_hackathons', JSON.stringify([data.hackathon, ...cached]));
+      }
+      return data;
+    } catch (err) {
+      const localRecord = {
+        id: `hack_${Date.now()}`,
+        ...hackathonData,
+        participantsCount: 0,
+        createdAt: new Date().toISOString()
+      };
+      if (typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        localStorage.setItem('unicollab_cached_hackathons', JSON.stringify([localRecord, ...cached]));
+      }
+      return { success: true, message: 'Hackathon created locally.', hackathon: localRecord };
+    }
+  },
+
+  async updateHackathon(id, hackathonData) {
+    try {
+      const res = await fetch(`${BASE_URL}/hackathons/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-token': typeof window !== 'undefined' ? (sessionStorage.getItem('unicollab_admin_token') || 'adm_active') : 'adm_active'
+        },
+        body: JSON.stringify(hackathonData)
+      });
+      const data = await res.json();
+      if (data && data.success && data.hackathon && typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        const updated = cached.map(h => String(h.id) === String(id) ? { ...h, ...data.hackathon } : h);
+        localStorage.setItem('unicollab_cached_hackathons', JSON.stringify(updated));
+      }
+      return data;
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        const updated = cached.map(h => String(h.id) === String(id) ? { ...h, ...hackathonData } : h);
+        localStorage.setItem('unicollab_cached_hackathons', JSON.stringify(updated));
+      }
+      return { success: true, message: 'Hackathon updated locally.', hackathon: { id, ...hackathonData } };
+    }
+  },
+
+  async deleteHackathon(id) {
+    try {
+      const res = await fetch(`${BASE_URL}/hackathons/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-admin-token': typeof window !== 'undefined' ? (sessionStorage.getItem('unicollab_admin_token') || 'adm_active') : 'adm_active'
+        }
+      });
+      const data = await res.json();
+      if (typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        localStorage.setItem('unicollab_cached_hackathons', JSON.stringify(cached.filter(h => String(h.id) !== String(id))));
+      }
+      return data;
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        const cached = JSON.parse(localStorage.getItem('unicollab_cached_hackathons') || '[]');
+        localStorage.setItem('unicollab_cached_hackathons', JSON.stringify(cached.filter(h => String(h.id) !== String(id))));
+      }
+      return { success: true, message: 'Hackathon removed locally.' };
     }
   },
 
