@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -26,7 +26,7 @@ export default function BottomNav({ currentPage, setCurrentPage }) {
           <button
             key={tab.id}
             onClick={() => setCurrentPage(tab.id)}
-            className={mobile-bottom-nav-item }
+            className={`mobile-bottom-nav-item ${isActive ? 'active' : ''}`}
             aria-label={tab.label}
           >
             <div className="mobile-nav-icon-box">
