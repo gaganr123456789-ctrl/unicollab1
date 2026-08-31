@@ -68,10 +68,10 @@ router.post('/tasks', (req, res) => {
 
 // PUT /api/workspace/tasks/:id - Move or Update Task Column
 router.put('/tasks/:id', (req, res) => {
-  const taskId = Number(req.params.id);
+  const taskId = req.params.id;
   const { column, priority, title, desc } = req.body;
 
-  const taskIndex = tasksDB.findIndex(t => t.id === taskId);
+  const taskIndex = tasksDB.findIndex(t => String(t.id) === String(taskId));
   if (taskIndex === -1) {
     return res.status(404).json({ success: false, message: 'Task not found.' });
   }
@@ -81,23 +81,38 @@ router.put('/tasks/:id', (req, res) => {
   if (title) tasksDB[taskIndex].title = title;
   if (desc) tasksDB[taskIndex].desc = desc;
 
+  const updatedTask = tasksDB[taskIndex];
+
+  // Broadcast via Socket.io if available
+  if (global.io) {
+    global.io.emit('kanban:task_moved', {
+      taskId,
+      toColumn: column,
+      task: updatedTask
+    });
+  }
+
   return res.status(200).json({
     success: true,
     message: 'Task updated successfully.',
-    task: tasksDB[taskIndex]
+    task: updatedTask
   });
 });
 
 // DELETE /api/workspace/tasks/:id - Delete Task
 router.delete('/tasks/:id', (req, res) => {
-  const taskId = Number(req.params.id);
-  const taskIndex = tasksDB.findIndex(t => t.id === taskId);
+  const taskId = req.params.id;
+  const taskIndex = tasksDB.findIndex(t => String(t.id) === String(taskId));
 
   if (taskIndex === -1) {
     return res.status(404).json({ success: false, message: 'Task not found.' });
   }
 
   const deletedTask = tasksDB.splice(taskIndex, 1);
+
+  if (global.io) {
+    global.io.emit('kanban:task_deleted', { taskId });
+  }
 
   return res.status(200).json({
     success: true,

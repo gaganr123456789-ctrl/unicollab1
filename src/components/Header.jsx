@@ -1,14 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Sun, Moon, Clock, Menu, X, User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Bell, Sun, Moon, Clock, Menu, X, User, Settings, LogOut, ChevronDown, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { socketService } from '../services/socketService';
 
 export default function Header({ currentPage, setCurrentPage, userProfile, theme, setTheme, isMobileNavOpen, onToggleMobileNav }) {
   const [time, setTime] = useState(new Date());
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(() => {
+    return socketService.connected ? 'connected' : 'connecting';
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    // Ensure socket connection initialized
+    socketService.connect(userProfile);
+
+    const unsub = socketService.on('connection_change', (data) => {
+      setConnectionStatus(data.status);
+    });
+
+    return () => unsub();
+  }, [userProfile?.id, userProfile?.email]);
 
   const liveDateStr = time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const liveTimeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -54,6 +69,59 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
       </div>
 
       <div className="dash-header-actions">
+        {/* Real-time Socket Connection Status Pill */}
+        {connectionStatus === 'connected' ? (
+          <div 
+            className="header-time-badge"
+            title="Real-time WebSockets connected. Live chat & Kanban synchronization active."
+            style={{
+              background: theme === 'dark' ? '#064E3B' : '#ECFDF5',
+              borderColor: '#10B981',
+              color: theme === 'dark' ? '#A7F3D0' : '#047857',
+              cursor: 'default',
+              padding: '6px 12px',
+              gap: '6px'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }}></span>
+            <span style={{ fontWeight: 800, fontSize: '12px' }}>Live Sync</span>
+          </div>
+        ) : connectionStatus === 'reconnecting' || connectionStatus === 'connecting' ? (
+          <div 
+            className="header-time-badge"
+            title="Reconnecting to real-time server..."
+            style={{
+              background: theme === 'dark' ? '#78350F' : '#FFFBEB',
+              borderColor: '#F59E0B',
+              color: theme === 'dark' ? '#FDE68A' : '#B45309',
+              cursor: 'wait',
+              padding: '6px 12px',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={13} style={{ animation: 'spin 1.5s linear infinite' }} />
+            <span style={{ fontWeight: 800, fontSize: '12px' }}>Reconnecting...</span>
+          </div>
+        ) : (
+          <button 
+            type="button"
+            className="header-time-badge"
+            onClick={() => socketService.connect(userProfile)}
+            title="Connection dropped. Click to reconnect immediately!"
+            style={{
+              background: theme === 'dark' ? '#7F1D1D' : '#FEF2F2',
+              borderColor: '#EF4444',
+              color: theme === 'dark' ? '#FECACA' : '#B91C1C',
+              cursor: 'pointer',
+              padding: '6px 12px',
+              gap: '6px'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', display: 'inline-block' }}></span>
+            <span style={{ fontWeight: 800, fontSize: '12px' }}>Offline • Reconnect</span>
+          </button>
+        )}
+
         {/* Real-time System Date & Clock Badge */}
         <div className="header-time-badge" title="Live system date & time according to your laptop">
           <Clock size={14} className="text-blue" />

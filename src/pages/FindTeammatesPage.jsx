@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
-import { io } from 'socket.io-client';
+import { socketService } from '../services/socketService';
 import InviteTeammateModal from '../components/InviteTeammateModal';
 import { 
   Search, 
@@ -226,34 +226,20 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     loadRegisteredTeammates();
     fetchConnections();
 
-    // Socket.IO real-time connection status listener
-    let socket = null;
-    try {
-      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-        ? 'http://localhost:5000'
-        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
-          ? window.location.origin
-          : 'https://unicollab1.onrender.com';
+    // Socket.IO real-time connection status listener via socketService singleton
+    socketService.connect(userProfile);
+    const unsubs = [];
 
-      socket = io(socketUrl, { transports: ['websocket', 'polling'] });
-      const myEmail = (userProfile?.email || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').email : '') || '').toLowerCase().trim();
-      if (myEmail) {
-        socket.emit('register_user', { email: myEmail, name: userProfile?.name });
-      }
-
-      socket.on('connection:request', () => fetchConnections());
-      socket.on('connection:accepted', () => fetchConnections());
-      socket.on('connection:update', () => fetchConnections());
-      socket.on('invite:received', () => fetchConnections());
-      socket.on('invite:updated', () => fetchConnections());
-    } catch (e) {
-      console.warn('Socket connection listener notice:', e);
-    }
+    unsubs.push(socketService.on('connection:request', () => fetchConnections()));
+    unsubs.push(socketService.on('connection:accepted', () => fetchConnections()));
+    unsubs.push(socketService.on('connection:update', () => fetchConnections()));
+    unsubs.push(socketService.on('invite:received', () => fetchConnections()));
+    unsubs.push(socketService.on('invite:updated', () => fetchConnections()));
 
     return () => {
-      if (socket) socket.disconnect();
+      unsubs.forEach(u => u && u());
     };
-  }, [userProfile]);
+  }, [userProfile?.id, userProfile?.email]);
 
   // Determine Connection Status for each Teammate Card
   const getCandidateConnectionState = (candidate) => {

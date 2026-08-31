@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../services/apiClient';
-import { io } from 'socket.io-client';
+import { socketService } from '../services/socketService';
 import InviteTeammateModal from '../components/InviteTeammateModal';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { 
@@ -20,7 +20,8 @@ import {
   ChevronDown,
   FolderPlus,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  GripVertical
 } from 'lucide-react';
 
 const getDynamicDate = (daysAgo = 0) => {
@@ -107,6 +108,10 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
   const [taskFormPriority, setTaskFormPriority] = useState('MEDIUM');
   const [taskFormCol, setTaskFormCol] = useState('todo');
 
+  // Drag and Drop States
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [dragOverColId, setDragOverColId] = useState(null);
+
   const [teamMembers, setTeamMembers] = useState([
     { id: 'tm_3', name: 'Alex Thompson', role: 'Project Lead & Full Stack', email: 'alex.thompson@stanford.edu', dept: 'Computer Science • Senior', avatarBg: 'blue', initials: 'AT' },
     { id: 'tm_4', name: 'Sarah Chen', role: 'Backend Engineer', email: 'sarah.chen@stanford.edu', dept: 'Computer Science • Junior', avatarBg: 'green', initials: 'SC' },
@@ -185,7 +190,12 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
       // Restore previously selected active project or pick newest
       const savedActiveId = typeof window !== 'undefined' ? localStorage.getItem('unicollab_active_workspace_project_id') : null;
       const matched = allProjects.find(p => p.id === savedActiveId || p.title === savedActiveId);
-      setSelectedProject(matched || allProjects[0]);
+      const activeProj = matched || allProjects[0];
+      setSelectedProject(activeProj);
+
+      if (activeProj?.id) {
+        socketService.joinProject(activeProj.id);
+      }
 
     } catch (err) {
       console.warn('[Workspace] Error loading projects:', err);
@@ -198,7 +208,17 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
     loadUserProjects();
   }, [userProfile?.id, userProfile?.email]);
 
-  // Load from Backend API and Listen for newly joined team members and projects
+  // Join socket project room whenever active project changes
+  useEffect(() => {
+    if (selectedProject?.id) {
+      socketService.joinProject(selectedProject.id);
+      return () => {
+        socketService.leaveProject(selectedProject.id);
+      };
+    }
+  }, [selectedProject?.id]);
+
+  // Load from Backend API and Listen for real-time Kanban & Workspace events
   useEffect(() => {
     const fetchServerTasks = async () => {
       try {
@@ -243,44 +263,74 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
     };
     fetchTeamRoster();
 
-    // Socket listener for new team members and newly created projects
-    try {
-      const socketUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-        ? 'http://localhost:5000'
-        : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
-          ? window.location.origin
-          : 'https://unicollab1.onrender.com';
-      const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+    // Connect socket and register listeners
+    socketService.connect(userProfile);
+    const unsubs = [];
 
-      socket.on('team:member_joined', (data) => {
-        if (data && data.memberName) {
-          setTeamMembers(prev => {
-            if (prev.some(m => m.name === data.memberName)) return prev;
-            return [...prev, {
-              id: `tm_${Date.now()}`,
-              name: data.memberName,
-              role: 'Collaborator (New)',
-              email: '',
-              dept: 'Engineering • Collaborator',
-              avatarBg: 'green',
-              initials: data.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)
-            }];
-          });
+    // Real-time Kanban Task Moved sync from peer tabs / users
+    unsubs.push(socketService.on('kanban:task_moved', (data) => {
+      if (!data || !data.taskId) return;
+      console.log('⚡ [Real-time Kanban Sync] Received task_moved:', data);
+      setTasks(prev => {
+        const existing = prev.find(t => String(t.id) === String(data.taskId));
+        if (!existing) {
+          if (data.task) return [...prev, { ...data.task, column: data.toColumn }];
+          return prev;
         }
+        if (existing.column === data.toColumn) return prev;
+        return prev.map(t => String(t.id) === String(data.taskId) ? { ...t, column: data.toColumn } : t);
       });
+    }));
 
-      socket.on('project:created', (newProj) => {
-        if (newProj) {
-          setUserProjects(prev => {
-            if (prev.some(p => p.id === newProj.id)) return prev;
-            return [newProj, ...prev];
-          });
-        }
+    // Real-time Kanban Task Created sync
+    unsubs.push(socketService.on('kanban:task_created', (data) => {
+      if (!data || !data.task) return;
+      console.log('⚡ [Real-time Kanban Sync] Received task_created:', data.task);
+      setTasks(prev => {
+        if (prev.some(t => String(t.id) === String(data.task.id))) return prev;
+        return [...prev, data.task];
       });
+    }));
 
-      return () => socket.disconnect();
-    } catch (e) {}
-  }, []);
+    // Real-time Kanban Task Deleted sync
+    unsubs.push(socketService.on('kanban:task_deleted', (data) => {
+      if (!data || !data.taskId) return;
+      console.log('⚡ [Real-time Kanban Sync] Received task_deleted:', data.taskId);
+      setTasks(prev => prev.filter(t => String(t.id) !== String(data.taskId)));
+    }));
+
+    // Member joined
+    unsubs.push(socketService.on('team:member_joined', (data) => {
+      if (data && data.memberName) {
+        setTeamMembers(prev => {
+          if (prev.some(m => m.name === data.memberName)) return prev;
+          return [...prev, {
+            id: `tm_${Date.now()}`,
+            name: data.memberName,
+            role: 'Collaborator (New)',
+            email: '',
+            dept: 'Engineering • Collaborator',
+            avatarBg: 'green',
+            initials: data.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)
+          }];
+        });
+      }
+    }));
+
+    // Project created
+    unsubs.push(socketService.on('project:created', (newProj) => {
+      if (newProj) {
+        setUserProjects(prev => {
+          if (prev.some(p => p.id === newProj.id)) return prev;
+          return [newProj, ...prev];
+        });
+      }
+    }));
+
+    return () => {
+      unsubs.forEach(u => u());
+    };
+  }, [userProfile?.id]);
 
   const handleSelectProject = (proj) => {
     setSelectedProject(proj);
@@ -300,8 +350,36 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
     setIsProjectDropdownOpen(false);
   };
 
+  // Move Task with Instant Optimistic UI + Real-time Socket Broadcast + Rollback Protection
   const moveTask = (taskId, newCol) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, column: newCol } : t));
+    let prevCol = null;
+    const targetTask = tasks.find(t => String(t.id) === String(taskId));
+    if (!targetTask || targetTask.column === newCol) return;
+    prevCol = targetTask.column;
+
+    // 1. Optimistic local state update (feels instantaneous)
+    setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, column: newCol } : t));
+
+    // 2. Emit real-time socket event for other connected clients
+    const currentProjId = selectedProject?.id || 'proj_starter_fintrack';
+    socketService.emitTaskMoved({
+      projectId: currentProjId,
+      taskId,
+      fromColumn: prevCol,
+      toColumn: newCol,
+      task: { ...targetTask, column: newCol }
+    }, (res) => {
+      if (res && res.success === false) {
+        // Rollback if server rejects
+        console.warn('Task move rejected by server, rolling back:', res.message);
+        setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, column: prevCol } : t));
+      }
+    });
+
+    // 3. Background API persist
+    try {
+      apiClient.updateTaskPosition(taskId, newCol).catch(() => {});
+    } catch (e) {}
   };
 
   const openCreateTaskModal = (colId = 'todo') => {
@@ -327,6 +405,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
   const handleSaveTask = async (e) => {
     e.preventDefault();
     if (!taskFormTitle.trim()) return;
+    const currentProjId = selectedProject?.id || 'proj_starter_fintrack';
 
     if (taskModalMode === 'create') {
       const newTask = {
@@ -341,24 +420,47 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
 
       setTasks(prev => [...prev, newTask]);
 
+      // Socket broadcast to other tabs
+      socketService.emitTaskCreated({
+        projectId: currentProjId,
+        task: newTask
+      });
+
       try {
         await apiClient.createTask(newTask);
       } catch (e) {}
     } else if (editingTask) {
-      setTasks(prev => prev.map(t => t.id === editingTask.id ? {
-        ...t,
+      const updated = {
+        ...editingTask,
         title: taskFormTitle.trim(),
         desc: taskFormDesc.trim() || 'Task deliverable item.',
         priority: taskFormPriority,
         column: taskFormCol
-      } : t));
+      };
+
+      setTasks(prev => prev.map(t => t.id === editingTask.id ? updated : t));
+
+      socketService.emitTaskMoved({
+        projectId: currentProjId,
+        taskId: editingTask.id,
+        fromColumn: editingTask.column,
+        toColumn: taskFormCol,
+        task: updated
+      });
     }
 
     setIsTaskModalOpen(false);
   };
 
   const deleteTask = (taskId) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    const currentProjId = selectedProject?.id || 'proj_starter_fintrack';
+    setTasks(prev => prev.filter(t => String(t.id) !== String(taskId)));
+    
+    // Broadcast delete to other tabs
+    socketService.emitTaskDeleted({
+      projectId: currentProjId,
+      taskId
+    });
   };
 
   const columns = [
@@ -578,8 +680,37 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
           <div className="kanban-columns-grid mt-4">
             {columns.map((col) => {
               const colTasks = filteredTasks.filter(t => t.column === col.id);
+              const isColOver = dragOverColId === col.id;
               return (
-                <div key={col.id} className="kanban-col">
+                <div 
+                  key={col.id} 
+                  className={`kanban-col ${isColOver ? 'drag-target-active' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverColId !== col.id) setDragOverColId(col.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget)) return;
+                    if (dragOverColId === col.id) setDragOverColId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverColId(null);
+                    const taskIdStr = e.dataTransfer.getData('text/plain') || draggedTaskId;
+                    if (taskIdStr !== null && taskIdStr !== undefined) {
+                      const numericId = Number(taskIdStr) || taskIdStr;
+                      moveTask(numericId, col.id);
+                    }
+                    setDraggedTaskId(null);
+                  }}
+                  style={{
+                    border: isColOver ? `2px dashed ${col.color}` : '2px solid transparent',
+                    borderRadius: '16px',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isColOver ? `0 0 16px ${col.color}30` : 'none'
+                  }}
+                >
                   <div className="col-header">
                     <div className="col-title-flex">
                       <span className="col-dot" style={{ background: col.color }}></span>
@@ -589,43 +720,65 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                     <button className="add-task-icon-btn" onClick={() => openCreateTaskModal(col.id)} title="Add Task">+</button>
                   </div>
 
-                  <div className="task-cards-stack">
-                    {colTasks.map((t) => (
-                      <div key={t.id} className="task-card">
-                        <div className="task-card-top flex justify-between align-center">
-                          <span className={`priority-badge ${t.priority.toLowerCase()}`}>{t.priority}</span>
-                          <div className="flex gap-1">
-                            <button onClick={() => openEditTaskModal(t)} className="icon-btn-micro" title="Edit task">
-                              <Edit2 size={12} />
-                            </button>
-                            <button onClick={() => deleteTask(t.id)} className="icon-btn-micro text-danger" title="Delete task">
-                              <Trash2 size={12} />
-                            </button>
+                  <div className="task-cards-stack" style={{ minHeight: '120px' }}>
+                    {colTasks.map((t) => {
+                      const isDraggingThis = draggedTaskId === t.id;
+                      return (
+                        <div 
+                          key={t.id} 
+                          className={`task-card ${isDraggingThis ? 'is-dragging' : ''}`}
+                          draggable={true}
+                          onDragStart={(e) => {
+                            setDraggedTaskId(t.id);
+                            e.dataTransfer.setData('text/plain', String(t.id));
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          onDragEnd={() => {
+                            setDraggedTaskId(null);
+                            setDragOverColId(null);
+                          }}
+                          style={{
+                            cursor: 'grab',
+                            opacity: isDraggingThis ? 0.45 : 1,
+                            transform: isDraggingThis ? 'scale(0.98)' : 'none',
+                            transition: 'opacity 0.15s ease, transform 0.15s ease'
+                          }}
+                        >
+                          <div className="task-card-top flex justify-between align-center">
+                            <span className={`priority-badge ${t.priority.toLowerCase()}`}>{t.priority}</span>
+                            <div className="flex gap-1">
+                              <button onClick={() => openEditTaskModal(t)} className="icon-btn-micro" title="Edit task">
+                                <Edit2 size={12} />
+                              </button>
+                              <button onClick={() => deleteTask(t.id)} className="icon-btn-micro text-danger" title="Delete task">
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <h4 className="task-title">{t.title}</h4>
+                          <p className="task-desc">{t.desc}</p>
+
+                          <div className="task-meta">
+                            <span className="meta-item"><MessageSquare size={13} /> {t.comments}</span>
+                            <span className="meta-item"><Clock size={13} /> {t.date}</span>
+                          </div>
+
+                          {/* Move Task Quick Select */}
+                          <div className="move-task-row">
+                            <span className="move-task-label">Move:</span>
+                            {columns.filter(c => c.id !== col.id).map(c => (
+                              <button 
+                                key={c.id} 
+                                className="move-pill-btn"
+                                onClick={() => moveTask(t.id, c.id)}
+                              >
+                                {c.title.split(' ')[0]}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                        <h4 className="task-title">{t.title}</h4>
-                        <p className="task-desc">{t.desc}</p>
-
-                        <div className="task-meta">
-                          <span className="meta-item"><MessageSquare size={13} /> {t.comments}</span>
-                          <span className="meta-item"><Clock size={13} /> {t.date}</span>
-                        </div>
-
-                        {/* Move Task Quick Select */}
-                        <div className="move-task-row">
-                          <span className="move-task-label">Move:</span>
-                          {columns.filter(c => c.id !== col.id).map(c => (
-                            <button 
-                              key={c.id} 
-                              className="move-pill-btn"
-                              onClick={() => moveTask(t.id, c.id)}
-                            >
-                              {c.title.split(' ')[0]}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <button className="btn-add-task-full" onClick={() => openCreateTaskModal(col.id)}>

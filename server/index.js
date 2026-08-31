@@ -103,11 +103,17 @@ app.use((err, req, res, next) => {
 // --------------------------------------------------------------------------
 // 5. Socket.io Real-Time Messaging & Presence Engine
 // --------------------------------------------------------------------------
+// 5. Socket.io Real-Time Messaging & Presence Engine
+// --------------------------------------------------------------------------
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
     credentials: true
-  }
+  },
+  transports: ['polling', 'websocket'], // Robust fallback for Render proxy
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  allowEIO3: true
 });
 
 app.set('io', io);
@@ -185,6 +191,7 @@ io.on('connection', (socket) => {
     console.log(`🛡️ Socket ${socket.id} joined admin authorization room.`);
   });
 
+  // Conversation Rooms
   socket.on('join_conversation', (conversationId) => {
     if (!conversationId) return;
     socket.join(conversationId);
@@ -196,6 +203,89 @@ io.on('connection', (socket) => {
     if (!conversationId) return;
     socket.leave(conversationId);
     socket.leave(`conv_${conversationId}`);
+  });
+
+  // Project & Kanban Board Rooms
+  socket.on('join_project', (projectId) => {
+    if (!projectId) return;
+    socket.join(`project_${projectId}`);
+    socket.join(`proj_${projectId}`);
+    console.log(`📋 Socket ${socket.id} joined project room: project_${projectId}`);
+  });
+
+  socket.on('leave_project', (projectId) => {
+    if (!projectId) return;
+    socket.leave(`project_${projectId}`);
+    socket.leave(`proj_${projectId}`);
+  });
+
+  // Real-time Kanban Task Moved
+  socket.on('kanban:task_moved', async (data, ackCallback) => {
+    const { projectId, taskId, fromColumn, toColumn, task } = data;
+    console.log(`⚡ [KANBAN] Task ${taskId} moved: ${fromColumn} -> ${toColumn} (Project: ${projectId})`);
+
+    // Update in-memory tasksDB
+    try {
+      const { tasksDB } = await import('./db/dataStore.js');
+      const idx = tasksDB.findIndex(t => t.id === Number(taskId) || t.id === taskId);
+      if (idx !== -1) {
+        tasksDB[idx].column = toColumn;
+      }
+    } catch (e) {}
+
+    // Broadcast to everyone else in this project room
+    const projectRoom = `project_${projectId || 'default'}`;
+    socket.to(projectRoom).to(`proj_${projectId || 'default'}`).emit('kanban:task_moved', data);
+
+    // Also broadcast globally if project isn't strictly scoped or for demo reassurance
+    socket.broadcast.emit('kanban:task_moved', data);
+
+    if (typeof ackCallback === 'function') {
+      ackCallback({ success: true, message: 'Task position synced.' });
+    }
+  });
+
+  // Real-time Kanban Task Created
+  socket.on('kanban:task_created', async (data, ackCallback) => {
+    const { projectId, task } = data;
+    console.log(`⚡ [KANBAN] Task created in project ${projectId}:`, task?.title);
+
+    try {
+      const { tasksDB } = await import('./db/dataStore.js');
+      if (task && !tasksDB.some(t => t.id === task.id)) {
+        tasksDB.push(task);
+      }
+    } catch (e) {}
+
+    const projectRoom = `project_${projectId || 'default'}`;
+    socket.to(projectRoom).to(`proj_${projectId || 'default'}`).emit('kanban:task_created', data);
+    socket.broadcast.emit('kanban:task_created', data);
+
+    if (typeof ackCallback === 'function') {
+      ackCallback({ success: true, task });
+    }
+  });
+
+  // Real-time Kanban Task Deleted
+  socket.on('kanban:task_deleted', async (data, ackCallback) => {
+    const { projectId, taskId } = data;
+    console.log(`⚡ [KANBAN] Task ${taskId} deleted in project ${projectId}`);
+
+    try {
+      const { tasksDB } = await import('./db/dataStore.js');
+      const idx = tasksDB.findIndex(t => t.id === Number(taskId) || t.id === taskId);
+      if (idx !== -1) {
+        tasksDB.splice(idx, 1);
+      }
+    } catch (e) {}
+
+    const projectRoom = `project_${projectId || 'default'}`;
+    socket.to(projectRoom).to(`proj_${projectId || 'default'}`).emit('kanban:task_deleted', data);
+    socket.broadcast.emit('kanban:task_deleted', data);
+
+    if (typeof ackCallback === 'function') {
+      ackCallback({ success: true, taskId });
+    }
   });
 
   // Typing indicator broadcast
