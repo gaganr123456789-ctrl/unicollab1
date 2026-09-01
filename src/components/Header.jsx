@@ -126,6 +126,7 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
         <div className="header-time-badge" title="Live system date & time according to your laptop">
           <Clock size={14} className="text-blue" />
           <span className="live-time-text">{liveTimeStr}</span>
+          <span className="time-badge-divider">•</span>
           <span className="live-date-text">{liveDateStr}</span>
         </div>
 
@@ -174,7 +175,8 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
             </div>
             <div className="user-info">
               <span className="user-name">{name}</span>
-              <span className="user-role">{major} • {uni}</span>
+              <span className="user-department">{major}</span>
+              {uni && <span className="user-campus">{uni}</span>}
             </div>
             <ChevronDown size={14} className="profile-arrow-icon" />
           </div>
@@ -185,8 +187,9 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
               <div className="dropdown-overlay-transparent" onClick={() => setIsProfileDropdownOpen(false)}></div>
               <div className="header-profile-dropdown-menu animate-fade-in">
                 <div className="dropdown-user-header">
-                  <strong>{name}</strong>
-                  <span className="dropdown-sub-text">{major} • {uni}</span>
+                  <strong className="dropdown-user-name">{name}</strong>
+                  <span className="dropdown-sub-dept">{major}</span>
+                  {uni && <span className="dropdown-sub-uni">{uni}</span>}
                 </div>
                 <div className="dropdown-divider"></div>
                 <button className="dropdown-menu-item" onClick={() => handleDropdownNavigate('profile')}>
