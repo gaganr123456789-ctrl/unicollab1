@@ -72,53 +72,29 @@ export default function Header({ currentPage, setCurrentPage, userProfile, theme
         {/* Real-time Socket Connection Status Pill */}
         {connectionStatus === 'connected' ? (
           <div 
-            className="header-time-badge"
+            className="header-live-sync-badge connected"
             title="Real-time WebSockets connected. Live chat & Kanban synchronization active."
-            style={{
-              background: theme === 'dark' ? '#064E3B' : '#ECFDF5',
-              borderColor: '#10B981',
-              color: theme === 'dark' ? '#A7F3D0' : '#047857',
-              cursor: 'default',
-              padding: '6px 12px',
-              gap: '6px'
-            }}
           >
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }}></span>
-            <span style={{ fontWeight: 800, fontSize: '12px' }}>Live Sync</span>
+            <span className="live-sync-indicator-dot"></span>
+            <span className="live-sync-label">Live Sync</span>
           </div>
         ) : connectionStatus === 'reconnecting' || connectionStatus === 'connecting' ? (
           <div 
-            className="header-time-badge"
+            className="header-live-sync-badge reconnecting"
             title="Reconnecting to real-time server..."
-            style={{
-              background: theme === 'dark' ? '#78350F' : '#FFFBEB',
-              borderColor: '#F59E0B',
-              color: theme === 'dark' ? '#FDE68A' : '#B45309',
-              cursor: 'wait',
-              padding: '6px 12px',
-              gap: '6px'
-            }}
           >
-            <RefreshCw size={13} style={{ animation: 'spin 1.5s linear infinite' }} />
-            <span style={{ fontWeight: 800, fontSize: '12px' }}>Reconnecting...</span>
+            <RefreshCw size={13} className="spin-icon" />
+            <span className="live-sync-label">Reconnecting...</span>
           </div>
         ) : (
           <button 
             type="button"
-            className="header-time-badge"
+            className="header-live-sync-badge offline"
             onClick={() => socketService.connect(userProfile)}
             title="Connection dropped. Click to reconnect immediately!"
-            style={{
-              background: theme === 'dark' ? '#7F1D1D' : '#FEF2F2',
-              borderColor: '#EF4444',
-              color: theme === 'dark' ? '#FECACA' : '#B91C1C',
-              cursor: 'pointer',
-              padding: '6px 12px',
-              gap: '6px'
-            }}
           >
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', display: 'inline-block' }}></span>
-            <span style={{ fontWeight: 800, fontSize: '12px' }}>Offline • Reconnect</span>
+            <span className="live-sync-indicator-dot red"></span>
+            <span className="live-sync-label">Offline • Reconnect</span>
           </button>
         )}
 
