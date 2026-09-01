@@ -109,7 +109,17 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     const myName = (userProfile?.name || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_user') || '{}').name : '') || '').toLowerCase().trim();
 
     try {
-      // 1. Fetch from Teammates API (Server-side excluded database records)
+      // 1. Fetch from Centralized Users API
+      const usersRes = await apiClient.getUsers();
+      if (usersRes.success && Array.isArray(usersRes.users)) {
+        apiUsers = [...apiUsers, ...usersRes.users];
+      }
+    } catch (e) {
+      console.warn('Centralized users fetch notice:', e);
+    }
+
+    try {
+      // 2. Fetch from Teammates API (Server-side excluded database records)
       const res = await apiClient.getTeammates('', '', '', myEmail, myId);
       if (res.success && Array.isArray(res.teammates)) {
         apiUsers = [...apiUsers, ...res.teammates];
@@ -119,7 +129,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     }
 
     try {
-      // 2. Fetch from Admin Users API (persisted registered database records)
+      // 3. Fetch from Admin Users API (persisted registered database records)
       const adminRes = await apiClient.getAdminUsers();
       if (adminRes.success && Array.isArray(adminRes.users)) {
         apiUsers = [...apiUsers, ...adminRes.users];
@@ -128,13 +138,9 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
       console.warn('Admin users fetch notice:', e);
     }
 
-    // 3. Merge with local storage registered users
-    const cachedUsers = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
-    const allCombined = [...apiUsers, ...cachedUsers];
-
     // Deduplicate by email
     const uniqueMap = new Map();
-    allCombined.forEach(u => {
+    apiUsers.forEach(u => {
       if (u && (u.email || u.name)) {
         const emailKey = (u.email || u.name).toLowerCase().trim();
         if (!uniqueMap.has(emailKey)) {

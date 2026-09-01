@@ -3,10 +3,10 @@ const RENDER_BACKEND_URL = 'https://unicollab1.onrender.com';
 
 const BASE_URL = import.meta.env?.VITE_API_URL
   ? import.meta.env.VITE_API_URL
-  : typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:5000/api'
-    : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
-      ? '/api'
+  : typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+    ? '/api'
+    : typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000/api'
       : `${RENDER_BACKEND_URL}/api`;
 
 export const apiClient = {
@@ -21,7 +21,7 @@ export const apiClient = {
     }
   },
 
-  // Auth APIs
+  // 1. Centralized Auth: Login
   async login(email, password) {
     const targetEmail = (email || '').trim().toLowerCase();
     const targetPassword = (password || '').trim();
@@ -33,75 +33,27 @@ export const apiClient = {
         body: JSON.stringify({ email: targetEmail, password: targetPassword })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          // Cache successful user login locally
-          if (typeof window !== 'undefined') {
-            const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
-            const existingIdx = cachedUsers.findIndex(u => u.email.toLowerCase() === targetEmail);
-            if (existingIdx >= 0) {
-              cachedUsers[existingIdx] = { ...cachedUsers[existingIdx], ...data.user, password: targetPassword };
-            } else {
-              cachedUsers.push({ ...data.user, password: targetPassword });
-            }
-            localStorage.setItem('unicollab_registered_users', JSON.stringify(cachedUsers));
-          }
-          return data;
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        if (typeof window !== 'undefined') {
+          if (data.token) localStorage.setItem('unicollab_auth_token', data.token);
+          if (data.user) localStorage.setItem('unicollab_user', JSON.stringify(data.user));
         }
         return data;
       }
+      return {
+        success: false,
+        message: data.message || 'Invalid email or password. Please verify credentials.'
+      };
     } catch (err) {
       console.warn('Backend login network warning:', err);
-    }
-
-    // Check local registered cache for existing registered users ONLY
-    if (typeof window !== 'undefined') {
-      const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
-      const found = cachedUsers.find(u => u.email.toLowerCase() === targetEmail);
-      if (found) {
-        if (found.password && found.password !== targetPassword) {
-          return { success: false, message: 'Invalid password. Please check your credentials.' };
-        }
-        return {
-          success: true,
-          message: 'Logged in successfully.',
-          user: found
-        };
-      }
-    }
-
-    return { success: false, message: 'No registered account found with this email. Please Sign Up first.' };
-  },
-
-  async updateProfile(profileData) {
-    try {
-      const res = await fetch(`${BASE_URL}/auth/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      });
-      return await res.json();
-    } catch (err) {
-      console.warn('Update profile API warning:', err);
-      return { success: true, message: 'Profile updated locally.', user: profileData };
+      return { success: false, message: 'Could not connect to the centralized UniCollab backend.' };
     }
   },
 
+  // 2. Centralized Auth: Register
   async register(userData) {
     const targetEmail = (userData.email || '').trim().toLowerCase();
-
-    // Check local storage duplicate first
-    if (typeof window !== 'undefined') {
-      const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
-      const existsLocally = cachedUsers.some(u => u.email?.toLowerCase() === targetEmail);
-      if (existsLocally) {
-        return {
-          success: false,
-          message: 'An account with this email already exists. Please Sign In.'
-        };
-      }
-    }
 
     try {
       const res = await fetch(`${BASE_URL}/auth/register`, {
@@ -109,42 +61,52 @@ export const apiClient = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok || !data.success) {
-        return {
-          success: false,
-          message: data.message || 'An account with this email already exists. Please Sign In.'
-        };
-      }
-
-      if (data.success && data.user) {
-        // Cache user locally to guarantee instant seamless logins
+      if (res.ok && data.success) {
         if (typeof window !== 'undefined') {
-          const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
-          const userWithPass = { ...data.user, password: userData.password };
-          const filtered = cachedUsers.filter(u => u.email.toLowerCase() !== targetEmail);
-          filtered.push(userWithPass);
-          localStorage.setItem('unicollab_registered_users', JSON.stringify(filtered));
+          if (data.token) localStorage.setItem('unicollab_auth_token', data.token);
+          if (data.user) localStorage.setItem('unicollab_user', JSON.stringify(data.user));
         }
+        return data;
       }
-      return data;
-    } catch (err) {
-      console.warn('Register fallback:', err);
-      // Fallback local register
-      const newUser = {
-        id: `usr_${Date.now()}`,
-        ...userData,
-        email: targetEmail
+
+      return {
+        success: false,
+        message: data.message || 'Registration failed. An account with this email may already exist.'
       };
-      if (typeof window !== 'undefined') {
-        const cachedUsers = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
-        cachedUsers.push(newUser);
-        localStorage.setItem('unicollab_registered_users', JSON.stringify(cachedUsers));
-        localStorage.setItem('unicollab_token', `token_sso_${Date.now()}`);
-        localStorage.setItem('unicollab_user', JSON.stringify(newUser));
-      }
-      return { success: true, message: 'Account created successfully.', user: newUser };
+    } catch (err) {
+      console.warn('Register API error:', err);
+      return { success: false, message: 'Could not connect to the centralized backend to register.' };
+    }
+  },
+
+  // 3. Centralized Users API: Get All Registered Users
+  async getUsers() {
+    try {
+      const res = await fetch(`${BASE_URL}/users`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Failed to fetch users from centralized backend:', err);
+      return { success: false, users: [] };
+    }
+  },
+
+  async updateProfile(profileData) {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${BASE_URL}/auth/profile`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(profileData)
+      });
+      return await res.json();
+    } catch (err) {
+      console.warn('Update profile API warning:', err);
+      return { success: true, message: 'Profile updated.', user: profileData };
     }
   },
 

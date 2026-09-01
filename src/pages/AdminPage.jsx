@@ -513,15 +513,24 @@ export default function AdminPage({ setCurrentPage, theme, setTheme }) {
       try {
         const apiRes = await apiClient.getAdminUsers();
         if (apiRes.success && Array.isArray(apiRes.users)) {
-          serverUsers = apiRes.users;
+          serverUsers = [...serverUsers, ...apiRes.users];
           isServerSuccess = true;
         }
       } catch (e) {
         console.warn('Backend users fetch error:', e);
       }
 
-      const cached = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]') : [];
-      const combined = [...serverUsers, ...cached];
+      try {
+        const usersRes = await apiClient.getUsers();
+        if (usersRes.success && Array.isArray(usersRes.users)) {
+          serverUsers = [...serverUsers, ...usersRes.users];
+          isServerSuccess = true;
+        }
+      } catch (e) {
+        console.warn('Users API fetch error:', e);
+      }
+
+      const combined = [...serverUsers];
       const uniqueUsers = Array.from(
         new Map(
           combined

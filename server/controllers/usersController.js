@@ -158,3 +158,77 @@ export const updateMyProfile = async (req, res) => {
     profile: { ...req.body, email: req.user?.email }
   });
 };
+
+// GET /api/users - Get All Registered Users from Centralized Database
+export const getAllUsers = async (req, res) => {
+  let allUsers = [];
+
+  // 1. Fetch from PostgreSQL Prisma Database
+  try {
+    const prisma = await getPrisma();
+    if (prisma) {
+      const dbUsers = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          major: true,
+          degree: true,
+          university: true,
+          skills: true,
+          bio: true,
+          roleTitle: true,
+          projectFocus: true,
+          avatarBg: true,
+          createdAt: true
+        }
+      });
+      if (Array.isArray(dbUsers)) {
+        allUsers.push(...dbUsers);
+      }
+    }
+  } catch (err) {
+    console.warn('getAllUsers Prisma query notice:', err.message);
+  }
+
+  // 2. Merge with Disk & Memory Store
+  if (Array.isArray(usersDB)) {
+    allUsers.push(...usersDB);
+  }
+
+  // 3. Deduplicate by email & format
+  const userMap = new Map();
+  for (const u of allUsers) {
+    if (u && u.email) {
+      const emailKey = u.email.toLowerCase().trim();
+      if (!userMap.has(emailKey)) {
+        userMap.set(emailKey, {
+          id: u.id || `usr_${Date.now()}`,
+          name: u.name || emailKey.split('@')[0],
+          email: u.email,
+          role: u.role || 'STUDENT',
+          major: u.major || 'Computer Science & Engineering (CSE)',
+          degree: u.degree || `B.Tech ${u.major || 'CSE'}`,
+          university: u.university || 'Global Academy of Technology',
+          skills: Array.isArray(u.skills) && u.skills.length > 0 ? u.skills : ['React', 'Node.js'],
+          bio: u.bio || `Student specializing in ${u.major || 'Engineering'}.`,
+          roleTitle: u.roleTitle || (u.role === 'MENTOR' ? 'Mentor Advisor' : 'Student Developer'),
+          projectFocus: u.projectFocus || 'Web Dev',
+          avatarBg: u.avatarBg || '#2563EB',
+          createdAt: u.createdAt || u.created || new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  const finalUsers = Array.from(userMap.values());
+  finalUsers.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+  return res.status(200).json({
+    success: true,
+    count: finalUsers.length,
+    users: finalUsers
+  });
+};
