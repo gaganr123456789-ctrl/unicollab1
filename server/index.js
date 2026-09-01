@@ -369,17 +369,21 @@ io.on('connection', (socket) => {
       console.warn('DataStore save notice:', e.message);
     }
 
-    // 2. Broadcast immediately to active conversation room
+    // 2. Broadcast immediately to active conversation room strictly ONCE
     io.to(conversationId).to(`conv_${conversationId}`).emit('receive_message', messagePayload);
 
-    // 3. Deliver to receiver's user rooms (for real-time sidebar & unread count updates)
+    // 3. Deliver notification ONLY to receiver's private user rooms (for unread badge/toasts, NOT duplicate receive_message)
     if (rEmail) {
-      io.to(`user_${rEmail}`).emit('receive_message', messagePayload);
-      io.to(`user_${rEmail}`).emit('new_message_notification', messagePayload);
+      io.to(`user_${rEmail}`).emit('new_message_notification', {
+        ...messagePayload,
+        conversationName: sName
+      });
     }
-    if (rId) {
-      io.to(`user_${rId}`).emit('receive_message', messagePayload);
-      io.to(`user_${rId}`).emit('new_message_notification', messagePayload);
+    if (rId && rId !== rEmail) {
+      io.to(`user_${rId}`).emit('new_message_notification', {
+        ...messagePayload,
+        conversationName: sName
+      });
     }
 
     // 4. Acknowledge sender client

@@ -121,40 +121,116 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Filter out self-conversations from storage
+            return parsed.filter(c => {
+              const pEmail = (c.email || '').toLowerCase().trim();
+              const pName = (c.name || '').toLowerCase().trim();
+              return pEmail !== myEmail && pName !== (myName || '').toLowerCase().trim() && c.id !== myId;
+            });
+          }
         } catch (e) {}
       }
     }
     return defaultConversations;
   });
 
-  // Save to local storage
+  // Save to local storage (filtering out self-conversations)
   useEffect(() => {
     if (typeof window !== 'undefined' && conversations.length > 0) {
-      localStorage.setItem('unicollab_conversations_v2', JSON.stringify(conversations));
+      const validConvs = conversations.filter(c => {
+        const pEmail = (c.email || '').toLowerCase().trim();
+        const pName = (c.name || '').toLowerCase().trim();
+        return pEmail !== myEmail && pName !== (myName || '').toLowerCase().trim() && c.id !== myId;
+      });
+      localStorage.setItem('unicollab_conversations_v2', JSON.stringify(validConvs));
     }
-  }, [conversations]);
+  }, [conversations, myEmail, myName, myId]);
 
-  // Load conversations from backend API
+  // Load conversations from backend API & sync with accepted connections & teammates
   const loadConversations = async () => {
     setLoading(true);
     try {
+      const map = new Map();
+
+      // 1. Load server conversations
       const res = await apiClient.getConversations(myEmail, myId);
-      if (res.success && Array.isArray(res.conversations) && res.conversations.length > 0) {
-        setConversations(prev => {
-          const map = new Map();
-          // Server conversations first
-          res.conversations.forEach(c => {
-            if (c && c.id) map.set(c.id, c);
-          });
-          // Merge any local conversations not yet on server
-          prev.forEach(c => {
-            if (c && c.id && !map.has(c.id)) {
+      if (res.success && Array.isArray(res.conversations)) {
+        res.conversations.forEach(c => {
+          if (c && c.id) {
+            const pEmail = (c.email || '').toLowerCase().trim();
+            const pName = (c.name || '').toLowerCase().trim();
+            if (pEmail !== myEmail && pName !== (myName || '').toLowerCase().trim() && c.id !== myId) {
               map.set(c.id, c);
             }
-          });
-          return Array.from(map.values()).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+          }
         });
+      }
+
+      // 2. Load accepted peer connections and ensure they have active chat channels
+      try {
+        const connRes = await apiClient.getConnections(myEmail, myId);
+        if (connRes && connRes.success && Array.isArray(connRes.connections)) {
+          connRes.connections.forEach(conn => {
+            if (conn.status === 'ACCEPTED') {
+              const isSender = (conn.senderEmail || '').toLowerCase().trim() === myEmail || conn.senderId === myId;
+              const partnerEmail = isSender ? (conn.receiverEmail || '').toLowerCase().trim() : (conn.senderEmail || '').toLowerCase().trim();
+              const partnerName = isSender ? conn.receiverName : conn.senderName;
+              const partnerId = isSender ? conn.receiverId : conn.senderId;
+
+              if (partnerEmail && partnerEmail !== myEmail) {
+                // Check if already in map
+                const existingKey = Array.from(map.keys()).find(k => {
+                  const c = map.get(k);
+                  return (c.email && c.email.toLowerCase().trim() === partnerEmail) || (c.name && c.name.toLowerCase() === partnerName.toLowerCase());
+                });
+
+                if (!existingKey) {
+                  const convId = conn.id ? `conv_${conn.id}` : `conv_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+                  map.set(convId, {
+                    id: convId,
+                    pairKey: partnerEmail,
+                    name: partnerName || 'Connected Teammate',
+                    email: partnerEmail,
+                    role: 'Connected Teammate',
+                    avatarBg: '#EFF6FF',
+                    avatarColor: '#2563EB',
+                    initials: (partnerName || 'CT').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+                    type: 'direct',
+                    lastMsg: 'Connection verified. Start collaborating!',
+                    time: 'Just now',
+                    unread: 0,
+                    updatedAt: conn.updatedAt || new Date().toISOString(),
+                    messages: []
+                  });
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Connections sync notice in messages:', e);
+      }
+
+      // 3. Keep default mentor channels if not already present
+      defaultConversations.forEach(dc => {
+        const exists = Array.from(map.values()).some(c => c.email && c.email.toLowerCase() === dc.email.toLowerCase());
+        if (!exists) {
+          map.set(dc.id, dc);
+        }
+      });
+
+      // Filter out any self-conversation
+      const finalConvs = Array.from(map.values()).filter(c => {
+        const pEmail = (c.email || '').toLowerCase().trim();
+        const pName = (c.name || '').toLowerCase().trim();
+        return pEmail !== myEmail && pName !== (myName || '').toLowerCase().trim() && c.id !== myId;
+      });
+
+      finalConvs.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+      setConversations(finalConvs);
+      if (finalConvs.length > 0 && !activeConversationId) {
+        setActiveConversationId(finalConvs[0].id);
       }
     } catch (err) {
       console.warn('Failed to load server conversations:', err);
@@ -559,65 +635,69 @@ export default function MessagesPage({ activeChatPartner, userProfile, setCurren
       return updated.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
     });
 
-    // 1. Emit via real-time Socket.IO
-    socketService.sendMessage({
-      conversationId: activeConversation.id,
-      content: rawText,
-      text: rawText,
-      senderId: myId,
-      senderName: myName,
-      senderEmail: myEmail,
-      receiverEmail: activeConversation.email,
-      receiverId: activeConversation.id,
-      clientTempId: localMsgId
-    }, (ack) => {
-      if (ack?.success && ack?.message) {
-        // Reconcile message with server confirmation
-        seenMessageIds.current.add(ack.message.id);
-        setConversations(prev => prev.map(c => {
-          if (c.id === activeConversation.id) {
-            return {
-              ...c,
-              messages: (c.messages || []).map(m => m.id === localMsgId ? { ...m, id: ack.message.id, status: 'DELIVERED' } : m)
-            };
-          }
-          return c;
-        }));
-      }
-    });
-
-    socketService.sendTypingStop(activeConversation.id, { id: myId, email: myEmail });
-
-    // 2. Persist via REST API
-    try {
-      const res = await apiClient.sendMessage({
+    // 1. Authoritative real-time Socket.IO dispatch
+    if (socketService.connected && socketService.socket?.connected) {
+      socketService.sendMessage({
         conversationId: activeConversation.id,
+        content: rawText,
+        text: rawText,
         senderId: myId,
-        senderEmail: myEmail,
         senderName: myName,
+        senderEmail: myEmail,
         receiverEmail: activeConversation.email,
         receiverId: activeConversation.id,
-        text: rawText
+        clientTempId: localMsgId
+      }, (ack) => {
+        setSending(false);
+        if (ack?.success && ack?.message) {
+          // Reconcile message with server confirmation
+          seenMessageIds.current.add(ack.message.id);
+          setConversations(prev => prev.map(c => {
+            if (c.id === activeConversation.id) {
+              return {
+                ...c,
+                messages: (c.messages || []).map(m => m.id === localMsgId ? { ...m, id: ack.message.id, status: 'DELIVERED' } : m)
+              };
+            }
+            return c;
+          }));
+        }
       });
+    } else {
+      // 2. Fallback to REST API ONLY when Socket is offline/disconnected
+      try {
+        const res = await apiClient.sendMessage({
+          conversationId: activeConversation.id,
+          senderId: myId,
+          senderEmail: myEmail,
+          senderName: myName,
+          receiverEmail: activeConversation.email,
+          receiverId: activeConversation.id,
+          text: rawText,
+          clientTempId: localMsgId
+        });
 
-      if (res.success && res.data) {
-        const confirmedMsg = res.data;
-        seenMessageIds.current.add(confirmedMsg.id);
-        setConversations(prev => prev.map(c => {
-          if (c.id === activeConversation.id) {
-            return {
-              ...c,
-              messages: (c.messages || []).map(m => m.id === localMsgId ? { ...m, id: confirmedMsg.id, status: 'DELIVERED' } : m)
-            };
-          }
-          return c;
-        }));
+        if (res.success && res.data) {
+          const confirmedMsg = res.data;
+          seenMessageIds.current.add(confirmedMsg.id);
+          setConversations(prev => prev.map(c => {
+            if (c.id === activeConversation.id) {
+              return {
+                ...c,
+                messages: (c.messages || []).map(m => m.id === localMsgId ? { ...m, id: confirmedMsg.id, status: 'DELIVERED' } : m)
+              };
+            }
+            return c;
+          }));
+        }
+      } catch (err) {
+        console.warn('REST API message save fallback notice:', err);
+      } finally {
+        setSending(false);
       }
-    } catch (err) {
-      console.warn('REST API message save fallback notice:', err);
-    } finally {
-      setSending(false);
     }
+
+    socketService.sendTypingStop(activeConversation.id, { id: myId, email: myEmail });
   };
 
   // Filter conversations

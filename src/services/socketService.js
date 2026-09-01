@@ -143,7 +143,6 @@ class SocketService {
     });
 
     this.socket.on('new_message_notification', (payload) => {
-      this.emitInternal('message', payload);
       this.emitInternal('message_notification', payload);
     });
 

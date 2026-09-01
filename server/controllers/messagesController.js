@@ -27,6 +27,11 @@ export const getConversations = async (req, res) => {
   let userConvs = conversationsDB;
   if (myEmail || myId) {
     userConvs = conversationsDB.filter(c => {
+      // Exclude self-conversations
+      if (c.email && myEmail && normalizeEmail(c.email) === myEmail) {
+        if (!c.participantDetails || c.participantDetails.length < 2) return false;
+      }
+
       if (!c.participants || c.participants.length === 0) return true;
       const inParticipants = c.participants.some(p => 
         (myEmail && normalizeEmail(p) === myEmail) || 
@@ -36,66 +41,73 @@ export const getConversations = async (req, res) => {
       const inDetails = Array.isArray(c.participantDetails) && c.participantDetails.some(pd => 
         (myEmail && normalizeEmail(pd.email) === myEmail) || (myId && pd.id === myId)
       );
-      return inParticipants || inDetails || (c.email && normalizeEmail(c.email) === myEmail);
+      return inParticipants || inDetails;
     });
   }
 
   // Calculate unread counts and resolve symmetric partner details for each conversation
-  const formatted = userConvs.map(conv => {
-    let partnerName = conv.name || 'Teammate';
-    let partnerEmail = conv.email || '';
-    let partnerRole = conv.role || 'Connected Teammate';
-    let partnerAvatarBg = conv.avatarBg || '#EFF6FF';
-    let partnerAvatarColor = conv.avatarColor || '#2563EB';
+  const formatted = userConvs
+    .map(conv => {
+      let partnerName = conv.name || 'Teammate';
+      let partnerEmail = conv.email || '';
+      let partnerRole = conv.role || 'Connected Teammate';
+      let partnerAvatarBg = conv.avatarBg || '#EFF6FF';
+      let partnerAvatarColor = conv.avatarColor || '#2563EB';
 
-    if (Array.isArray(conv.participantDetails) && conv.participantDetails.length === 2) {
-      const other = conv.participantDetails.find(pd => 
-        (myEmail && normalizeEmail(pd.email) !== myEmail) || (myId && pd.id !== myId)
-      );
-      if (other) {
-        partnerName = other.name || partnerName;
-        partnerEmail = other.email || partnerEmail;
-        partnerRole = other.role || partnerRole;
-        partnerAvatarBg = other.avatarBg || partnerAvatarBg;
-        partnerAvatarColor = other.avatarColor || partnerAvatarColor;
-      }
-    } else if (Array.isArray(conv.participants) && conv.participants.length === 2) {
-      const otherIdentifier = conv.participants.find(p => 
-        (myEmail && normalizeEmail(p) !== myEmail) && (myId && p !== myId)
-      );
-      if (otherIdentifier && normalizeEmail(conv.email) === myEmail) {
-        const otherUser = usersDB.find(u => normalizeEmail(u.email) === normalizeEmail(otherIdentifier) || u.id === otherIdentifier);
-        if (otherUser) {
-          partnerName = otherUser.name;
-          partnerEmail = otherUser.email;
-          partnerRole = otherUser.major || otherUser.role;
+      if (Array.isArray(conv.participantDetails) && conv.participantDetails.length >= 2) {
+        const other = conv.participantDetails.find(pd => 
+          (myEmail && normalizeEmail(pd.email) !== myEmail) || (myId && pd.id !== myId)
+        );
+        if (other) {
+          partnerName = other.name || partnerName;
+          partnerEmail = other.email || partnerEmail;
+          partnerRole = other.role || partnerRole;
+          partnerAvatarBg = other.avatarBg || partnerAvatarBg;
+          partnerAvatarColor = other.avatarColor || partnerAvatarColor;
+        }
+      } else if (Array.isArray(conv.participants) && conv.participants.length >= 2) {
+        const otherIdentifier = conv.participants.find(p => 
+          (myEmail && normalizeEmail(p) !== myEmail) && (myId && p !== myId)
+        );
+        if (otherIdentifier) {
+          const otherUser = usersDB.find(u => normalizeEmail(u.email) === normalizeEmail(otherIdentifier) || u.id === otherIdentifier);
+          if (otherUser) {
+            partnerName = otherUser.name;
+            partnerEmail = otherUser.email;
+            partnerRole = otherUser.major || otherUser.role;
+          }
         }
       }
-    }
 
-    const unreadCount = messagesDB.filter(m => 
-      m.conversationId === conv.id && 
-      (normalizeEmail(m.receiverId) === myEmail || normalizeEmail(m.receiverEmail) === myEmail || m.receiverId === myId) &&
-      m.status !== 'READ'
-    ).length;
+      // If the partner is resolved to oneself, exclude it
+      if (myEmail && partnerEmail && normalizeEmail(partnerEmail) === myEmail) {
+        return null;
+      }
 
-    const convMessages = messagesDB.filter(m => m.conversationId === conv.id);
-    const lastMsgObj = convMessages[convMessages.length - 1];
+      const unreadCount = messagesDB.filter(m => 
+        m.conversationId === conv.id && 
+        (normalizeEmail(m.receiverId) === myEmail || normalizeEmail(m.receiverEmail) === myEmail || m.receiverId === myId) &&
+        m.status !== 'READ'
+      ).length;
 
-    return {
-      ...conv,
-      name: partnerName,
-      email: partnerEmail,
-      role: partnerRole,
-      avatarBg: partnerAvatarBg,
-      avatarColor: partnerAvatarColor,
-      initials: partnerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'TM',
-      unread: unreadCount,
-      lastMsg: lastMsgObj ? (lastMsgObj.content || lastMsgObj.text || lastMsgObj.message) : (conv.lastMsg || 'Chat active'),
-      time: lastMsgObj ? formatMessageTime(lastMsgObj.createdAt) : (conv.time || 'Active'),
-      updatedAt: lastMsgObj ? lastMsgObj.createdAt : conv.updatedAt
-    };
-  });
+      const convMessages = messagesDB.filter(m => m.conversationId === conv.id);
+      const lastMsgObj = convMessages[convMessages.length - 1];
+
+      return {
+        ...conv,
+        name: partnerName,
+        email: partnerEmail,
+        role: partnerRole,
+        avatarBg: partnerAvatarBg,
+        avatarColor: partnerAvatarColor,
+        initials: partnerName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'TM',
+        unread: unreadCount,
+        lastMsg: lastMsgObj ? (lastMsgObj.content || lastMsgObj.text || lastMsgObj.message) : (conv.lastMsg || 'Chat active'),
+        time: lastMsgObj ? formatMessageTime(lastMsgObj.createdAt) : (conv.time || 'Active'),
+        updatedAt: lastMsgObj ? lastMsgObj.createdAt : conv.updatedAt
+      };
+    })
+    .filter(Boolean);
 
   // Sort by latest message / update descending
   formatted.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
@@ -118,6 +130,10 @@ export const getOrCreateConversation = async (req, res) => {
   const myIdentifier = normalizeEmail(userAEmail || req.user?.email || userAId);
   const targetIdentifier = normalizeEmail(userBEmail || userBId || userBName);
   const targetDisplayName = userBName || (userBEmail ? userBEmail.split('@')[0] : 'Teammate');
+
+  if (myIdentifier && targetIdentifier && myIdentifier === targetIdentifier) {
+    return res.status(400).json({ success: false, message: 'Cannot create a conversation with yourself.' });
+  }
 
   const pairKey = [myIdentifier, targetIdentifier].sort().join(':');
 
@@ -291,12 +307,10 @@ export const sendMessage = async (req, res) => {
   // 3. Real-time delivery via Socket.IO
   try {
     const io = req.app?.get('io') || global.io;
-    if (io) {
-      // Broadcast to active conversation room
-      io.to(`conv_${conversationId}`).emit('receive_message', newMsg);
-      io.to(conversationId).emit('receive_message', newMsg);
+      // Broadcast strictly ONCE to active conversation room
+      io.to(conversationId).to(`conv_${conversationId}`).emit('receive_message', newMsg);
 
-      // Deliver direct message notification to receiver's personal user room
+      // Deliver direct message notification to receiver's personal user room (for unread count/toasts, NOT duplicate receive_message)
       if (resolvedReceiverEmail) {
         io.to(`user_${resolvedReceiverEmail}`).emit('new_message_notification', {
           ...newMsg,
