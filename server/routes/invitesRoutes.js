@@ -1,6 +1,6 @@
 import express from 'express';
 import { getPrisma } from '../db/postgres.js';
-import { invitesDB, teamsDB, teamMembersDB, usersDB } from '../db/dataStore.js';
+import { invitesDB, teamsDB, teamMembersDB, usersDB, saveConnectionRecord, saveInviteRecord } from '../db/dataStore.js';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
@@ -359,6 +359,7 @@ router.post('/:id/respond', async (req, res) => {
   // Update Invitation Status
   invite.status = normalizedAction;
   invite.respondedAt = new Date().toISOString();
+  saveInviteRecord(invite);
 
   // Update associated Notification in notificationsDB
   const linkedNotif = notificationsDB.find(n => n.inviteId === inviteId);
@@ -368,7 +369,8 @@ router.post('/:id/respond', async (req, res) => {
     linkedNotif.read = true;
   }
 
-  // If Accepted: Add User to Team Members List
+  // If Accepted: Add User to Team Members List and Auto-Connect both users permanently
+  let autoConn = null;
   if (normalizedAction === 'accepted') {
     const isMember = teamMembersDB.some(m => 
       m.teamId === invite.teamId && (
@@ -389,6 +391,53 @@ router.post('/:id/respond', async (req, res) => {
         joinedAt: new Date().toISOString()
       });
       console.log(`✅ [TEAM ROSTER] Added ${effectiveUserName} to team ${invite.teamName}`);
+    }
+
+    // Auto-create permanent bidirectional teammate connection
+    const sId = invite.senderId || 'usr_sender';
+    const sEmail = (invite.senderEmail || '').toLowerCase().trim();
+    const sName = invite.senderName || 'Team Leader';
+    const rId = effectiveUserId;
+    const rEmail = effectiveUserEmail;
+    const rName = effectiveUserName;
+
+    autoConn = {
+      id: `conn_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      senderId: sId,
+      senderEmail: sEmail,
+      senderName: sName,
+      receiverId: rId,
+      receiverEmail: rEmail,
+      receiverName: rName,
+      status: 'ACCEPTED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    saveConnectionRecord(autoConn);
+
+    // Create or unlock conversation between the two connected teammates
+    const pairKey = [(sEmail || sId).toLowerCase(), (rEmail || rId).toLowerCase()].sort().join(':');
+    let conv = conversationsDB.find(c => c.pairKey === pairKey);
+    if (!conv) {
+      conversationsDB.unshift({
+        id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        pairKey,
+        participants: [sEmail || sId, rEmail || rId],
+        participantDetails: [
+          { id: sId, email: sEmail, name: sName },
+          { id: rId, email: rEmail, name: rName }
+        ],
+        name: sName,
+        role: 'Connected Teammate',
+        avatarBg: '#EFF6FF',
+        avatarColor: '#2563EB',
+        initials: (sName || 'ST').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+        type: 'direct',
+        lastMsg: `Joined ${invite.teamName}! You are now connected teammates.`,
+        time: 'Just now',
+        unread: 0,
+        updatedAt: new Date().toISOString()
+      });
     }
   }
 
@@ -425,7 +474,32 @@ router.post('/:id/respond', async (req, res) => {
       await prisma.invite.update({
         where: { id: inviteId },
         data: { status: normalizedAction }
-      });
+      }).catch(e => console.warn('Prisma invite update:', e.message));
+
+      if (autoConn) {
+        await prisma.connection.upsert({
+          where: {
+            senderId_receiverId: { senderId: autoConn.senderId, receiverId: autoConn.receiverId }
+          },
+          update: { status: 'ACCEPTED' },
+          create: {
+            id: autoConn.id,
+            senderId: autoConn.senderId,
+            receiverId: autoConn.receiverId,
+            status: 'ACCEPTED'
+          }
+        }).catch(async () => {
+          await prisma.connection.updateMany({
+            where: {
+              OR: [
+                { senderId: autoConn.senderId, receiverId: autoConn.receiverId },
+                { senderId: autoConn.receiverId, receiverId: autoConn.senderId }
+              ]
+            },
+            data: { status: 'ACCEPTED' }
+          }).catch(e => console.warn('Prisma autoConn update fallback:', e.message));
+        });
+      }
     }
   } catch (err) {
     console.warn('Prisma invite update notice:', err.message);

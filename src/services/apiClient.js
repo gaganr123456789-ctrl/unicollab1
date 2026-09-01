@@ -809,9 +809,13 @@ export const apiClient = {
   // Real-Time Connection Request & Accepted Status APIs
   async sendConnectionRequest(payload) {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(`${BASE_URL}/connections/request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -823,10 +827,14 @@ export const apiClient = {
 
   async getConnections(email = '', userId = '') {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const query = new URLSearchParams();
       if (email) query.append('email', email);
       if (userId) query.append('userId', userId);
-      const res = await fetch(`${BASE_URL}/connections?${query.toString()}`);
+      const res = await fetch(`${BASE_URL}/connections?${query.toString()}`, { headers });
       return await res.json();
     } catch (err) {
       return { success: false, connections: [], incomingPending: [], outgoingPending: [] };
@@ -835,9 +843,17 @@ export const apiClient = {
 
   async acceptConnection(connectionId, payload = {}) {
     try {
-      const res = await fetch(`${BASE_URL}/connections/${connectionId}/accept`, {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const url = connectionId && connectionId !== 'accept'
+        ? `${BASE_URL}/connections/${connectionId}/accept`
+        : `${BASE_URL}/connections/accept`;
+
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -848,9 +864,17 @@ export const apiClient = {
 
   async rejectConnection(connectionId, payload = {}) {
     try {
-      const res = await fetch(`${BASE_URL}/connections/${connectionId}/reject`, {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const url = connectionId && connectionId !== 'reject'
+        ? `${BASE_URL}/connections/${connectionId}/reject`
+        : `${BASE_URL}/connections/reject`;
+
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -859,14 +883,35 @@ export const apiClient = {
     }
   },
 
+  async removeConnection(connectionId, payload = {}) {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${BASE_URL}/connections/${connectionId}`, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err) {
+      return { success: false, message: 'Failed to remove connection.' };
+    }
+  },
+
   async getConnectionStatus(targetEmail, targetId, myEmail, myId) {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const query = new URLSearchParams();
       if (targetEmail) query.append('targetEmail', targetEmail);
       if (targetId) query.append('targetId', targetId);
       if (myEmail) query.append('myEmail', myEmail);
       if (myId) query.append('myId', myId);
-      const res = await fetch(`${BASE_URL}/connections/status?${query.toString()}`);
+      const res = await fetch(`${BASE_URL}/connections/status?${query.toString()}`, { headers });
       return await res.json();
     } catch (err) {
       return { success: false, status: 'NOT_CONNECTED', isConnected: false };

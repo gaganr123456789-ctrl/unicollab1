@@ -221,15 +221,92 @@ export const saveUserRecord = (user) => {
   savePersistentUsersToDisk(usersDB);
 };
 
-export const teammatesDB = [];
+const PERSISTENT_CONNECTIONS_FILE = path.join(__dirname, 'persistentConnections.json');
+const PERSISTENT_INVITES_FILE = path.join(__dirname, 'persistentInvites.json');
 
-export const connectionsDB = [];
+const loadPersistentConnections = () => {
+  try {
+    if (fs.existsSync(PERSISTENT_CONNECTIONS_FILE)) {
+      const data = fs.readFileSync(PERSISTENT_CONNECTIONS_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.warn('Could not read persistentConnections.json:', err.message);
+  }
+  return [];
+};
+
+export const savePersistentConnectionsToDisk = (connections) => {
+  try {
+    fs.writeFileSync(PERSISTENT_CONNECTIONS_FILE, JSON.stringify(connections, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('Could not write persistentConnections.json:', err.message);
+  }
+};
+
+export const connectionsDB = loadPersistentConnections();
+
+export const saveConnectionRecord = (conn) => {
+  if (!conn) return;
+  const sEmail = (conn.senderEmail || '').toLowerCase().trim();
+  const rEmail = (conn.receiverEmail || '').toLowerCase().trim();
+  const sId = conn.senderId;
+  const rId = conn.receiverId;
+
+  const existingIdx = connectionsDB.findIndex(c => 
+    (c.id && conn.id && c.id === conn.id) ||
+    (sEmail && rEmail && (
+      (c.senderEmail?.toLowerCase().trim() === sEmail && c.receiverEmail?.toLowerCase().trim() === rEmail) ||
+      (c.senderEmail?.toLowerCase().trim() === rEmail && c.receiverEmail?.toLowerCase().trim() === sEmail)
+    )) ||
+    (sId && rId && (
+      (c.senderId === sId && c.receiverId === rId) ||
+      (c.senderId === rId && c.receiverId === sId)
+    ))
+  );
+
+  if (existingIdx >= 0) {
+    connectionsDB[existingIdx] = {
+      ...connectionsDB[existingIdx],
+      ...conn,
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    connectionsDB.unshift({
+      ...conn,
+      createdAt: conn.createdAt || new Date().toISOString(),
+      updatedAt: conn.updatedAt || new Date().toISOString()
+    });
+  }
+  savePersistentConnectionsToDisk(connectionsDB);
+};
+
+export const removeConnectionRecord = (connId, userAEmail, userBEmail) => {
+  const normA = (userAEmail || '').toLowerCase().trim();
+  const normB = (userBEmail || '').toLowerCase().trim();
+
+  const filtered = connectionsDB.filter(c => {
+    if (connId && c.id === connId) return false;
+    if (normA && normB) {
+      const s = (c.senderEmail || '').toLowerCase().trim();
+      const r = (c.receiverEmail || '').toLowerCase().trim();
+      if ((s === normA && r === normB) || (s === normB && r === normA)) return false;
+    }
+    return true;
+  });
+
+  connectionsDB.length = 0;
+  connectionsDB.push(...filtered);
+  savePersistentConnectionsToDisk(connectionsDB);
+};
+
+export const teammatesDB = [];
 
 export const conversationsDB = [];
 
 export const messagesDB = [];
 
-export const invitesDB = [
+const initialInvitesSeed = [
   {
     id: 'inv_seed_drone',
     senderId: 'usr_ananya',
@@ -249,6 +326,40 @@ export const invitesDB = [
     createdAt: new Date().toISOString()
   }
 ];
+
+const loadPersistentInvites = () => {
+  try {
+    if (fs.existsSync(PERSISTENT_INVITES_FILE)) {
+      const data = fs.readFileSync(PERSISTENT_INVITES_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {
+    console.warn('Could not read persistentInvites.json:', err.message);
+  }
+  return [...initialInvitesSeed];
+};
+
+export const savePersistentInvitesToDisk = (invites) => {
+  try {
+    fs.writeFileSync(PERSISTENT_INVITES_FILE, JSON.stringify(invites, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('Could not write persistentInvites.json:', err.message);
+  }
+};
+
+export const invitesDB = loadPersistentInvites();
+
+export const saveInviteRecord = (invite) => {
+  if (!invite) return;
+  const existingIdx = invitesDB.findIndex(i => i.id === invite.id);
+  if (existingIdx >= 0) {
+    invitesDB[existingIdx] = { ...invitesDB[existingIdx], ...invite };
+  } else {
+    invitesDB.unshift(invite);
+  }
+  savePersistentInvitesToDisk(invitesDB);
+};
 
 export const teamsDB = [
   {

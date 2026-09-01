@@ -1,0 +1,27 @@
+[
+  {
+    "id": "conn_1788289227609_3s7bx0",
+    "senderId": "usr_gagan",
+    "senderEmail": "gagan@gmail.com",
+    "senderName": "Gagan R",
+    "receiverId": "usr_renukesh",
+    "receiverEmail": "renukesh@gmail.com",
+    "receiverName": "Renukesh",
+    "status": "ACCEPTED",
+    "createdAt": "2026-09-01T19:00:27.609Z",
+    "updatedAt": "2026-09-01T19:00:27.609Z"
+  },
+  {
+    "id": "conn_1788289181631_j7pjez",
+    "senderId": "usr_renukesh",
+    "senderEmail": "renukesh@gmail.com",
+    "senderName": "Renukesh",
+    "receiverId": "usr_saash",
+    "receiverEmail": "saash@gmail.com",
+    "receiverName": "saash",
+    "message": "Let us connect on UniCollab!",
+    "status": "ACCEPTED",
+    "createdAt": "2026-09-01T18:59:41.631Z",
+    "updatedAt": "2026-09-01T19:00:27.743Z"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "inv_1788289227524_aovzj",
+    "senderId": "usr_gagan",
+    "senderName": "Gagan R",
+    "senderEmail": "gagan@gmail.com",
+    "recipientId": "usr_renukesh",
+    "receiverId": "usr_renukesh",
+    "recipientName": "Renukesh",
+    "recipientEmail": "renukesh@gmail.com",
+    "type": "TEAM_INVITE",
+    "status": "accepted",
+    "teamId": "team_ai_capstone",
+    "teamName": "AI Capstone Project",
+    "teamDesc": "University collaborative engineering capstone project.",
+    "teamLeader": "Gagan R",
+    "projectCategory": "Engineering",
+    "requiredSkills": [
+      "Full-Stack",
+      "Problem Solving"
+    ],
+    "message": "Join my AI Capstone team!",
+    "createdAt": "2026-09-01T19:00:27.524Z",
+    "respondedAt": "2026-09-01T19:00:27.603Z"
+  },
+  {
+    "id": "inv_seed_drone",
+    "senderId": "usr_ananya",
+    "senderName": "Dr. Ananya Sharma",
+    "senderEmail": "ananya.sharma@stanford.edu",
+    "recipientId": "all",
+    "recipientEmail": "",
+    "type": "TEAM_INVITE",
+    "teamId": "team_drone_1",
+    "teamName": "Autonomous Drone Navigation",
+    "teamDesc": "Autonomous multi-rotor drone navigation with ROS 2 and OpenCV for campus micro-deliveries.",
+    "teamLeader": "Dr. Ananya Sharma",
+    "projectCategory": "Engineering & Robotics",
+    "requiredSkills": [
+      "ROS 2",
+      "Python",
+      "C++",
+      "Computer Vision",
+      "Robotics"
+    ],
+    "message": "Dr. Ananya Sharma invited you to join the Autonomous Drone Navigation team.",
+    "status": "pending",
+    "createdAt": "2026-09-01T19:00:25.574Z"
+  }
+]

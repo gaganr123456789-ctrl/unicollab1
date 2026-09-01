@@ -4,6 +4,7 @@ import {
   getConnections, 
   acceptConnection, 
   rejectConnection, 
+  removeConnection,
   getConnectionStatus 
 } from '../controllers/connectionsController.js';
 
@@ -15,6 +16,9 @@ router.post('/:id/accept', acceptConnection);
 router.post('/accept', acceptConnection);
 router.post('/:id/reject', rejectConnection);
 router.post('/reject', rejectConnection);
+router.delete('/:id', removeConnection);
+router.post('/:id/remove', removeConnection);
+router.post('/remove', removeConnection);
 router.get('/status', getConnectionStatus);
 
 export default router;
