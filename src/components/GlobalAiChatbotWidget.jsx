@@ -198,43 +198,71 @@ export default function GlobalAiChatbotWidget({ theme }) {
           </div>
 
           {/* Input Footer */}
-          <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} style={{
-            padding: '10px 14px',
-            background: theme === 'dark' ? '#111827' : '#FFFFFF',
-            borderTop: `1px solid ${theme === 'dark' ? '#374151' : '#E2E8F0'}`,
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'center'
-          }}>
-            <input
-              type="text"
-              placeholder="Ask AI matchmaker..."
+          <form 
+            onSubmit={(e) => { e.preventDefault(); handleSend(); }} 
+            style={{
+              padding: '10px 12px',
+              background: theme === 'dark' ? '#111827' : '#FFFFFF',
+              borderTop: `1px solid ${theme === 'dark' ? '#374151' : '#E2E8F0'}`,
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'flex-end'
+            }}
+          >
+            <textarea
+              placeholder="Ask AI matchmaker, project advice, code review (Enter to send, Shift+Enter for new line)..."
               value={inputMsg}
-              onChange={(e) => setInputMsg(e.target.value)}
+              onChange={(e) => {
+                setInputMsg(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                  e.target.style.height = '60px';
+                }
+              }}
+              rows={2}
               style={{
                 flex: 1,
-                padding: '8px 12px',
-                borderRadius: '10px',
-                border: `1px solid ${theme === 'dark' ? '#374151' : '#CBD5E1'}`,
+                minHeight: '60px',
+                maxHeight: '140px',
+                padding: '8px 10px',
+                borderRadius: '12px',
+                border: `1.5px solid ${theme === 'dark' ? '#374151' : '#CBD5E1'}`,
                 background: theme === 'dark' ? '#1F2937' : '#F8FAFC',
                 color: theme === 'dark' ? '#FFFFFF' : '#0F172A',
-                fontSize: '12px',
-                outline: 'none'
+                fontSize: '12.5px',
+                lineHeight: '1.45',
+                outline: 'none',
+                resize: 'none',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box'
               }}
             />
-            <button type="submit" disabled={loading} style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '10px',
-              background: '#2563EB',
-              color: '#FFFFFF',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}>
-              <Send size={14} />
+            <button 
+              type="submit" 
+              disabled={loading || !inputMsg.trim()} 
+              style={{
+                width: '38px',
+                height: '38px',
+                minWidth: '38px',
+                borderRadius: '10px',
+                background: '#2563EB',
+                color: '#FFFFFF',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+                marginBottom: '2px',
+                opacity: (!inputMsg.trim() || loading) ? 0.6 : 1
+              }}
+            >
+              <Send size={15} />
             </button>
           </form>
         </div>

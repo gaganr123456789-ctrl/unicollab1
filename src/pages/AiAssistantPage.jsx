@@ -47,6 +47,8 @@ export default function AiAssistantPage({ userProfile }) {
     "📚 Research Paper Structure Guide"
   ];
 
+  const textareaRef = useRef(null);
+
   const handleSend = async (textToSend) => {
     const query = textToSend || inputMsg;
     if (!query.trim() || loading) return;
@@ -54,7 +56,12 @@ export default function AiAssistantPage({ userProfile }) {
     // Add user message
     const userMsg = { sender: 'user', text: query.trim() };
     setChatMessages(prev => [...prev, userMsg]);
-    if (!textToSend) setInputMsg('');
+    if (!textToSend) {
+      setInputMsg('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '64px';
+      }
+    }
 
     setLoading(true);
     const res = await apiClient.sendAiChat(query.trim());
@@ -277,28 +284,32 @@ export default function AiAssistantPage({ userProfile }) {
           </div>
 
           {/* Chat Input Bar */}
-          <div className="chat-input-bar mt-2" style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'white', padding: '8px 12px', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-            <input 
-              type="text" 
-              placeholder="Ask AI about student matchmaker, code review, or hackathons..."
+          <div className="ai-chat-input-wrapper mt-3">
+            <textarea 
+              ref={textareaRef}
+              className="ai-chat-textarea"
+              placeholder="Ask AI about student matchmaking, project ideas, code reviews, or hackathons (Enter to send, Shift+Enter for new line)..."
               value={inputMsg}
-              onChange={(e) => setInputMsg(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-              style={{ flex: 1, border: 'none', outline: 'none', fontSize: '13.5px', color: '#0F172A' }}
+              onChange={(e) => {
+                setInputMsg(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 180) + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              rows={2}
             />
-            <button className="btn-send" onClick={() => handleSend()} disabled={loading} style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: '#2563EB',
-              color: '#FFFFFF',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}>
-              <Send size={16} />
+            <button 
+              className="ai-chat-send-btn" 
+              onClick={() => handleSend()} 
+              disabled={loading || !inputMsg.trim()}
+              title="Send Message"
+            >
+              <Send size={18} />
             </button>
           </div>
         </main>

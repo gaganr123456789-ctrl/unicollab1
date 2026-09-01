@@ -12178,6 +12178,98 @@ select,
   border-top-color: #1F2937 !important;
 }
 
+/* 11. Spacious Multi-Line AI Chat Input Box */
+.ai-chat-input-wrapper {
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 12px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  border-radius: 18px !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ai-chat-input-wrapper:focus-within {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 4px 20px rgba(37, 99, 235, 0.08) !important;
+}
+
+.ai-chat-textarea {
+  flex: 1 !important;
+  min-height: 64px !important;
+  max-height: 180px !important;
+  min-width: 0 !important;
+  resize: none !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  padding: 4px 8px !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  color: #0F172A !important;
+  overflow-y: auto !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+}
+
+.ai-chat-textarea::placeholder {
+  color: #94A3B8 !important;
+  font-size: 13.5px !important;
+}
+
+.ai-chat-send-btn {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  border-radius: 12px !important;
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
+  margin-bottom: 2px !important;
+}
+
+.ai-chat-send-btn:hover:not(:disabled) {
+  background: #1D4ED8 !important;
+  transform: translateY(-1px) scale(1.03) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+.ai-chat-send-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Dark Theme Overrides for AI Chat Input Area */
+.dark-theme .ai-chat-input-wrapper {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark-theme .ai-chat-input-wrapper:focus-within {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark-theme .ai-chat-textarea {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .ai-chat-textarea::placeholder {
+  color: #64748B !important;
+}
+
 
 
 
