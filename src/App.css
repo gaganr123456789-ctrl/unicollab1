@@ -9982,36 +9982,55 @@ input:checked + .toggle-slider:before {
 /* Dark Theme Overrides for Refine Search Filter Panel */
 .dark-theme .filter-panel {
   background: #111827 !important;
-  border-color: #1F2937 !important;
+  border: 1px solid #1F2937 !important;
   color: #F9FAFB !important;
+}
+
+.dark-theme .filter-header {
+  background: transparent !important;
+  border-bottom: 1px solid #1F2937 !important;
+  padding-bottom: 14px !important;
+  margin-bottom: 16px !important;
 }
 
 .dark-theme .filter-icon-badge {
-  background: #1F2937 !important;
+  background: rgba(37, 99, 235, 0.18) !important;
   color: #60A5FA !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
 }
 
 .dark-theme .btn-reset-filter {
+  background: rgba(37, 99, 235, 0.15) !important;
   color: #60A5FA !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  box-shadow: none !important;
 }
 
 .dark-theme .btn-reset-filter:hover {
-  background: #1F2937 !important;
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-color: #2563EB !important;
+  transform: translateY(-1px) !important;
 }
 
 .dark-theme .search-pill-filter input {
-  background: #1F2937 !important;
-  border-color: #374151 !important;
+  background: #1E293B !important;
+  border: 1px solid #334155 !important;
   color: #F9FAFB !important;
+}
+
+.dark-theme .search-pill-filter input:focus {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
 }
 
 .dark-theme .custom-checkbox-row {
-  color: #9CA3AF !important;
+  color: #CBD5E1 !important;
 }
 
 .dark-theme .custom-checkbox-row:hover {
-  background: #1F2937 !important;
-  color: #F9FAFB !important;
+  background: #1E293B !important;
+  color: #FFFFFF !important;
 }
 
 .dark-theme .custom-checkbox-row.checked {
@@ -10019,8 +10038,8 @@ input:checked + .toggle-slider:before {
 }
 
 .dark-theme .checkbox-custom-box {
-  background: #1F2937 !important;
-  border-color: #4B5563 !important;
+  background: #1E293B !important;
+  border-color: #475569 !important;
 }
 
 .dark-theme .custom-checkbox-row.checked .checkbox-custom-box {
@@ -10913,12 +10932,11 @@ input:checked + .toggle-slider:before {
 
 /* Filter Panels, Search Inputs & Dropdowns */
 .dark-theme .filter-panel,
-.dark-theme .filter-header,
 .dark-theme .search-pill-filter input,
 .dark-theme .kanban-toolbar input,
 .dark-theme .resource-search input {
-  background: #1F2937 !important;
-  border-color: #374151 !important;
+  background: #111827 !important;
+  border-color: #1F2937 !important;
   color: #FFFFFF !important;
 }
 
