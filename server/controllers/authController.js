@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { usersDB } from '../db/dataStore.js';
+import { usersDB, saveUserRecord } from '../db/dataStore.js';
 import { generateToken } from '../middleware/authMiddleware.js';
 import { sendEmail, generateOtpEmailHtml } from '../../utils/email.js';
 
@@ -149,6 +149,11 @@ export const signup = async (req, res) => {
         }
       });
 
+      saveUserRecord({
+        ...newUser,
+        created: newUser.createdAt ? new Date(newUser.createdAt).toISOString() : new Date().toISOString()
+      });
+
       const token = generateToken({ id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role });
       const { password: _, ...userWithoutPassword } = newUser;
 
@@ -211,7 +216,7 @@ export const signup = async (req, res) => {
     created: new Date().toISOString()
   };
 
-  usersDB.unshift(newUser);
+  saveUserRecord(newUser);
   const token = generateToken({ id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role });
   const { password: _, ...userPayload } = newUser;
 

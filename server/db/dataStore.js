@@ -1,6 +1,225 @@
-// Centralized UniCollab Data Store (In-Memory + Persistent API State)
+// Centralized UniCollab Data Store (In-Memory + Persistent Disk & API State)
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-export const usersDB = [];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PERSISTENT_USERS_FILE = path.join(__dirname, 'persistentUsers.json');
+
+// Verified Base Seed Users (Always available across reboots)
+export const initialSeedUsers = [
+  {
+    id: 'usr_gagan',
+    name: 'Gagan R',
+    email: 'gagan.r123456789@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW', // hashed 'admin123'
+    role: 'STUDENT',
+    university: 'Global Academy of Technology',
+    major: 'Electronics & Communication (ECE)',
+    degree: 'B.Tech Electronics & Communication (ECE)',
+    projectFocus: 'Full-Stack Web Dev & AI',
+    roleTitle: 'Student Lead',
+    skills: ['React', 'Node.js', 'PostgreSQL', 'Socket.IO', 'TypeScript', 'Python'],
+    avatarBg: '#2563EB',
+    bio: 'Full Stack Engineer & AI Systems builder at Global Academy of Technology. Passionate about real-time collaborative architectures.',
+    age: 21,
+    phone: '+91 98765 43210',
+    gender: 'Male',
+    createdAt: '2026-08-01T10:00:00.000Z',
+    created: '2026-08-01T10:00:00.000Z'
+  },
+  {
+    id: 'usr_renukesh78',
+    name: 'Renukesh',
+    email: 'renukesh78@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Global Academy of Technology',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'Cloud Infrastructure & Security',
+    roleTitle: 'Student Developer',
+    skills: ['Python', 'Docker', 'Kubernetes', 'AWS', 'PostgreSQL', 'FastAPI'],
+    avatarBg: '#059669',
+    bio: 'Cloud architecture enthusiast focusing on microservices, serverless deployments, and secure distributed backend systems.',
+    age: 21,
+    phone: '+91 98451 23456',
+    gender: 'Male',
+    createdAt: '2026-08-05T11:30:00.000Z',
+    created: '2026-08-05T11:30:00.000Z'
+  },
+  {
+    id: 'usr_charanya',
+    name: 'Charanya Jaganath',
+    email: 'charanyajagannath0982@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Artificial Intelligence & Machine Learning (AIML)',
+    degree: 'B.Tech Artificial Intelligence & Machine Learning (AIML)',
+    projectFocus: 'Generative AI & LLMs',
+    roleTitle: 'AI Researcher',
+    skills: ['PyTorch', 'TensorFlow', 'Python', 'NLP', 'Computer Vision', 'LangChain'],
+    avatarBg: '#7C3AED',
+    bio: 'AI researcher working on multimodal LLMs, agentic reasoning loops, and prompt engineering algorithms.',
+    age: 21,
+    phone: '+91 97312 34567',
+    gender: 'Female',
+    createdAt: '2026-08-10T14:15:00.000Z',
+    created: '2026-08-10T14:15:00.000Z'
+  },
+  {
+    id: 'usr_saash',
+    name: 'saash',
+    email: 'saash@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'BNM Institute of Technology (BNMIT)',
+    major: 'Information Science & Engineering (ISE)',
+    degree: 'B.Tech Information Science & Engineering (ISE)',
+    projectFocus: 'Mobile Apps & UI/UX',
+    roleTitle: 'Frontend Specialist',
+    skills: ['React Native', 'Flutter', 'Figma', 'TypeScript', 'Tailwind CSS', 'Next.js'],
+    avatarBg: '#DB2777',
+    bio: 'Creative frontend engineer and mobile app developer designing fluid interactive user interfaces and design systems.',
+    age: 20,
+    phone: '+91 96111 87654',
+    gender: 'Male',
+    createdAt: '2026-08-12T09:00:00.000Z',
+    created: '2026-08-12T09:00:00.000Z'
+  },
+  {
+    id: 'usr_pranav',
+    name: 'Pranav',
+    email: 'pranav@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Global Academy of Technology',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'Cybersecurity & Blockchain',
+    roleTitle: 'Security Analyst',
+    skills: ['Solidity', 'Smart Contracts', 'Cryptography', 'Go', 'Linux', 'Node.js'],
+    avatarBg: '#EA580C',
+    bio: 'Cybersecurity student focusing on smart contract security audits, zero-knowledge proofs, and decentralized identity.',
+    age: 21,
+    phone: '+91 99001 23456',
+    gender: 'Male',
+    createdAt: '2026-08-14T16:45:00.000Z',
+    created: '2026-08-14T16:45:00.000Z'
+  },
+  {
+    id: 'usr_bhuvan',
+    name: 'Bhuvan',
+    email: 'bhuvan@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Global Academy of Technology',
+    major: 'Mechanical Engineering (ME)',
+    degree: 'B.Tech Mechanical Engineering (ME)',
+    projectFocus: 'Robotics & Embedded IoT',
+    roleTitle: 'Hardware Engineer',
+    skills: ['ROS 2', 'Embedded C', 'Arduino', 'SolidWorks', 'Python', 'MATLAB'],
+    avatarBg: '#0D9488',
+    bio: 'Robotics and Mechatronics builder working on autonomous unmanned aerial vehicles and sensor telemetry arrays.',
+    age: 21,
+    phone: '+91 98860 98765',
+    gender: 'Male',
+    createdAt: '2026-08-16T12:20:00.000Z',
+    created: '2026-08-16T12:20:00.000Z'
+  },
+  {
+    id: 'usr_renukesh_alt',
+    name: 'Renukesh',
+    email: 'renukesh@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Global Academy of Technology',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'Cloud Infrastructure & Security',
+    roleTitle: 'Student Developer',
+    skills: ['Python', 'Docker', 'AWS', 'PostgreSQL', 'FastAPI'],
+    avatarBg: '#059669',
+    bio: 'Cloud architecture enthusiast focusing on microservices and distributed backend systems.',
+    age: 21,
+    phone: '+91 98451 23456',
+    gender: 'Male',
+    createdAt: '2026-08-18T10:00:00.000Z',
+    created: '2026-08-18T10:00:00.000Z'
+  },
+  {
+    id: 'usr_gagan_alt',
+    name: 'Gagan R',
+    email: 'gagan@gmail.com',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Global Academy of Technology',
+    major: 'Electronics & Communication (ECE)',
+    degree: 'B.Tech Electronics & Communication (ECE)',
+    projectFocus: 'Full-Stack Web Dev & AI',
+    roleTitle: 'Student Lead',
+    skills: ['React', 'Node.js', 'PostgreSQL', 'Socket.IO', 'TypeScript'],
+    avatarBg: '#2563EB',
+    bio: 'Full Stack Engineer & AI Systems builder at Global Academy of Technology.',
+    age: 21,
+    phone: '+91 98765 43210',
+    gender: 'Male',
+    createdAt: '2026-08-20T08:00:00.000Z',
+    created: '2026-08-20T08:00:00.000Z'
+  }
+];
+
+// Load disk-persisted users and merge with seed users
+const loadPersistentUsers = () => {
+  let diskUsers = [];
+  try {
+    if (fs.existsSync(PERSISTENT_USERS_FILE)) {
+      const data = fs.readFileSync(PERSISTENT_USERS_FILE, 'utf8');
+      diskUsers = JSON.parse(data);
+    }
+  } catch (err) {
+    console.warn('Could not read persistentUsers.json:', err.message);
+  }
+
+  const map = new Map();
+  // Add seed users first
+  for (const u of initialSeedUsers) {
+    if (u && u.email) {
+      map.set(u.email.toLowerCase().trim(), u);
+    }
+  }
+  // Overlay disk users (latest modifications take precedence)
+  for (const u of diskUsers) {
+    if (u && u.email) {
+      map.set(u.email.toLowerCase().trim(), u);
+    }
+  }
+  return Array.from(map.values());
+};
+
+export const savePersistentUsersToDisk = (users) => {
+  try {
+    fs.writeFileSync(PERSISTENT_USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('Could not write persistentUsers.json:', err.message);
+  }
+};
+
+export const usersDB = loadPersistentUsers();
+
+export const saveUserRecord = (user) => {
+  if (!user || !user.email) return;
+  const normalizedEmail = user.email.toLowerCase().trim();
+  const existingIdx = usersDB.findIndex(u => u.email.toLowerCase().trim() === normalizedEmail);
+  if (existingIdx >= 0) {
+    usersDB[existingIdx] = { ...usersDB[existingIdx], ...user };
+  } else {
+    usersDB.unshift(user);
+  }
+  savePersistentUsersToDisk(usersDB);
+};
 
 export const teammatesDB = [];
 

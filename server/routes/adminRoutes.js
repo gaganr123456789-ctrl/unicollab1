@@ -272,10 +272,13 @@ const getAdminPrisma = async () => {
 };
 
 router.get('/users', async (req, res) => {
+  let allUsers = [];
+
+  // 1. Try Prisma PostgreSQL Cloud Database
   try {
     const prisma = await getAdminPrisma();
     if (prisma) {
-      const users = await prisma.user.findMany({
+      const dbUsers = await prisma.user.findMany({
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -291,24 +294,50 @@ router.get('/users', async (req, res) => {
           createdAt: true
         }
       });
-      return res.status(200).json({
-        success: true,
-        count: users ? users.length : 0,
-        source: 'Supabase PostgreSQL Cloud Database',
-        users: users || []
-      });
+      if (Array.isArray(dbUsers)) {
+        allUsers.push(...dbUsers);
+      }
     }
   } catch (err) {
     console.warn('Admin users Prisma query info:', err.message);
   }
 
-  // Fallback: return users from dataStore with latest signups on top
-  const sortedStoreUsers = [...usersDB];
+  // 2. Merge with In-Memory & Disk-backed usersDB
+  if (Array.isArray(usersDB)) {
+    allUsers.push(...usersDB);
+  }
+
+  // 3. Deduplicate by email & format
+  const userMap = new Map();
+  for (const u of allUsers) {
+    if (u && u.email) {
+      const emailKey = u.email.toLowerCase().trim();
+      if (!userMap.has(emailKey)) {
+        userMap.set(emailKey, {
+          id: u.id || `usr_${Date.now()}`,
+          name: u.name || (emailKey.split('@')[0]),
+          email: u.email,
+          role: u.role || 'STUDENT',
+          degree: u.degree || 'B.Tech Computer Science & Engineering (CSE)',
+          major: u.major || 'Computer Science & Engineering (CSE)',
+          university: u.university || 'Global Academy of Technology',
+          projectFocus: u.projectFocus || 'Web Dev',
+          roleTitle: u.roleTitle || (u.role === 'MENTOR' ? 'Mentor' : 'Student'),
+          avatarBg: u.avatarBg || '#2563EB',
+          createdAt: u.createdAt || u.created || new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  const finalUsers = Array.from(userMap.values());
+  finalUsers.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
   return res.status(200).json({
     success: true,
-    count: sortedStoreUsers.length,
-    source: 'Application State',
-    users: sortedStoreUsers
+    count: finalUsers.length,
+    source: allUsers.length > usersDB.length ? 'PostgreSQL Cloud Database & Persistent State' : 'Application State',
+    users: finalUsers
   });
 });
 
