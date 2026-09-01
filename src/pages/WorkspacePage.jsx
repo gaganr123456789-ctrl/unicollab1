@@ -606,7 +606,7 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                   {selectedProject?.status || 'Active Phase'}
                 </span>
 
-                <span style={{ fontSize: '11px', background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', padding: '4px 8px', borderRadius: '8px', fontWeight: 700 }}>
+                <span className="dept-tag blue" style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '8px', fontWeight: 700 }}>
                   {selectedProject?.category || 'SOFTWARE'}
                 </span>
               </div>

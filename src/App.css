@@ -2820,33 +2820,135 @@
   color: #34D399 !important;
 }
 
-/* Status Badges & Active Phase Pill High Contrast Overrides */
+/* Status Badges, Action Required & Phase Pill High Contrast System */
+.phase-badge.green,
+.phase-badge,
+.active-phase-badge,
 .badge.green,
 .status-badge.active,
-.dept-tag.green,
-.active-phase-badge {
-  background: #059669;
-  color: #FFFFFF !important;
+.dept-tag.green {
+  background: #ECFDF5;
+  color: #059669;
   font-weight: 800;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
+.dark-theme .phase-badge.green,
+.dark-theme .phase-badge,
+.dark-theme .active-phase-badge,
 .dark-theme .badge.green,
 .dark-theme .status-badge.active,
-.dark-theme .dept-tag.green,
-.dark-theme .active-phase-badge {
-  background: #059669 !important;
-  color: #FFFFFF !important;
+.dark-theme .dept-tag.green {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34D399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
   font-weight: 800 !important;
-  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.4) !important;
-  border: none !important;
+  box-shadow: none !important;
 }
 
+/* Amber / Action Required / Warning Badges */
+.badge-action-req,
+.phase-badge.amber,
+.phase-badge.warning,
+.badge.amber,
+.priority-badge.medium {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+  font-weight: 800;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dark-theme .badge-action-req,
+.dark-theme .phase-badge.amber,
+.dark-theme .phase-badge.warning,
+.dark-theme .badge.amber,
+.dark-theme .priority-badge.medium {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #FBBF24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  font-weight: 800 !important;
+}
+
+/* Red / Danger / High Priority Badges */
+.phase-badge.red,
+.phase-badge.danger,
+.badge.red,
+.priority-badge.high {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+  font-weight: 800;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dark-theme .phase-badge.red,
+.dark-theme .phase-badge.danger,
+.dark-theme .badge.red,
+.dark-theme .priority-badge.high {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #F87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.45) !important;
+  font-weight: 800 !important;
+}
+
+/* Blue / Info / Category / Software Badges */
+.phase-badge.blue,
+.badge.blue,
+.priority-badge.low,
+.cat-badge,
+.dept-tag,
+.dept-tag.blue {
+  background: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #DBEAFE;
+  font-weight: 800;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dark-theme .phase-badge.blue,
+.dark-theme .badge.blue,
+.dark-theme .priority-badge.low,
+.dark-theme .cat-badge,
 .dark-theme .dept-tag,
-.dark-theme .status-badge {
-  background: #1E293B !important;
+.dark-theme .dept-tag.blue {
+  background: rgba(59, 130, 246, 0.2) !important;
   color: #60A5FA !important;
-  border: 1px solid #334155 !important;
-  font-weight: 700 !important;
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  font-weight: 800 !important;
+}
+
+/* Purple Badges */
+.phase-badge.purple,
+.badge.purple {
+  background: #F3E8FF;
+  color: #7C3AED;
+  border: 1px solid #E9D5FF;
+  font-weight: 800;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dark-theme .phase-badge.purple,
+.dark-theme .badge.purple {
+  background: rgba(139, 92, 246, 0.2) !important;
+  color: #C084FC !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  font-weight: 800 !important;
 }
 
 /* AI Recommendation Widget */
