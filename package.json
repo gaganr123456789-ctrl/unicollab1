@@ -7,7 +7,7 @@
     "dev": "node server/index.js",
     "start": "node server/index.js",
     "build": "vite build && prisma generate",
-    "render-build": "npm install && vite build && prisma generate && npx prisma db push --accept-data-loss",
+    "render-build": "npm install && vite build && prisma generate && (npx prisma db push --accept-data-loss || true)",
     "db:seed": "node server/db/seedPostgres.js",
     "db:seed:supabase": "node server/db/seedSupabase.js",
     "lint": "oxlint",

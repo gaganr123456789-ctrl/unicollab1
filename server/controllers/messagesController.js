@@ -307,6 +307,7 @@ export const sendMessage = async (req, res) => {
   // 3. Real-time delivery via Socket.IO
   try {
     const io = req.app?.get('io') || global.io;
+    if (io) {
       // Broadcast strictly ONCE to active conversation room
       io.to(conversationId).to(`conv_${conversationId}`).emit('receive_message', newMsg);
 
