@@ -11775,6 +11775,409 @@ select,
   background: #1D4ED8 !important;
 }
 
+/* ==========================================================================
+   MASTER HIGH-CONTRAST DARK MODE GLOBAL OVERHAUL
+   ========================================================================== */
+
+/* 1. Global Shell, Sidebars & Base Layout */
+.dark-theme .app-shell,
+.dark-theme .dash-layout-main,
+.dark-theme .app-content,
+.dark-theme body {
+  background-color: #0B0F19 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .app-sidebar,
+.dark-theme .sidebar {
+  background-color: #111827 !important;
+  border-right-color: #1F2937 !important;
+}
+
+.dark-theme .sidebar-brand-text-col .sidebar-logo-text,
+.dark-theme .brand-main {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .sidebar-link {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .sidebar-link:hover {
+  background-color: #1E293B !important;
+  color: #60A5FA !important;
+}
+
+.dark-theme .sidebar-link.active {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+}
+
+.dark-theme .sidebar-bottom-nav {
+  border-top-color: #1F2937 !important;
+}
+
+/* 2. Top Header & Nav Controls */
+.dark-theme .dash-header {
+  background-color: #111827 !important;
+  border-bottom-color: #1F2937 !important;
+}
+
+.dark-theme .dash-breadcrumb {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .breadcrumb-current {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .header-search-bar input {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .header-search-bar input::placeholder {
+  color: #64748B !important;
+}
+
+.dark-theme .header-search-bar input:focus {
+  background-color: #1E293B !important;
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark-theme .icon-btn {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+  color: #94A3B8 !important;
+}
+
+.dark-theme .icon-btn:hover {
+  background-color: #334155 !important;
+  color: #60A5FA !important;
+  border-color: #3B82F6 !important;
+}
+
+.dark-theme .user-profile-badge {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+}
+
+.dark-theme .user-profile-badge:hover {
+  background-color: #334155 !important;
+  border-color: #3B82F6 !important;
+}
+
+.dark-theme .header-profile-dropdown-menu {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark-theme .dropdown-menu-item {
+  color: #CBD5E1 !important;
+}
+
+.dark-theme .dropdown-menu-item:hover {
+  background-color: #1E293B !important;
+  color: #60A5FA !important;
+}
+
+.dark-theme .dropdown-divider {
+  background-color: #1F2937 !important;
+}
+
+/* 3. Cards, Panels & Surface Modules */
+.dark-theme .card,
+.dark-theme .metric-card,
+.dark-theme .dashboard-card,
+.dark-theme .teammate-card,
+.dark-theme .project-card,
+.dark-theme .mentor-card,
+.dark-theme .hackathon-card,
+.dark-theme .resource-card,
+.dark-theme .settings-card,
+.dark-theme .profile-card,
+.dark-theme .filter-panel,
+.dark-theme .bento-card,
+.dark-theme .stat-card {
+  background-color: #111827 !important;
+  border-color: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .card:hover,
+.dark-theme .metric-card:hover,
+.dark-theme .teammate-card:hover,
+.dark-theme .project-card:hover,
+.dark-theme .mentor-card:hover,
+.dark-theme .hackathon-card:hover {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Typography Hierarchy in Dark Mode */
+.dark-theme h1,
+.dark-theme h2,
+.dark-theme h3,
+.dark-theme h4,
+.dark-theme h5,
+.dark-theme h6,
+.dark-theme .section-title,
+.dark-theme .card-title,
+.dark-theme .metric-value,
+.dark-theme .teammate-name,
+.dark-theme .mentor-name {
+  color: #F8FAFC !important;
+}
+
+.dark-theme p,
+.dark-theme .section-subtitle,
+.dark-theme .card-desc,
+.dark-theme .metric-label,
+.dark-theme .teammate-major,
+.dark-theme .mentor-company,
+.dark-theme .text-muted,
+.dark-theme .meta-text {
+  color: #94A3B8 !important;
+}
+
+/* 4. Form Controls, Inputs, Textareas & Selects */
+.dark-theme input[type="text"],
+.dark-theme input[type="email"],
+.dark-theme input[type="password"],
+.dark-theme input[type="number"],
+.dark-theme input[type="search"],
+.dark-theme textarea,
+.dark-theme select,
+.dark-theme .form-control {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme input::placeholder,
+.dark-theme textarea::placeholder {
+  color: #64748B !important;
+}
+
+.dark-theme input:focus,
+.dark-theme textarea:focus,
+.dark-theme select:focus {
+  background-color: #1E293B !important;
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  outline: none !important;
+}
+
+.dark-theme .form-label,
+.dark-theme label {
+  color: #CBD5E1 !important;
+}
+
+/* 5. Buttons & Interactive States */
+.dark-theme .btn-primary {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+}
+
+.dark-theme .btn-primary:hover {
+  background: #1D4ED8 !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.55) !important;
+}
+
+.dark-theme .btn-secondary,
+.dark-theme .btn-outline {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  color: #E2E8F0 !important;
+}
+
+.dark-theme .btn-secondary:hover,
+.dark-theme .btn-outline:hover {
+  background: #334155 !important;
+  border-color: #60A5FA !important;
+  color: #60A5FA !important;
+}
+
+/* 6. Workspace & Kanban Dark Mode */
+.dark-theme .kanban-column,
+.dark-theme .board-column {
+  background-color: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark-theme .kanban-column-header h3,
+.dark-theme .board-column-header h3 {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .task-card,
+.dark-theme .kanban-task-card {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+.dark-theme .task-card:hover {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark-theme .task-title {
+  color: #F8FAFC !important;
+}
+
+.dark-theme .task-desc {
+  color: #94A3B8 !important;
+}
+
+.dark-theme .task-meta {
+  color: #64748B !important;
+}
+
+.dark-theme .move-task-row {
+  border-top-color: #334155 !important;
+}
+
+.dark-theme .move-task-label {
+  color: #64748B !important;
+}
+
+.dark-theme .move-pill-btn {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #94A3B8 !important;
+}
+
+.dark-theme .move-pill-btn:hover {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  border-color: #2563EB !important;
+}
+
+/* 7. Status Pills, Tags & Badges */
+.dark-theme .priority-badge.high,
+.dark-theme .badge.high {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #F87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+}
+
+.dark-theme .priority-badge.medium,
+.dark-theme .badge.medium {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #FBBF24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+
+.dark-theme .priority-badge.low,
+.dark-theme .badge.low {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #60A5FA !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+}
+
+.dark-theme .skill-tag,
+.dark-theme .skill-pill,
+.dark-theme .tag-pill {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  color: #93C5FD !important;
+}
+
+/* 8. Modals & Dialogs */
+.dark-theme .modal-container,
+.dark-theme .modal-content,
+.dark-theme .dialog-box {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+
+.dark-theme .modal-header {
+  border-bottom-color: #1F2937 !important;
+}
+
+.dark-theme .modal-footer {
+  border-top-color: #1F2937 !important;
+}
+
+.dark-theme .modal-close-btn {
+  background: #1E293B !important;
+  color: #94A3B8 !important;
+  border: 1px solid #334155 !important;
+}
+
+.dark-theme .modal-close-btn:hover {
+  background: #334155 !important;
+  color: #FFFFFF !important;
+}
+
+/* 9. Admin Portal Tables & Stats */
+.dark-theme .admin-table,
+.dark-theme .data-table {
+  background-color: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark-theme .admin-table th,
+.dark-theme .data-table th {
+  background-color: #1E293B !important;
+  color: #CBD5E1 !important;
+  border-bottom-color: #334155 !important;
+}
+
+.dark-theme .admin-table td,
+.dark-theme .data-table td {
+  border-bottom-color: #1F2937 !important;
+  color: #E2E8F0 !important;
+}
+
+.dark-theme .admin-table tr:hover,
+.dark-theme .data-table tr:hover {
+  background-color: #1E293B !important;
+}
+
+/* 10. Messages & AI Assistant */
+.dark-theme .messages-sidebar,
+.dark-theme .conversations-list {
+  background-color: #111827 !important;
+  border-right-color: #1F2937 !important;
+}
+
+.dark-theme .conversation-item {
+  border-bottom-color: #1F2937 !important;
+}
+
+.dark-theme .conversation-item:hover,
+.dark-theme .conversation-item.active {
+  background-color: #1E293B !important;
+}
+
+.dark-theme .message-bubble.received,
+.dark-theme .chat-bubble.peer {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+
+.dark-theme .message-bubble.sent,
+.dark-theme .chat-bubble.user {
+  background-color: #2563EB !important;
+  color: #FFFFFF !important;
+}
+
+.dark-theme .chat-input-wrapper,
+.dark-theme .message-input-bar {
+  background-color: #111827 !important;
+  border-top-color: #1F2937 !important;
+}
+
 
 
 
