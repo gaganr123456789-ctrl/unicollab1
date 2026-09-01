@@ -9254,21 +9254,82 @@ input:checked + .toggle-slider:before {
   border-style: solid !important;
 }
 
-.dark-theme .icon-btn-micro {
-  background: #111827 !important;
-  border: 1px solid #374151 !important;
+.task-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.task-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  color: #64748B;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.task-action-btn.edit-btn:hover {
+  background: #EFF6FF;
+  color: #2563EB;
+  border-color: #BFDBFE;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+}
+
+.task-action-btn.delete-btn {
+  color: #EF4444;
+  background: #FEF2F2;
+  border-color: #FEE2E2;
+}
+
+.task-action-btn.delete-btn:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+  border-color: #FECACA;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
+}
+
+.dark-theme .task-action-btn {
+  background: #1E293B !important;
+  border-color: #334155 !important;
   color: #94A3B8 !important;
 }
 
-.dark-theme .icon-btn-micro:hover {
-  background: #374151 !important;
+.dark-theme .task-action-btn.edit-btn:hover {
+  background: #334155 !important;
   color: #60A5FA !important;
+  border-color: #3B82F6 !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
 }
 
-.dark-theme .icon-btn-micro.text-danger:hover {
-  background: rgba(239, 68, 68, 0.2) !important;
+.dark-theme .task-action-btn.delete-btn {
+  background: rgba(239, 68, 68, 0.15) !important;
   color: #F87171 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.dark-theme .task-action-btn.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #EF4444 !important;
   border-color: #EF4444 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
 }
 
 /* AI Chat Feed Match Cards */

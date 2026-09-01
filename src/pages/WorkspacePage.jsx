@@ -746,12 +746,22 @@ export default function WorkspacePage({ userProfile, onOpenChat, setCurrentPage 
                         >
                           <div className="task-card-top flex justify-between align-center">
                             <span className={`priority-badge ${t.priority.toLowerCase()}`}>{t.priority}</span>
-                            <div className="flex gap-1">
-                              <button onClick={() => openEditTaskModal(t)} className="icon-btn-micro" title="Edit task">
-                                <Edit2 size={12} />
+                            <div className="task-card-actions flex align-center gap-2">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); openEditTaskModal(t); }} 
+                                className="task-action-btn edit-btn" 
+                                title="Edit Task"
+                                aria-label="Edit Task"
+                              >
+                                <Edit2 size={13.5} />
                               </button>
-                              <button onClick={() => deleteTask(t.id)} className="icon-btn-micro text-danger" title="Delete task">
-                                <Trash2 size={12} />
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }} 
+                                className="task-action-btn delete-btn" 
+                                title="Delete Task"
+                                aria-label="Delete Task"
+                              >
+                                <Trash2 size={13.5} />
                               </button>
                             </div>
                           </div>
