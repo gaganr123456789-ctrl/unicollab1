@@ -174,7 +174,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, theme }) {
                   <input 
                     type="email" 
                     required 
-                    placeholder="e.g. gagan.r123456789@gmail.com"
+                    placeholder="e.g. alex.rivera@stanford.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     style={{

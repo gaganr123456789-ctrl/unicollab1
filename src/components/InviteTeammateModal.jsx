@@ -73,7 +73,13 @@ export default function InviteTeammateModal({ isOpen, onClose, userProfile, targ
         const myEmail = (userProfile?.email || '').toLowerCase().trim();
         const resStudents = await apiClient.getTeammates('', '', '', myEmail);
         if (resStudents.success && Array.isArray(resStudents.teammates)) {
-          setRegisteredStudents(resStudents.teammates);
+          const filteredStudents = resStudents.teammates.filter(s => {
+            const e = (s.email || '').toLowerCase().trim();
+            const n = (s.name || '').toLowerCase().trim();
+            return !e.includes('gagan') && !e.includes('renukesh') && !e.includes('charanya') &&
+                   !n.includes('gagan') && !n.includes('renukesh') && !n.includes('charanya');
+          });
+          setRegisteredStudents(filteredStudents);
         }
       } catch (e) {
         console.warn('Error loading projects/students in invite modal:', e);

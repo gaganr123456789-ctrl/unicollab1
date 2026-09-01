@@ -1249,21 +1249,68 @@
 .h-title { font-size: 32px; font-weight: 800; line-height: 1.2; margin-bottom: 12px; }
 .h-desc { font-size: 15px; color: #94A3B8; line-height: 1.6; }
 
-.countdown-box {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 24px;
-  color: #0F172A;
-  width: 320px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+/* Isolated, high-contrast countdown widget styles */
+.countdown-box-v2 {
+  background: #0F172A !important;
+  border: 1px solid #334155 !important;
+  border-radius: 18px !important;
+  padding: 20px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4) !important;
+  width: 320px !important;
+  max-width: 100% !important;
 }
 
-.countdown-label { font-size: 10px; font-weight: 800; color: #64748B; letter-spacing: 0.5px; display: block; text-align: center; margin-bottom: 12px; }
-.countdown-digits { display: flex; justify-content: space-between; text-align: center; }
-.digit-unit { display: flex; flex-direction: column; }
-.digit-unit .num { font-size: 24px; font-weight: 800; color: #2563EB; background: #EFF6FF; padding: 6px 10px; border-radius: 8px; }
-.digit-unit .label { font-size: 9px; font-weight: 800; color: #64748B; margin-top: 4px; }
+.countdown-title-v2 {
+  color: #F59E0B !important;
+  font-weight: 900 !important;
+  font-size: 11px !important;
+  letter-spacing: 1.2px !important;
+  display: block !important;
+  text-align: center !important;
+  margin-bottom: 12px !important;
+  text-transform: uppercase !important;
+}
+
+.countdown-grid-v2 {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px !important;
+}
+
+.cd-digit-card {
+  background: #1E293B !important;
+  border: 1px solid #334155 !important;
+  border-radius: 12px !important;
+  padding: 10px 4px !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.cd-digit-number {
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  color: #FFFFFF !important;
+  background: transparent !important;
+  display: block !important;
+  line-height: 1.1 !important;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+}
+
+.cd-digit-number.highlight {
+  color: #38BDF8 !important;
+}
+
+.cd-digit-label {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  color: #94A3B8 !important;
+  margin-top: 6px !important;
+  display: block !important;
+  letter-spacing: 0.5px !important;
+}
 
 .hackathon-info-bar {
   background: white;

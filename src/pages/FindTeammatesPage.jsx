@@ -151,12 +151,18 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
 
     const uniqueRawUsers = Array.from(uniqueMap.values());
 
-    // Filter out: Current User, Mentors, Admins
+    // Filter out: Current User, Mentors, Admins, and removed teammates
     const studentPeers = uniqueRawUsers.filter(u => {
       const uEmail = (u.email || '').toLowerCase().trim();
       const uName = (u.name || u.fullName || '').toLowerCase().trim();
       const uId = u.id;
       const uRole = (u.role || '').toUpperCase();
+
+      // Exclude removed accounts
+      if (uEmail.includes('gagan') || uEmail.includes('renukesh') || uEmail.includes('charanya') ||
+          uName.includes('gagan') || uName.includes('renukesh') || uName.includes('charanya')) {
+        return false;
+      }
 
       // Exclude logged in user
       if (myEmail && uEmail && uEmail === myEmail) return false;
@@ -677,7 +683,7 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
                             </div>
                           ) : inviteState === 'accepted' ? (
                             <div style={{ background: '#DEF7EC', color: '#03543F', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, border: '1px solid #BCF0DA', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                              <Check size={13} /> ✓ Joined Your Team
+                              <Check size={13} /> Invitation Accepted
                             </div>
                           ) : inviteState === 'declined' ? (
                             <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 700, border: '1px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>

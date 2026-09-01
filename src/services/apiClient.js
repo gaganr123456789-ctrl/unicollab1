@@ -9,6 +9,11 @@ const BASE_URL = import.meta.env?.VITE_API_URL
       ? 'http://localhost:5000/api'
       : `${RENDER_BACKEND_URL}/api`;
 
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('unicollab_auth_token') || localStorage.getItem('unicollab_token') || null;
+};
+
 export const apiClient = {
   // Health Check
   async getHealth() {
@@ -94,7 +99,7 @@ export const apiClient = {
 
   async updateProfile(profileData) {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_auth_token') : null;
+      const token = getAuthToken();
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -293,10 +298,8 @@ export const apiClient = {
       if (currentUserId) query.append('currentUserId', currentUserId);
 
       const headers = { 'Content-Type': 'application/json' };
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('unicollab_token');
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-      }
+      const token = getAuthToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const res = await fetch(`${BASE_URL}/teammates?${query.toString()}`, { headers });
       return await res.json();
@@ -588,7 +591,7 @@ export const apiClient = {
 
   async getMyProjects() {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const res = await fetch(`${BASE_URL}/projects/user/me`, {
         headers: {
           'Content-Type': 'application/json',
@@ -607,7 +610,7 @@ export const apiClient = {
 
   async createProject(projectData) {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const res = await fetch(`${BASE_URL}/projects`, {
         method: 'POST',
         headers: { 
@@ -658,7 +661,7 @@ export const apiClient = {
   // Invites & Notifications APIs
   async sendInvite(payload) {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const res = await fetch(`${BASE_URL}/invites`, {
         method: 'POST',
         headers: { 
@@ -680,7 +683,7 @@ export const apiClient = {
 
   async getInvites(userId, email) {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const query = new URLSearchParams();
       if (userId) query.append('userId', userId);
       if (email) query.append('email', email);
@@ -698,7 +701,7 @@ export const apiClient = {
 
   async getInviteDetails(inviteId) {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const res = await fetch(`${BASE_URL}/invites/${inviteId}`, {
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -712,7 +715,7 @@ export const apiClient = {
 
   async getSentInvites(senderId = 'user_current') {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const res = await fetch(`${BASE_URL}/invites/sent?senderId=${senderId}`, {
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -726,7 +729,7 @@ export const apiClient = {
 
   async respondInvite(inviteId, action, responderName = 'Student User', responderEmail = '', responderId = '') {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('unicollab_token') : null;
+      const token = getAuthToken();
       const res = await fetch(`${BASE_URL}/invites/${inviteId}/respond`, {
         method: 'POST',
         headers: { 

@@ -234,32 +234,55 @@ export default function HackathonHubPage({ setCurrentPage, userProfile, theme })
         </div>
 
         {/* Floating Countdown Box */}
-        <div className="countdown-box" style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '18px', padding: '20px' }}>
-          <span className="countdown-label" style={{ color: '#F59E0B', fontWeight: 800, fontSize: '11px', letterSpacing: '1px' }}>
+        <div className="countdown-box-v2" style={{ background: '#0F172A', border: '1px solid #334155', borderRadius: '18px', padding: '20px', boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)', width: '320px', maxWidth: '100%' }}>
+          <span className="countdown-title-v2" style={{ color: '#F59E0B', fontWeight: 900, fontSize: '11px', letterSpacing: '1.2px', display: 'block', textAlign: 'center', marginBottom: '12px', textTransform: 'uppercase' }}>
             REGISTRATION CLOSES IN
           </span>
-          <div className="countdown-digits" style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
-              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.days).padStart(2, '0')}</span>
-              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>DAYS</span>
+          <div className="countdown-grid-v2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+            {/* DAYS */}
+            <div className="cd-digit-card" style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '10px 4px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="cd-digit-number" style={{ fontSize: '24px', fontWeight: 900, color: '#FFFFFF', background: 'transparent', display: 'block', lineHeight: 1.1, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                {String(countdown.days).padStart(2, '0')}
+              </span>
+              <span className="cd-digit-label" style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 800, marginTop: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                DAYS
+              </span>
             </div>
-            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
-              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.hours).padStart(2, '0')}</span>
-              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>HOURS</span>
+
+            {/* HOURS */}
+            <div className="cd-digit-card" style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '10px 4px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="cd-digit-number" style={{ fontSize: '24px', fontWeight: 900, color: '#FFFFFF', background: 'transparent', display: 'block', lineHeight: 1.1, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                {String(countdown.hours).padStart(2, '0')}
+              </span>
+              <span className="cd-digit-label" style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 800, marginTop: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                HOURS
+              </span>
             </div>
-            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
-              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.mins).padStart(2, '0')}</span>
-              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>MINS</span>
+
+            {/* MINS */}
+            <div className="cd-digit-card" style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '10px 4px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="cd-digit-number" style={{ fontSize: '24px', fontWeight: 900, color: '#FFFFFF', background: 'transparent', display: 'block', lineHeight: 1.1, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                {String(countdown.mins).padStart(2, '0')}
+              </span>
+              <span className="cd-digit-label" style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 800, marginTop: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                MINS
+              </span>
             </div>
-            <div className="digit-unit" style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '54px' }}>
-              <span className="num" style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', display: 'block' }}>{String(countdown.secs).padStart(2, '0')}</span>
-              <span className="label" style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>SECS</span>
+
+            {/* SECS */}
+            <div className="cd-digit-card" style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '10px 4px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="cd-digit-number highlight" style={{ fontSize: '24px', fontWeight: 900, color: '#38BDF8', background: 'transparent', display: 'block', lineHeight: 1.1, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                {String(countdown.secs).padStart(2, '0')}
+              </span>
+              <span className="cd-digit-label" style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 800, marginTop: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                SECS
+              </span>
             </div>
           </div>
 
-          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#CBD5E1' }}>
-            <span>Prize Pool:</span>
-            <strong style={{ color: '#F59E0B' }}>{featuredHackathon.prizePool || '$25,000 USD'}</strong>
+          <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#94A3B8' }}>
+            <span style={{ fontWeight: 600 }}>Prize Pool:</span>
+            <strong style={{ color: '#F59E0B', fontSize: '14px', fontWeight: 900 }}>{featuredHackathon.prizePool || '$25,000 USD'}</strong>
           </div>
         </div>
       </div>

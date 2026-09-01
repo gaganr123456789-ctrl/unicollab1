@@ -10,49 +10,29 @@ const PERSISTENT_USERS_FILE = path.join(__dirname, 'persistentUsers.json');
 // Verified Base Seed Users (Always available across reboots)
 export const initialSeedUsers = [
   {
-    id: 'usr_gagan',
-    name: 'Gagan R',
-    email: 'gagan.r123456789@gmail.com',
+    id: 'usr_alex',
+    name: 'Alex Rivera',
+    email: 'alex.rivera@stanford.edu',
     password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW', // hashed 'admin123'
     role: 'STUDENT',
-    university: 'Global Academy of Technology',
-    major: 'Electronics & Communication (ECE)',
-    degree: 'B.Tech Electronics & Communication (ECE)',
-    projectFocus: 'Full-Stack Web Dev & AI',
-    roleTitle: 'Student Lead',
+    university: 'Stanford University',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'Full-Stack Web Dev & AI Systems',
+    roleTitle: 'Student Developer',
     skills: ['React', 'Node.js', 'PostgreSQL', 'Socket.IO', 'TypeScript', 'Python'],
     avatarBg: '#2563EB',
-    bio: 'Full Stack Engineer & AI Systems builder at Global Academy of Technology. Passionate about real-time collaborative architectures.',
+    bio: 'Full Stack Engineer & AI Systems builder at Stanford University. Passionate about real-time collaborative architectures.',
     age: 21,
-    phone: '+91 98765 43210',
+    phone: '+1 650 555 0192',
     gender: 'Male',
     createdAt: '2026-08-01T10:00:00.000Z',
     created: '2026-08-01T10:00:00.000Z'
   },
   {
-    id: 'usr_renukesh78',
-    name: 'Renukesh',
-    email: 'renukesh78@gmail.com',
-    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
-    role: 'STUDENT',
-    university: 'Global Academy of Technology',
-    major: 'Computer Science & Engineering (CSE)',
-    degree: 'B.Tech Computer Science & Engineering (CSE)',
-    projectFocus: 'Cloud Infrastructure & Security',
-    roleTitle: 'Student Developer',
-    skills: ['Python', 'Docker', 'Kubernetes', 'AWS', 'PostgreSQL', 'FastAPI'],
-    avatarBg: '#059669',
-    bio: 'Cloud architecture enthusiast focusing on microservices, serverless deployments, and secure distributed backend systems.',
-    age: 21,
-    phone: '+91 98451 23456',
-    gender: 'Male',
-    createdAt: '2026-08-05T11:30:00.000Z',
-    created: '2026-08-05T11:30:00.000Z'
-  },
-  {
-    id: 'usr_charanya',
-    name: 'Charanya Jaganath',
-    email: 'charanyajagannath0982@gmail.com',
+    id: 'usr_priya',
+    name: 'Priya Sundaram',
+    email: 'priya.sundaram@stanford.edu',
     password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
     role: 'STUDENT',
     university: 'Stanford University',
@@ -64,10 +44,10 @@ export const initialSeedUsers = [
     avatarBg: '#7C3AED',
     bio: 'AI researcher working on multimodal LLMs, agentic reasoning loops, and prompt engineering algorithms.',
     age: 21,
-    phone: '+91 97312 34567',
+    phone: '+1 650 555 0184',
     gender: 'Female',
-    createdAt: '2026-08-10T14:15:00.000Z',
-    created: '2026-08-10T14:15:00.000Z'
+    createdAt: '2026-08-05T11:30:00.000Z',
+    created: '2026-08-05T11:30:00.000Z'
   },
   {
     id: 'usr_saash',
@@ -130,44 +110,24 @@ export const initialSeedUsers = [
     created: '2026-08-16T12:20:00.000Z'
   },
   {
-    id: 'usr_renukesh_alt',
-    name: 'Renukesh',
-    email: 'renukesh@gmail.com',
+    id: 'usr_sarah',
+    name: 'Sarah Chen',
+    email: 'sarah.chen@stanford.edu',
     password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
     role: 'STUDENT',
-    university: 'Global Academy of Technology',
+    university: 'Stanford University',
     major: 'Computer Science & Engineering (CSE)',
     degree: 'B.Tech Computer Science & Engineering (CSE)',
     projectFocus: 'Cloud Infrastructure & Security',
-    roleTitle: 'Student Developer',
+    roleTitle: 'Backend Engineer',
     skills: ['Python', 'Docker', 'AWS', 'PostgreSQL', 'FastAPI'],
     avatarBg: '#059669',
     bio: 'Cloud architecture enthusiast focusing on microservices and distributed backend systems.',
     age: 21,
-    phone: '+91 98451 23456',
-    gender: 'Male',
+    phone: '+1 650 555 0177',
+    gender: 'Female',
     createdAt: '2026-08-18T10:00:00.000Z',
     created: '2026-08-18T10:00:00.000Z'
-  },
-  {
-    id: 'usr_gagan_alt',
-    name: 'Gagan R',
-    email: 'gagan@gmail.com',
-    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
-    role: 'STUDENT',
-    university: 'Global Academy of Technology',
-    major: 'Electronics & Communication (ECE)',
-    degree: 'B.Tech Electronics & Communication (ECE)',
-    projectFocus: 'Full-Stack Web Dev & AI',
-    roleTitle: 'Student Lead',
-    skills: ['React', 'Node.js', 'PostgreSQL', 'Socket.IO', 'TypeScript'],
-    avatarBg: '#2563EB',
-    bio: 'Full Stack Engineer & AI Systems builder at Global Academy of Technology.',
-    age: 21,
-    phone: '+91 98765 43210',
-    gender: 'Male',
-    createdAt: '2026-08-20T08:00:00.000Z',
-    created: '2026-08-20T08:00:00.000Z'
   }
 ];
 
@@ -193,7 +153,13 @@ const loadPersistentUsers = () => {
   // Overlay disk users (latest modifications take precedence)
   for (const u of diskUsers) {
     if (u && u.email) {
-      map.set(u.email.toLowerCase().trim(), u);
+      const emailLower = u.email.toLowerCase().trim();
+      const nameLower = (u.name || '').toLowerCase().trim();
+      if (emailLower.includes('gagan') || emailLower.includes('renukesh') || emailLower.includes('charanya') ||
+          nameLower.includes('gagan') || nameLower.includes('renukesh') || nameLower.includes('charanya')) {
+        continue;
+      }
+      map.set(emailLower, u);
     }
   }
   return Array.from(map.values());
@@ -454,11 +420,11 @@ export const hackathonRegistrationsDB = [
     teamName: 'Team Code Morphicx',
     teamDetails: '4 Members • AI/ML & Full-Stack Platform',
     membersCount: 4,
-    studentName: 'Gagan R',
-    email: 'gagan.r123456789@gmail.com',
-    mobileNumber: '+91 98765 43210',
-    collegeName: 'The National Institute of Engineering (NIE)',
-    usn: '4NI21CS042',
+    studentName: 'Alex Rivera',
+    email: 'alex.rivera@stanford.edu',
+    mobileNumber: '+1 650 555 0192',
+    collegeName: 'Stanford University',
+    usn: 'STAN21CS042',
     status: 'CONFIRMED',
     registeredAt: new Date().toISOString(),
     createdAt: new Date().toISOString()

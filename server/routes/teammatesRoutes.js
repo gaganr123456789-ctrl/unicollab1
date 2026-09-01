@@ -147,7 +147,15 @@ router.get('/', async (req, res) => {
     }
   });
 
-  let results = Array.from(mergedMap.values());
+  let results = Array.from(mergedMap.values()).filter(t => {
+    const email = (t.email || '').toLowerCase().trim();
+    const name = (t.name || '').toLowerCase().trim();
+    if (email.includes('gagan') || email.includes('renukesh') || email.includes('charanya') ||
+        name.includes('gagan') || name.includes('renukesh') || name.includes('charanya')) {
+      return false;
+    }
+    return true;
+  });
 
   // Strictly filter out the current logged-in user from candidate results
   if (currentUserEmail) {
