@@ -1,0 +1,148 @@
+[
+  {
+    "id": "proj_1",
+    "title": "EcoTrack: Sustainability Platform",
+    "category": "SOFTWARE",
+    "level": "INTERMEDIATE",
+    "desc": "A platform to help university campuses track and reduce their carbon footprint through IoT smart sensors.",
+    "description": "A platform to help university campuses track and reduce their carbon footprint through IoT smart sensors.",
+    "tags": [
+      "React",
+      "Node.js",
+      "IoT"
+    ],
+    "commitment": "8-10 hrs/week",
+    "spots": "2/5 spots left",
+    "lead": "Sarah Chen",
+    "status": "Active",
+    "createdAt": "2026-08-01T10:00:00.000Z"
+  },
+  {
+    "id": "proj_2",
+    "title": "AI Ethics & Algorithmic Bias Research",
+    "category": "RESEARCH",
+    "level": "ADVANCED",
+    "desc": "Conducting a deep dive into social media algorithms to identify and mitigate bias in automated recommendation feeds.",
+    "description": "Conducting a deep dive into social media algorithms to identify and mitigate bias in automated recommendation feeds.",
+    "tags": [
+      "Python",
+      "Ethics",
+      "ML"
+    ],
+    "commitment": "5-7 hrs/week",
+    "spots": "1/3 spots left",
+    "lead": "Dr. Ananya Sharma",
+    "status": "Active",
+    "createdAt": "2026-08-05T11:00:00.000Z"
+  },
+  {
+    "id": "proj_3",
+    "title": "UniVibe: Campus Social Network",
+    "category": "DESIGN",
+    "level": "BEGINNER",
+    "desc": "Reimagining the branding and UI design for the Student Union, including a full mobile UI kit for upcoming events.",
+    "description": "Reimagining the branding and UI design for the Student Union, including a full mobile UI kit for upcoming events.",
+    "tags": [
+      "Figma",
+      "Branding",
+      "UI/UX"
+    ],
+    "commitment": "4-6 hrs/week",
+    "spots": "3/4 spots left",
+    "lead": "saash",
+    "status": "Active",
+    "createdAt": "2026-08-10T09:00:00.000Z"
+  },
+  {
+    "id": "proj_4",
+    "title": "Lunar Rover Vision System",
+    "category": "ENGINEERING",
+    "level": "ADVANCED",
+    "desc": "Developing a computer vision module for a small-scale rover prototype to navigate rocky terrain autonomously.",
+    "description": "Developing a computer vision module for a small-scale rover prototype to navigate rocky terrain autonomously.",
+    "tags": [
+      "C++",
+      "OpenCV",
+      "Robotics"
+    ],
+    "commitment": "12-15 hrs/week",
+    "spots": "1/6 spots left",
+    "lead": "Bhuvan",
+    "status": "Active",
+    "createdAt": "2026-08-12T14:00:00.000Z"
+  },
+  {
+    "id": "proj_5",
+    "title": "Student Wellness Mobile Assistant",
+    "category": "SOFTWARE",
+    "level": "INTERMEDIATE",
+    "desc": "Creating a Flutter-based app focused on mental health tracking and peer-to-peer counseling support groups.",
+    "description": "Creating a Flutter-based app focused on mental health tracking and peer-to-peer counseling support groups.",
+    "tags": [
+      "Flutter",
+      "Firebase",
+      "Design"
+    ],
+    "commitment": "10 hrs/week",
+    "spots": "2/4 spots left",
+    "lead": "Charanya Jaganath",
+    "status": "Active",
+    "createdAt": "2026-08-15T16:00:00.000Z"
+  },
+  {
+    "id": "proj_6",
+    "title": "Blockchain for Academic Credential Verification",
+    "category": "RESEARCH",
+    "level": "ADVANCED",
+    "desc": "Exploring the use of smart contracts to verify and store student credentials securely on the decentralized network.",
+    "description": "Exploring the use of smart contracts to verify and store student credentials securely on the decentralized network.",
+    "tags": [
+      "Solidity",
+      "Web3",
+      "Research"
+    ],
+    "commitment": "8 hrs/week",
+    "spots": "2/2 spots left",
+    "lead": "Pranav",
+    "status": "Active",
+    "createdAt": "2026-08-18T10:00:00.000Z"
+  },
+  {
+    "id": "proj_7",
+    "title": "Autonomous Drone Delivery Platform",
+    "category": "ENGINEERING",
+    "level": "ADVANCED",
+    "desc": "Building a multi-rotor autonomous drone with ROS 2 and OpenCV for automated micro-deliveries between campus academic buildings.",
+    "description": "Building a multi-rotor autonomous drone with ROS 2 and OpenCV for automated micro-deliveries between campus academic buildings.",
+    "tags": [
+      "ROS 2",
+      "Python",
+      "Robotics",
+      "Hardware"
+    ],
+    "commitment": "10-14 hrs/week",
+    "spots": "2/5 spots left",
+    "lead": "Renukesh",
+    "status": "Active",
+    "createdAt": "2026-08-20T12:00:00.000Z"
+  },
+  {
+    "id": "proj_8",
+    "title": "Real-Time Full-Stack Collaboration Hub",
+    "category": "SOFTWARE",
+    "level": "INTERMEDIATE",
+    "desc": "Developing a real-time web platform enabling university students to assemble capstone teams and chat live.",
+    "description": "Developing a real-time web platform enabling university students to assemble capstone teams and chat live.",
+    "tags": [
+      "React",
+      "Node.js",
+      "Socket.IO",
+      "PostgreSQL"
+    ],
+    "commitment": "8-10 hrs/week",
+    "spots": "3 spots left",
+    "lead": "Gagan R",
+    "status": "Active",
+    "createdAt": "2026-08-22T08:00:00.000Z"
+  }
+]

@@ -14,12 +14,33 @@ import {
   Layers
 } from 'lucide-react';
 
-export default function ProjectDetailModal({ project, isOpen, onClose, setCurrentPage, userProfile }) {
+export default function ProjectDetailModal({ project, isOpen, onClose, setCurrentPage, userProfile, onStatusChange }) {
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
   const [applyMessage, setApplyMessage] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(project?.status || 'Active');
 
   if (!isOpen || !project) return null;
+
+  const isOwner = userProfile && (
+    (project.ownerId && project.ownerId === userProfile.id) ||
+    (project.ownerEmail && project.ownerEmail.toLowerCase() === userProfile.email?.toLowerCase()) ||
+    (project.lead && userProfile.name && project.lead.toLowerCase() === userProfile.name.toLowerCase())
+  );
+
+  const handleToggleStatus = async () => {
+    const nextStatus = currentStatus === 'Completed' ? 'Active' : 'Completed';
+    setStatusUpdating(true);
+    try {
+      await apiClient.updateProject(project.id, { status: nextStatus });
+      setCurrentStatus(nextStatus);
+      if (onStatusChange) {
+        onStatusChange(project.id, nextStatus);
+      }
+    } catch (e) {}
+    setStatusUpdating(false);
+  };
 
   const handleApply = async () => {
     setApplying(true);
@@ -48,9 +69,38 @@ export default function ProjectDetailModal({ project, isOpen, onClose, setCurren
               <Folder size={22} />
             </div>
             <div>
-              <div className="badge-tags mb-1" style={{ display: 'flex', gap: '6px' }}>
+              <div className="badge-tags mb-1" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <span className="cat-badge">{project.category || 'SOFTWARE'}</span>
                 <span className="level-badge">{project.level || 'INTERMEDIATE'}</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  background: currentStatus === 'Completed' ? '#DCFCE7' : '#EFF6FF',
+                  color: currentStatus === 'Completed' ? '#16A34A' : '#2563EB',
+                  border: `1px solid ${currentStatus === 'Completed' ? '#86EFAC' : '#BFDBFE'}`
+                }}>
+                  {currentStatus === 'Completed' ? '✓ Completed' : '● Active Project'}
+                </span>
+                {isOwner && (
+                  <button
+                    onClick={handleToggleStatus}
+                    disabled={statusUpdating}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: '8px',
+                      background: currentStatus === 'Completed' ? '#F1F5F9' : '#FEF3C7',
+                      color: currentStatus === 'Completed' ? '#475569' : '#D97706',
+                      border: '1px solid #CBD5E1',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {statusUpdating ? 'Updating...' : currentStatus === 'Completed' ? 'Reopen Project' : 'Mark as Completed'}
+                  </button>
+                )}
               </div>
               <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#0F172A' }}>{project.title}</h2>
             </div>

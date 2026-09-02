@@ -1,4 +1,4 @@
-import { projectsDB } from '../db/dataStore.js';
+import { projectsDB, saveProjectRecord, deleteProjectRecord } from '../db/dataStore.js';
 
 let prismaInstance = null;
 const getPrisma = async () => {
@@ -219,7 +219,7 @@ export const createProject = async (req, res) => {
   };
 
   const finalProject = createdProject || fallbackProj;
-  projectsDB.unshift(finalProject);
+  saveProjectRecord(finalProject);
 
   // Broadcast Socket.io event for live real-time UI updates across all clients
   try {
@@ -254,6 +254,7 @@ export const updateProject = async (req, res) => {
           ...(status ? { status } : {})
         }
       });
+      saveProjectRecord(updated);
       return res.status(200).json({ success: true, message: 'Project updated successfully.', project: updated });
     }
   } catch (err) {
@@ -270,6 +271,7 @@ export const updateProject = async (req, res) => {
   if (category) projectsDB[idx].category = category;
   if (status) projectsDB[idx].status = status;
 
+  saveProjectRecord(projectsDB[idx]);
   return res.status(200).json({ success: true, message: 'Project updated successfully.', project: projectsDB[idx] });
 };
 
@@ -281,17 +283,13 @@ export const deleteProject = async (req, res) => {
     const prisma = await getPrisma();
     if (prisma) {
       await prisma.project.delete({ where: { id: projectId } });
+      deleteProjectRecord(projectId);
       return res.status(200).json({ success: true, message: 'Project deleted successfully.' });
     }
   } catch (err) {
     console.warn('Prisma deleteProject fallback:', err.message);
   }
 
-  const idx = projectsDB.findIndex(p => p.id === Number(projectId) || p.id === projectId);
-  if (idx === -1) {
-    return res.status(404).json({ success: false, message: 'Project not found.' });
-  }
-
-  projectsDB.splice(idx, 1);
+  deleteProjectRecord(projectId);
   return res.status(200).json({ success: true, message: 'Project deleted successfully.' });
 };

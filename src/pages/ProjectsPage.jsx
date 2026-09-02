@@ -212,19 +212,31 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
     });
   };
 
-  const categories = ['All Projects', 'Data & Research', 'Robotics'];
+  const categories = ['All Projects', 'Active', 'Completed', 'Software', 'Data & Research', 'Robotics'];
 
   const filteredProjects = (projectsList || []).filter(p => {
-    const matchesSearch = searchQuery === '' || 
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+    const pTitle = (p.title || '').toLowerCase();
+    const pDesc = (p.desc || p.description || '').toLowerCase();
+    const pTags = Array.isArray(p.tags) 
+      ? p.tags 
+      : typeof p.tags === 'string' 
+        ? p.tags.split(',') 
+        : [];
+    const q = searchQuery.toLowerCase().trim();
+
+    const matchesSearch = !q || 
+      pTitle.includes(q) ||
+      pDesc.includes(q) ||
+      pTags.some(t => String(t).toLowerCase().includes(q));
 
     if (!matchesSearch) return false;
 
     if (selectedFilter === 'All Projects') return true;
+    if (selectedFilter === 'Active') return p.status !== 'Completed';
+    if (selectedFilter === 'Completed') return p.status === 'Completed';
+    if (selectedFilter === 'Software') return p.category === 'SOFTWARE';
     if (selectedFilter === 'Data & Research') return p.category === 'RESEARCH';
-    if (selectedFilter === 'Robotics') return p.tags.includes('Robotics') || p.tags.includes('IoT');
+    if (selectedFilter === 'Robotics') return p.category === 'ENGINEERING' || pTags.some(t => String(t).toLowerCase().includes('robotics') || String(t).toLowerCase().includes('iot'));
     return true;
   });
 
@@ -236,6 +248,10 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
     } else {
       setVisibleCount(6);
     }
+  };
+
+  const handleProjectStatusChange = (projId, newStatus) => {
+    setProjectsList(prev => prev.map(p => (p.id === projId ? { ...p, status: newStatus } : p)));
   };
 
   return (
@@ -315,48 +331,68 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
 
       {/* Projects Grid */}
       <div className="projects-grid mt-4">
-        {displayedProjects.map((p) => (
-          <div key={p.id} className="project-card" style={{ cursor: 'pointer' }} onClick={() => setSelectedProject(p)}>
-            <div className="project-card-top">
-              <div className="badge-tags">
-                <span className="cat-badge">{p.category}</span>
-                <span className="level-badge">{p.level}</span>
+        {displayedProjects.map((p) => {
+          const tagsArray = Array.isArray(p.tags) 
+            ? p.tags 
+            : typeof p.tags === 'string' 
+              ? p.tags.split(',') 
+              : [];
+          const isCompleted = p.status === 'Completed';
+
+          return (
+            <div key={p.id} className={`project-card ${isCompleted ? 'project-completed' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSelectedProject(p)}>
+              <div className="project-card-top">
+                <div className="badge-tags">
+                  <span className="cat-badge">{p.category || 'SOFTWARE'}</span>
+                  <span className="level-badge">{p.level || 'INTERMEDIATE'}</span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: isCompleted ? '#DCFCE7' : '#EFF6FF',
+                    color: isCompleted ? '#16A34A' : '#2563EB',
+                    border: `1px solid ${isCompleted ? '#86EFAC' : '#BFDBFE'}`
+                  }}>
+                    {isCompleted ? '✓ Completed' : '● Active'}
+                  </span>
+                </div>
+                <button className="star-btn" onClick={(e) => e.stopPropagation()}><Star size={16} /></button>
               </div>
-              <button className="star-btn" onClick={(e) => e.stopPropagation()}><Star size={16} /></button>
-            </div>
 
-            <div className="project-card-placeholder-img">
-              <div className="media-art-icon">🏞️</div>
-            </div>
+              <div className="project-card-placeholder-img">
+                <div className="media-art-icon">{isCompleted ? '🏆' : '🏞️'}</div>
+              </div>
 
-            <h3 className="project-title">{p.title}</h3>
-            <p className="project-desc">{p.desc}</p>
+              <h3 className="project-title">{p.title}</h3>
+              <p className="project-desc">{p.desc || p.description}</p>
 
-            <div className="tag-pills">
-              {p.tags.map((t, idx) => (
-                <span key={idx} className="tag-pill">{t}</span>
-              ))}
-            </div>
+              <div className="tag-pills">
+                {tagsArray.map((t, idx) => (
+                  <span key={idx} className="tag-pill">{String(t).trim()}</span>
+                ))}
+              </div>
 
-            <div className="project-meta-row">
-              <span><Clock size={13} /> {p.commitment}</span>
-              <span><Users size={13} /> {p.spots}</span>
-            </div>
+              <div className="project-meta-row">
+                <span><Clock size={13} /> {p.commitment || '6-8 hrs/week'}</span>
+                <span><Users size={13} /> {p.spots || '3 spots left'}</span>
+              </div>
 
-            <div className="project-card-footer">
-              <span className="lead-name">{p.lead}</span>
-              <button 
-                className="btn-join-project"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedProject(p);
-                }}
-              >
-                View Details & Join
-              </button>
+              <div className="project-card-footer">
+                <span className="lead-name">{p.lead || p.author || 'Team Lead'}</span>
+                <button 
+                  className="btn-join-project"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedProject(p);
+                  }}
+                >
+                  {isCompleted ? 'View Showcase' : 'View Details & Join'}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Load More Centered Button */}
@@ -373,6 +409,7 @@ export default function ProjectsPage({ setCurrentPage, userProfile }) {
         onClose={() => setSelectedProject(null)}
         setCurrentPage={setCurrentPage}
         userProfile={userProfile}
+        onStatusChange={handleProjectStatusChange}
       />
 
       {/* Create Project Modal */}
