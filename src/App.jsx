@@ -15,6 +15,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import SettingsPage from './pages/SettingsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AdminPage from './pages/AdminPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 import GlobalAiChatbotWidget from './components/GlobalAiChatbotWidget';
 import BottomNav from './components/BottomNav';
 import Toast from './components/Toast';
@@ -46,6 +47,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [theme, setTheme] = useState('light');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [userProfile, setUserProfileState] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -185,7 +187,7 @@ export default function App() {
   const isInnerPage = [
     'dashboard', 'find-teammates', 'projects', 'mentor-portal', 
     'workspace', 'ai-assistant', 'resource-library', 'hackathons', 
-    'messages', 'profile', 'settings', 'notifications'
+    'messages', 'profile', 'settings', 'notifications', 'search', 'search-results'
   ].includes(currentPage);
 
   // Authentication Guard:
@@ -221,6 +223,8 @@ export default function App() {
             setTheme={setTheme}
             isMobileNavOpen={isMobileNavOpen}
             onToggleMobileNav={() => setIsMobileNavOpen(!isMobileNavOpen)}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
           />
           
           {currentPage === 'dashboard' && (
@@ -271,6 +275,15 @@ export default function App() {
           {currentPage === 'notifications' && (
             <NotificationsPage 
               setCurrentPage={setCurrentPage} 
+              userProfile={userProfile}
+            />
+          )}
+          {(currentPage === 'search' || currentPage === 'search-results') && (
+            <SearchResultsPage 
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              setCurrentPage={setCurrentPage}
+              onOpenChat={handleOpenChat}
               userProfile={userProfile}
             />
           )}

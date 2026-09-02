@@ -53,6 +53,7 @@ import invitesRoutes from './routes/invitesRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
 import connectionsRoutes from './routes/connectionsRoutes.js';
 import teamsRoutes from './routes/teamsRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -71,6 +72,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/invites', invitesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/teams', teamsRoutes);
+app.use('/api/search', searchRoutes);
 
 // --------------------------------------------------------------------------
 // 4. Centralized Error Handling & Prisma Error Translation Middleware

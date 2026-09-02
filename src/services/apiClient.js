@@ -135,6 +135,34 @@ export const apiClient = {
     }
   },
 
+  // Global Multi-Entity Search API
+  async globalSearch(query, type = 'all') {
+    const trimmed = (query || '').trim();
+    if (!trimmed) {
+      return {
+        success: true,
+        query: '',
+        total: 0,
+        results: [],
+        grouped: { students: [], projects: [], hackathons: [], mentors: [] }
+      };
+    }
+    try {
+      const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(trimmed)}&type=${encodeURIComponent(type)}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('Global search network warning:', err);
+      return {
+        success: false,
+        query: trimmed,
+        total: 0,
+        results: [],
+        grouped: { students: [], projects: [], hackathons: [], mentors: [] },
+        error: err.message
+      };
+    }
+  },
+
   async updateProfile(profileData) {
     try {
       const token = getAuthToken();
