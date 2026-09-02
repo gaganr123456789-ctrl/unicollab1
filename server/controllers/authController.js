@@ -157,12 +157,13 @@ export const signup = async (req, res) => {
       const token = generateToken({ id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role });
       const { password: _, ...userWithoutPassword } = newUser;
 
-      // Broadcast Socket.io event for real-time Admin Portal update
+      // Broadcast Socket.io event for real-time Admin Portal & Teammates Directory update
       try {
         const io = req.app?.get('io') || global.io;
         if (io) {
           io.to('admin_room').emit('admin:newUser', userWithoutPassword);
           io.emit('admin:newUser', userWithoutPassword);
+          io.emit('teammate:newUser', userWithoutPassword);
         }
       } catch (e) {
         console.warn('Socket broadcast warning:', e);
@@ -220,12 +221,13 @@ export const signup = async (req, res) => {
   const token = generateToken({ id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role });
   const { password: _, ...userPayload } = newUser;
 
-  // Broadcast Socket.io event for real-time Admin Portal update
+  // Broadcast Socket.io event for real-time Admin Portal & Teammates Directory update
   try {
     const io = req.app?.get('io') || global.io;
     if (io) {
       io.to('admin_room').emit('admin:newUser', userPayload);
       io.emit('admin:newUser', userPayload);
+      io.emit('teammate:newUser', userPayload);
     }
   } catch (e) {
     console.warn('Socket broadcast warning:', e);

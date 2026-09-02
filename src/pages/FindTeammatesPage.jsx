@@ -151,23 +151,15 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
 
     const uniqueRawUsers = Array.from(uniqueMap.values());
 
-    // Filter out: Current User, Mentors, Admins, and removed teammates
+    // Filter out: Current Logged-in User, Mentors, and Admins
     const studentPeers = uniqueRawUsers.filter(u => {
       const uEmail = (u.email || '').toLowerCase().trim();
-      const uName = (u.name || u.fullName || '').toLowerCase().trim();
       const uId = u.id;
       const uRole = (u.role || '').toUpperCase();
 
-      // Exclude removed accounts
-      if (uEmail.includes('gagan') || uEmail.includes('renukesh') || uEmail.includes('charanya') ||
-          uName.includes('gagan') || uName.includes('renukesh') || uName.includes('charanya')) {
-        return false;
-      }
-
-      // Exclude logged in user
+      // Exclude logged in user strictly by unique identifier (email or id)
       if (myEmail && uEmail && uEmail === myEmail) return false;
       if (myId && uId && String(uId) === String(myId)) return false;
-      if (myName && uName && uName === myName) return false;
 
       // Exclude Admin & Mentor accounts from teammates (Mentors belong in Mentor Portal)
       if (uRole === 'ADMIN' || uRole === 'MENTOR') return false;
@@ -247,6 +239,8 @@ export default function FindTeammatesPage({ onOpenChat, userProfile }) {
     unsubs.push(socketService.on('connection:update', () => fetchConnections()));
     unsubs.push(socketService.on('invite:received', () => fetchConnections()));
     unsubs.push(socketService.on('invite:updated', () => fetchConnections()));
+    unsubs.push(socketService.on('teammate:newUser', () => loadRegisteredTeammates()));
+    unsubs.push(socketService.on('admin:newUser', () => loadRegisteredTeammates()));
 
     return () => {
       unsubs.forEach(u => u && u());

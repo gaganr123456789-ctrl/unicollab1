@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PERSISTENT_USERS_FILE = path.join(__dirname, 'persistentUsers.json');
 
-// Verified Base Seed Users (Always available across reboots)
+// Verified Base Seed Users (Always available across reboots - 16+ eligible student profiles)
 export const initialSeedUsers = [
   {
     id: 'usr_alex',
@@ -128,6 +128,206 @@ export const initialSeedUsers = [
     gender: 'Female',
     createdAt: '2026-08-18T10:00:00.000Z',
     created: '2026-08-18T10:00:00.000Z'
+  },
+  {
+    id: 'usr_rohan',
+    name: 'Rohan Mehta',
+    email: 'rohan.mehta@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Electronics & Communication Engineering (ECE)',
+    degree: 'B.Tech Electronics & Communication Engineering (ECE)',
+    projectFocus: 'VLSI & Edge Computing Hardware',
+    roleTitle: 'Hardware Specialist',
+    skills: ['Embedded Systems', 'VLSI Design', 'Verilog', 'C++', 'IoT', 'MATLAB'],
+    avatarBg: '#4F46E5',
+    bio: 'Specializing in FPGA synthesis, RISC-V architectures, and edge AI compute chips for embedded applications.',
+    age: 22,
+    phone: '+1 650 555 0188',
+    gender: 'Male',
+    createdAt: '2026-08-19T08:15:00.000Z',
+    created: '2026-08-19T08:15:00.000Z'
+  },
+  {
+    id: 'usr_ananya_d',
+    name: 'Ananya Deshmukh',
+    email: 'ananya.d@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Data Science & Analytics',
+    degree: 'B.Tech Data Science & Analytics',
+    projectFocus: 'Predictive Modeling & Big Data',
+    roleTitle: 'Data Scientist',
+    skills: ['Python', 'Data Science', 'Pandas', 'Spark', 'Machine Learning', 'Tableau'],
+    avatarBg: '#8B5CF6',
+    bio: 'Passionate about large-scale predictive data pipelines, statistical modeling, and data-driven capstone prototypes.',
+    age: 20,
+    phone: '+1 650 555 0199',
+    gender: 'Female',
+    createdAt: '2026-08-20T14:30:00.000Z',
+    created: '2026-08-20T14:30:00.000Z'
+  },
+  {
+    id: 'usr_kevin',
+    name: 'Kevin Zhang',
+    email: 'kevin.zhang@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'DevOps & Distributed Systems',
+    roleTitle: 'DevOps Engineer',
+    skills: ['Kubernetes', 'Docker', 'Go', 'Terraform', 'CI/CD', 'AWS'],
+    avatarBg: '#0284C7',
+    bio: 'DevOps enthusiast orchestrating containerized microservices and automated deployment pipelines.',
+    age: 21,
+    phone: '+1 650 555 0205',
+    gender: 'Male',
+    createdAt: '2026-08-21T11:00:00.000Z',
+    created: '2026-08-21T11:00:00.000Z'
+  },
+  {
+    id: 'usr_maya',
+    name: 'Maya Patel',
+    email: 'maya.patel@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Artificial Intelligence & Machine Learning (AIML)',
+    degree: 'B.Tech Artificial Intelligence & Machine Learning (AIML)',
+    projectFocus: 'Computer Vision & Deep Learning',
+    roleTitle: 'CV Researcher',
+    skills: ['OpenCV', 'PyTorch', 'Computer Vision', 'Deep Learning', 'Python'],
+    avatarBg: '#EC4899',
+    bio: 'Researching real-time semantic segmentation, optical flow tracking, and convolutional neural nets.',
+    age: 21,
+    phone: '+1 650 555 0212',
+    gender: 'Female',
+    createdAt: '2026-08-22T09:40:00.000Z',
+    created: '2026-08-22T09:40:00.000Z'
+  },
+  {
+    id: 'usr_liam',
+    name: 'Liam O\'Connor',
+    email: 'liam.oc@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Mechanical Engineering (ME)',
+    degree: 'B.Tech Mechanical Engineering (ME)',
+    projectFocus: 'Autonomous Robotics & Kinematics',
+    roleTitle: 'Robotics Specialist',
+    skills: ['ROS 2', 'Robotics', 'C++', 'SolidWorks', 'MATLAB', 'Python'],
+    avatarBg: '#10B981',
+    bio: 'Building autonomous quadrupeds and kinematic path planning algorithms for extreme terrain robotics.',
+    age: 22,
+    phone: '+1 650 555 0220',
+    gender: 'Male',
+    createdAt: '2026-08-23T15:10:00.000Z',
+    created: '2026-08-23T15:10:00.000Z'
+  },
+  {
+    id: 'usr_sneha',
+    name: 'Sneha Kulkarni',
+    email: 'sneha.k@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Information Science & Engineering (ISE)',
+    degree: 'B.Tech Information Science & Engineering (ISE)',
+    projectFocus: 'Cloud Computing & Database Architecture',
+    roleTitle: 'Cloud Architect',
+    skills: ['PostgreSQL', 'Node.js', 'MongoDB', 'GraphQL', 'AWS', 'Redis'],
+    avatarBg: '#F59E0B',
+    bio: 'Designing high-throughput event queues, real-time caching layers, and resilient database schemas.',
+    age: 21,
+    phone: '+1 650 555 0233',
+    gender: 'Female',
+    createdAt: '2026-08-24T10:25:00.000Z',
+    created: '2026-08-24T10:25:00.000Z'
+  },
+  {
+    id: 'usr_tarun',
+    name: 'Tarun Verma',
+    email: 'tarun.verma@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Civil & Environmental Engineering',
+    degree: 'B.Tech Civil & Environmental Engineering',
+    projectFocus: 'Smart Cities & Sensor Networks',
+    roleTitle: 'IoT Environmental Engineer',
+    skills: ['IoT', 'GIS', 'Python', 'AutoCAD', 'Environmental Sensors', 'Data Analysis'],
+    avatarBg: '#14B8A6',
+    bio: 'Developing low-cost environmental sensor arrays for air quality telemetry and municipal flood warnings.',
+    age: 22,
+    phone: '+1 650 555 0244',
+    gender: 'Male',
+    createdAt: '2026-08-25T13:00:00.000Z',
+    created: '2026-08-25T13:00:00.000Z'
+  },
+  {
+    id: 'usr_emily',
+    name: 'Emily Watson',
+    email: 'emily.watson@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'UI/UX Design & Human-Computer Interaction',
+    roleTitle: 'Product Designer',
+    skills: ['Figma', 'UI Design', 'React', 'TailwindCSS', 'User Research', 'TypeScript'],
+    avatarBg: '#6366F1',
+    bio: 'Crafting pixel-perfect design systems, WCAG-compliant interactions, and polished web interfaces.',
+    age: 20,
+    phone: '+1 650 555 0255',
+    gender: 'Female',
+    createdAt: '2026-08-26T16:20:00.000Z',
+    created: '2026-08-26T16:20:00.000Z'
+  },
+  {
+    id: 'usr_arjun',
+    name: 'Arjun Reddy',
+    email: 'arjun.reddy@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Electrical & Electronics Engineering (EEE)',
+    degree: 'B.Tech Electrical & Electronics Engineering (EEE)',
+    projectFocus: 'Smart Grids & Power Electronics',
+    roleTitle: 'Power Systems Specialist',
+    skills: ['MATLAB', 'Simulink', 'Power Electronics', 'Arduino', 'C++', 'IoT'],
+    avatarBg: '#D97706',
+    bio: 'Innovating on campus microgrid energy storage inverters and automated load-balancing algorithms.',
+    age: 21,
+    phone: '+1 650 555 0266',
+    gender: 'Male',
+    createdAt: '2026-08-27T09:15:00.000Z',
+    created: '2026-08-27T09:15:00.000Z'
+  },
+  {
+    id: 'usr_aisha',
+    name: 'Aisha Al-Mansoor',
+    email: 'aisha.m@stanford.edu',
+    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
+    role: 'STUDENT',
+    university: 'Stanford University',
+    major: 'Computer Science & Engineering (CSE)',
+    degree: 'B.Tech Computer Science & Engineering (CSE)',
+    projectFocus: 'Decentralized Consensus & Web3',
+    roleTitle: 'Blockchain Architect',
+    skills: ['Solidity', 'Rust', 'Web3', 'Ethereum', 'Smart Contracts', 'Node.js'],
+    avatarBg: '#047857',
+    bio: 'Architecting zero-knowledge proofs and decentralized trust fabrics for academic credential verification.',
+    age: 21,
+    phone: '+1 650 555 0277',
+    gender: 'Female',
+    createdAt: '2026-08-28T12:00:00.000Z',
+    created: '2026-08-28T12:00:00.000Z'
   }
 ];
 
@@ -150,16 +350,10 @@ const loadPersistentUsers = () => {
       map.set(u.email.toLowerCase().trim(), u);
     }
   }
-  // Overlay disk users (latest modifications take precedence)
+  // Overlay disk users (latest registered accounts take precedence)
   for (const u of diskUsers) {
     if (u && u.email) {
-      const emailLower = u.email.toLowerCase().trim();
-      const nameLower = (u.name || '').toLowerCase().trim();
-      if (emailLower.includes('gagan') || emailLower.includes('renukesh') || emailLower.includes('charanya') ||
-          nameLower.includes('gagan') || nameLower.includes('renukesh') || nameLower.includes('charanya')) {
-        continue;
-      }
-      map.set(emailLower, u);
+      map.set(u.email.toLowerCase().trim(), u);
     }
   }
   return Array.from(map.values());
