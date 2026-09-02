@@ -13,7 +13,7 @@ export const initialSeedUsers = [
     id: 'usr_gagan',
     name: 'Gagan R',
     email: 'gagan.r123456789@gmail.com',
-    password: '$2b$10$Kp5ih3/GBPomwltl1aiTvukzukJ7X1ekTp2SzU1QrsIAL5emEoC72', // hashed 'admin123'
+    password: '$2b$10$16pp/eFGtem.ToIYosdu4O0Hgv2.LaKUOAeDPTcch6SuTNtbuI3Q.', // hashed 'gagan123'
     role: 'STUDENT',
     university: 'Global Academy of Technology',
     major: 'Electronics & Communication Engineering (ECE)',
@@ -33,7 +33,7 @@ export const initialSeedUsers = [
     id: 'usr_renukesh78',
     name: 'Renukesh',
     email: 'renukesh78@gmail.com',
-    password: '$2b$10$Kp5ih3/GBPomwltl1aiTvukzukJ7X1ekTp2SzU1QrsIAL5emEoC72',
+    password: '$2b$10$9PrgrYlaIkxY5LfTtKUKLe421h32m3DBp8utjaHBVdLUyRQsx0YOy', // hashed 'renu123'
     role: 'STUDENT',
     university: 'Global Academy of Technology',
     major: 'Computer Science & Engineering (CSE)',
@@ -53,7 +53,7 @@ export const initialSeedUsers = [
     id: 'usr_charanya',
     name: 'Charanya Jaganath',
     email: 'charanyajagannath0982@gmail.com',
-    password: '$2b$10$Kp5ih3/GBPomwltl1aiTvukzukJ7X1ekTp2SzU1QrsIAL5emEoC72',
+    password: '$2b$10$gcX6sFuwR0v0UG0XxabuQeXYTDX16TTFIvudQ.pv/d7nVtSGYD9F2', // hashed 'charanya0982'
     role: 'STUDENT',
     university: 'Stanford University',
     major: 'Artificial Intelligence & Machine Learning (AIML)',
