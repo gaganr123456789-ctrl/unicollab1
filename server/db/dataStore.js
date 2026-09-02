@@ -148,26 +148,6 @@ export const initialSeedUsers = [
     gender: 'Male',
     createdAt: '2026-08-18T10:00:00.000Z',
     created: '2026-08-18T10:00:00.000Z'
-  },
-  {
-    id: 'usr_gagan_alt',
-    name: 'Gagan R',
-    email: 'gagan@gmail.com',
-    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
-    role: 'STUDENT',
-    university: 'Global Academy of Technology',
-    major: 'Electronics & Communication Engineering (ECE)',
-    degree: 'B.Tech Electronics & Communication Engineering (ECE)',
-    projectFocus: 'Full-Stack Web Dev & AI',
-    roleTitle: 'Student Lead',
-    skills: ['React', 'Node.js', 'PostgreSQL', 'Socket.IO', 'TypeScript'],
-    avatarBg: '#2563EB',
-    bio: 'Full Stack Engineer & AI Systems builder at Global Academy of Technology.',
-    age: 21,
-    phone: '+91 98765 43210',
-    gender: 'Male',
-    createdAt: '2026-08-20T08:00:00.000Z',
-    created: '2026-08-20T08:00:00.000Z'
   }
 ];
 
