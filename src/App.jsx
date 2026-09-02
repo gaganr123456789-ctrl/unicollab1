@@ -18,6 +18,7 @@ import AdminPage from './pages/AdminPage';
 import GlobalAiChatbotWidget from './components/GlobalAiChatbotWidget';
 import BottomNav from './components/BottomNav';
 import Toast from './components/Toast';
+import { apiClient } from './services/apiClient';
 
 import { 
   Users, 
@@ -137,6 +138,10 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('hashchange', handlePopState);
+
+    // Auto-sync persistent registered accounts to backend
+    apiClient.syncRegisteredAccounts().catch(() => {});
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('hashchange', handlePopState);

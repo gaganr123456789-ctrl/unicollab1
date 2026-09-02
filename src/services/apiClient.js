@@ -71,7 +71,21 @@ export const apiClient = {
       if (res.ok && data.success) {
         if (typeof window !== 'undefined') {
           if (data.token) localStorage.setItem('unicollab_auth_token', data.token);
-          if (data.user) localStorage.setItem('unicollab_user', JSON.stringify(data.user));
+          if (data.user) {
+            localStorage.setItem('unicollab_user', JSON.stringify(data.user));
+            
+            // Permanently cache in registered users list
+            try {
+              const currentCache = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+              const existingIdx = currentCache.findIndex(u => u.email?.toLowerCase().trim() === targetEmail);
+              if (existingIdx >= 0) {
+                currentCache[existingIdx] = { ...currentCache[existingIdx], ...data.user, password: userData.password || currentCache[existingIdx].password };
+              } else {
+                currentCache.unshift({ ...data.user, password: userData.password || 'password123' });
+              }
+              localStorage.setItem('unicollab_registered_users', JSON.stringify(currentCache));
+            } catch (e) {}
+          }
         }
         return data;
       }
@@ -83,6 +97,30 @@ export const apiClient = {
     } catch (err) {
       console.warn('Register API error:', err);
       return { success: false, message: 'Could not connect to the centralized backend to register.' };
+    }
+  },
+
+  // Auto-sync persistent accounts between browser cache and server
+  async syncRegisteredAccounts() {
+    if (typeof window === 'undefined') return;
+    try {
+      const cached = JSON.parse(localStorage.getItem('unicollab_registered_users') || '[]');
+      if (!Array.isArray(cached) || cached.length === 0) return;
+
+      const backendUsersRes = await this.getUsers();
+      const serverEmails = new Set((backendUsersRes.users || []).map(u => (u.email || '').toLowerCase().trim()));
+
+      for (const localUser of cached) {
+        if (localUser && localUser.email && !serverEmails.has(localUser.email.toLowerCase().trim())) {
+          await fetch(`${BASE_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localUser)
+          }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('Account sync notice:', err);
     }
   },
 
