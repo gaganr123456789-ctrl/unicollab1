@@ -128,26 +128,6 @@ export const initialSeedUsers = [
     gender: 'Male',
     createdAt: '2026-08-16T12:20:00.000Z',
     created: '2026-08-16T12:20:00.000Z'
-  },
-  {
-    id: 'usr_renukesh_alt',
-    name: 'Renukesh',
-    email: 'renukesh@gmail.com',
-    password: '$2a$10$wEeVz2W3jG.z0J3l9kLqeu.8vK2C9bQxX8y3H6d9z0vE7c1b5r0qW',
-    role: 'STUDENT',
-    university: 'Global Academy of Technology',
-    major: 'Computer Science & Engineering (CSE)',
-    degree: 'B.Tech Computer Science & Engineering (CSE)',
-    projectFocus: 'Cloud Infrastructure & Security',
-    roleTitle: 'Student Developer',
-    skills: ['Python', 'Docker', 'AWS', 'PostgreSQL', 'FastAPI'],
-    avatarBg: '#059669',
-    bio: 'Cloud architecture enthusiast focusing on microservices and distributed backend systems.',
-    age: 21,
-    phone: '+91 98451 23456',
-    gender: 'Male',
-    createdAt: '2026-08-18T10:00:00.000Z',
-    created: '2026-08-18T10:00:00.000Z'
   }
 ];
 
